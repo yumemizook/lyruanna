@@ -2,7 +2,6 @@
 
 A modern BMS (Be-Music Source) rhythm game player built with Electron.
 
-![Song Selection](https://via.placeholder.com/800x400?text=Lyruanna+BMS+Player)
 
 ## Features
 
@@ -41,7 +40,8 @@ A modern BMS (Be-Music Source) rhythm game player built with Electron.
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone [<repository-url>](https://github.com/yumemizook/lyruanna)
+git clone 
 cd lyruanna
 
 # Install dependencies
