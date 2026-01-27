@@ -40,8 +40,7 @@ A modern BMS (Be-Music Source) rhythm game player built with Electron.
 
 ```bash
 # Clone the repository
-git clone [<repository-url>](https://github.com/yumemizook/lyruanna)
-git clone 
+git clone https://github.com/yumemizook/lyruanna
 cd lyruanna
 
 # Install dependencies
