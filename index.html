@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyruanna</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --panel: #12121a;
+            --panel-glass: rgba(18, 18, 26, 0.85);
+            --accent: #00ff9d;
+            --accent-dim: rgba(0, 255, 157, 0.2);
+            --text: #eee;
+            
+            /* Difficulty Colors */
+            --diff-beginner: #5ff;
+            --diff-normal: #0f0;
+            --diff-hyper: #fa0;
+            --diff-another: #f00;
+            --diff-legg: #f0f;
+            
+            /* Gauge Colors */
+            --gauge-easy: #00ff00;
+            --gauge-normal: #00aaff;
+            --gauge-clear: #ff0055;
+            --gauge-hard: #ff3333;
+            --gauge-exhard: #ffaa00;
+        }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; user-select: none; }
+        
+        #app { display: flex; width: 100vw; height: 100vh; }
+        
+        /* ========== SONG SELECT SCREEN ========== */
+        #screen-select { display: flex; width: 100%; height: 100%; background: #000; }
+        
+        .select-bg {
+            position: absolute; inset: 0; z-index: 0;
+            background-size: cover; background-position: center;
+            filter: blur(8px) brightness(0.3);
+            transition: background-image 0.5s;
+        }
+        
+        /* LEFT: Song Detail Panel */
+        .song-detail-panel {
+            flex: 1; position: relative; z-index: 1;
+            display: flex; flex-direction: column;
+            padding: 20px 30px;
+        }
+        
+        .top-buttons {
+            display: flex; gap: 10px; margin-bottom: 15px;
+        }
+        .icon-btn {
+            width: 40px; height: 40px;
+            background: rgba(30,30,40,0.8); border: 1px solid #444;
+            border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #aaa; transition: 0.2s;
+        }
+        .icon-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+        
+        .song-info-card {
+            flex: 1; display: flex; flex-direction: column;
+            background: var(--panel-glass); backdrop-filter: blur(10px);
+            border: 1px solid #333; border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .banner-area {
+            height: 80px; background: linear-gradient(135deg, #222, #111);
+            display: flex; align-items: center; justify-content: center;
+            border-bottom: 1px solid #333;
+        }
+        .banner-area img { max-height: 100%; max-width: 100%; object-fit: contain; }
+        .banner-placeholder { color: #444; font-size: 14px; }
+        
+        .stagefile-area {
+            flex: 1; position: relative;
+            background-size: cover; background-position: center;
+            padding: 20px;
+        }
+        .stagefile-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.8) 100%);
+        }
+        .song-meta {
+            position: relative; z-index: 1; height: 100%;
+            display: flex; flex-direction: column;
+        }
+        .song-title-main { font-size: 28px; font-weight: bold; margin-bottom: 4px; text-shadow: 2px 2px 8px rgba(0,0,0,0.8); }
+        .song-subtitle { font-size: 14px; color: #aaa; margin-bottom: 8px; }
+        .song-artist-genre { font-size: 14px; color: #888; margin-bottom: 15px; }
+        
+        .song-stats {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px;
+            font-size: 13px; margin-bottom: 20px;
+        }
+        .stat-row { display: flex; justify-content: space-between; background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 4px; }
+        .stat-label { color: #888; }
+        .stat-value { color: #fff; font-weight: bold; font-family: 'Consolas', monospace; }
+        
+        .difficulty-display {
+            display: flex; align-items: center; gap: 15px;
+            background: rgba(0,0,0,0.5); padding: 12px 15px; border-radius: 6px; margin-bottom: 15px;
+        }
+        .diff-level { font-size: 36px; font-weight: 900; font-family: 'Consolas', monospace; }
+        .diff-stars { font-size: 12px; letter-spacing: 1px; }
+        .diff-tier { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; }
+        
+        .song-markers { display: flex; gap: 8px; margin-bottom: 15px; }
+        .marker { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .marker-ln { background: #f50; color: #fff; }
+        .marker-ran { background: #05f; color: #fff; }
+        
+        .start-btn-area { margin-top: auto; }
+        .btn-start-main {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, var(--accent), #00cc7a);
+            border: none; border-radius: 8px;
+            color: #000; font-size: 18px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+            text-transform: uppercase; letter-spacing: 3px;
+        }
+        .btn-start-main:hover { transform: scale(1.02); box-shadow: 0 0 20px var(--accent-dim); }
+        
+        /* RIGHT: Song List */
+        .song-list-panel {
+            width: 350px; background: var(--panel);
+            border-left: 1px solid #333; z-index: 1;
+            display: flex; flex-direction: column;
+        }
+        .song-list-header {
+            padding: 15px 20px; border-bottom: 1px solid #333;
+            font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .song-list {
+            flex: 1; overflow-y: auto; padding: 10px;
+        }
+        .song-list::-webkit-scrollbar { width: 6px; }
+        .song-list::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        
+        .song-card {
+            padding: 12px 15px; margin-bottom: 8px;
+            background: rgba(30,30,40,0.6);
+            border-left: 3px solid #444; border-radius: 6px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .song-card:hover { background: rgba(50,50,60,0.8); transform: translateX(-3px); }
+        .song-card.active {
+            border-color: var(--accent);
+            background: linear-gradient(90deg, var(--accent-dim), transparent);
+            box-shadow: 0 0 15px var(--accent-dim);
+        }
+        .song-card-title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+        .song-card-artist { font-size: 11px; color: #888; }
+        .song-card-info { display: flex; gap: 8px; margin-top: 6px; font-size: 10px; }
+        .song-card-level { padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+        .song-card-markers { color: #666; }
+
+        /* ========== GAME SCREEN ========== */
+        #screen-game { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; z-index: 100; }
+        
+        .game-bg {
+            position: absolute; inset: 0; z-index: 0;
+            background-size: cover; background-position: center;
+            filter: blur(4px) brightness(0.25);
+        }
+        
+        .game-bga {
+            position: absolute;
+            left: 30%; top: 10%; width: 40%; height: 60%;
+            background: #111; border: 2px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1;
+        }
+        .game-bga img, .game-bga video { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        canvas { display: block; width: 100%; height: 100%; position: relative; z-index: 2; }
+        
+        .hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+        .hud-score { position: absolute; top: 20px; right: 20px; text-align: right; }
+        .score-val { font-size: 48px; font-family: 'Consolas', monospace; font-weight: bold; text-shadow: 0 0 10px var(--accent); }
+        
+        .hud-combo { 
+            position: absolute; top: 25%; left: 35%; transform: translate(-50%, -50%); 
+            text-align: center; opacity: 0; transition: transform 0.1s; 
+        }
+        .hud-combo.show { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        .combo-num { font-size: 80px; font-weight: 900; line-height: 1; text-shadow: 0 0 20px var(--accent); color: #fff; }
+        .combo-text { font-size: 14px; letter-spacing: 4px; color: var(--accent); font-weight: bold; }
+
+        /* GAUGE BAR */
+        .hud-gauge-container {
+            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+            width: 400px; height: 16px; background: #333; border: 2px solid #555;
+        }
+        .gauge-fill { width: 0%; height: 100%; background: var(--gauge-normal); transition: width 0.1s linear, background 0.2s; }
+        .gauge-fill.easy { background: var(--gauge-easy); box-shadow: 0 0 10px var(--gauge-easy); }
+        .gauge-fill.normal { background: var(--gauge-normal); }
+        .gauge-fill.cleared { background: var(--gauge-clear); box-shadow: 0 0 10px var(--gauge-clear); }
+        .gauge-fill.hard { background: var(--gauge-hard); box-shadow: 0 0 10px var(--gauge-hard); }
+        .gauge-fill.exhard { background: var(--gauge-exhard); box-shadow: 0 0 10px var(--gauge-exhard); }
+        .gauge-marker { position: absolute; left: 80%; top: -5px; bottom: -5px; width: 2px; background: #fff; z-index: 2; }
+        .gauge-val { position: absolute; right: -50px; top: -5px; font-family: monospace; font-weight: bold; color: white; font-size: 20px; }
+
+        /* JUDGEMENT DISPLAY */
+        .hud-judge {
+            position: absolute; top: 50%; left: 15%; transform: translate(-50%, -50%);
+            text-align: center; font-weight: bold; font-family: sans-serif;
+            text-shadow: 0 0 10px #000; opacity: 0; transition: opacity 0.1s;
+        }
+        .hud-judge.show { opacity: 1; animation: judgePop 0.1s; }
+        .judge-text { font-size: 32px; letter-spacing: 2px; }
+        .judge-diff { font-size: 14px; margin-top: 5px; color: #aaa; }
+        
+        .pgreat { color: #aaaaff; text-shadow: 0 0 10px #aaaaff; }
+        .great { color: #00ff00; }
+        .good { color: #ffff00; }
+        .bad { color: #ff5500; }
+        .poor { color: #ff0000; }
+
+        @keyframes judgePop { 0% { transform: translate(-50%, -40%); } 100% { transform: translate(-50%, -50%); } }
+
+        /* JUDGEMENT TALLY */
+        .hud-tally {
+            position: absolute; top: 100px; right: 20px;
+            background: rgba(0,0,0,0.7); padding: 15px 20px;
+            border: 1px solid #333; border-radius: 8px;
+            font-family: 'Consolas', monospace;
+        }
+        .hud-tally.hidden { display: none; }
+        .tally-row { display: flex; justify-content: space-between; gap: 25px; font-size: 13px; margin: 3px 0; }
+        .tally-row.pgreat .tally-label { color: #aaf; }
+        .tally-row.great .tally-label { color: #0f0; }
+        .tally-row.good .tally-label { color: #ff0; }
+        .tally-row.bad .tally-label { color: #f50; }
+        .tally-row.poor .tally-label { color: #f00; }
+        .tally-row.fast .tally-label { color: #f88; }
+        .tally-row.slow .tally-label { color: #88f; }
+        .tally-row.cb .tally-label { color: #888; }
+        .tally-value { color: #fff; font-weight: bold; min-width: 40px; text-align: right; }
+        .tally-divider { border: none; border-top: 1px solid #444; margin: 8px 0; }
+
+        /* LANE COVERS */
+        .lane-cover-top, .lane-cover-bottom {
+            position: absolute; left: 0; width: 30%; background: #000; z-index: 5;
+            pointer-events: none;
+        }
+        .lane-cover-top { top: 0; }
+        .lane-cover-bottom { bottom: 0; }
+
+        /* ========== MODALS ========== */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; justify-content: center; align-items: center; }
+        .modal.open { display: flex; }
+        .modal-box { background: #1a1a1a; padding: 30px; border: 1px solid #444; max-width: 700px; width: 90%; border-radius: 12px; max-height: 80vh; overflow-y: auto; }
+        .modal-header { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: var(--accent); }
+        .modal-section { margin-bottom: 25px; }
+        .modal-section-title { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        
+        .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .key-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: #252525; padding: 5px 10px; border-radius: 4px; }
+        .key-btn { background: #333; border: 1px solid #555; color: #fff; padding: 4px 10px; cursor: pointer; min-width: 80px; border-radius: 4px; }
+        .key-btn.listening { background: var(--accent); color: #000; }
+        
+        .option-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: #222; border-radius: 6px; }
+        .option-label { font-size: 13px; color: #ccc; }
+        .option-control { display: flex; align-items: center; gap: 10px; }
+        .option-value { font-family: 'Consolas', monospace; font-weight: bold; min-width: 50px; text-align: center; color: var(--accent); }
+        
+        input[type="range"] { width: 120px; accent-color: var(--accent); }
+        select { background: #333; color: #fff; border: 1px solid #555; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+        
+        .btn { display: inline-block; background: #333; border: 1px solid #555; color: #fff; padding: 10px 20px; cursor: pointer; border-radius: 6px; transition: 0.2s; text-align: center; }
+        .btn:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-primary { background: var(--accent); color: #000; border: none; font-weight: bold; }
+        .btn-primary:hover { background: #fff; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+        .hidden { display: none !important; }
+
+        /* CUSTOM TITLEBAR */
+        .titlebar {
+            position: fixed; top: 0; left: 0; right: 0; height: 32px;
+            background: #0a0a0a; display: flex; align-items: center; justify-content: space-between;
+            -webkit-app-region: drag; z-index: 9999; border-bottom: 1px solid #222;
+        }
+        .titlebar-title { padding-left: 12px; font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 1px; }
+        .titlebar-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+        .titlebar-btn {
+            width: 46px; height: 100%; border: none; background: transparent; color: #888;
+            font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .titlebar-btn:hover { background: #333; color: #fff; }
+        .titlebar-btn.close:hover { background: #e81123; color: #fff; }
+        .titlebar-btn svg { width: 12px; height: 12px; fill: currentColor; }
+
+        /* Adjust app content to account for titlebar */
+        #app { padding-top: 32px; box-sizing: border-box; }
+        #screen-game { top: 32px; height: calc(100% - 32px); }
+    </style>
+</head>
+<body>
+
+<!-- CUSTOM TITLEBAR (Desktop Only) -->
+<div class="titlebar" id="titlebar" style="display:none;">
+    <span class="titlebar-title">LYRUANNA - BMS Player</span>
+    <div class="titlebar-controls">
+        <button class="titlebar-btn" id="btn-minimize" title="Minimize">
+            <svg viewBox="0 0 12 12"><rect y="5" width="12" height="2"/></svg>
+        </button>
+        <button class="titlebar-btn" id="btn-maximize" title="Maximize">
+            <svg viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="titlebar-btn close" id="btn-close" title="Close">
+            <svg viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+    </div>
+</div>
+
+<div id="app">
+    <!-- SELECT SCREEN -->
+    <div id="screen-select">
+        <div class="select-bg" id="select-bg"></div>
+        
+        <!-- Left: Song Detail Panel -->
+        <div class="song-detail-panel">
+            <div class="top-buttons">
+                <button class="icon-btn" id="btn-settings" title="Settings">⚙️</button>
+                <button class="icon-btn" id="btn-options" title="Player Options">🎮</button>
+                <button class="icon-btn" id="btn-scan-lib" title="Rescan Library">🔄</button>
+                <input type="file" id="file-picker" webkitdirectory directory multiple style="display:none">
+            </div>
+            
+            <div class="song-info-card" id="song-info-card">
+                <div class="banner-area" id="banner-area">
+                    <span class="banner-placeholder">No song selected</span>
+                </div>
+                <div class="stagefile-area" id="stagefile-area">
+                    <div class="stagefile-overlay"></div>
+                    <div class="song-meta">
+                        <div class="song-title-main" id="song-title-main">Select a song</div>
+                        <div class="song-subtitle" id="song-subtitle"></div>
+                        <div class="song-artist-genre" id="song-artist-genre"></div>
+                        
+                        <div class="difficulty-display" id="difficulty-display" style="display:none;">
+                            <div>
+                                <div class="diff-level" id="diff-level">--</div>
+                                <div class="diff-tier" id="diff-tier">UNKNOWN</div>
+                            </div>
+                            <div class="diff-stars" id="diff-stars"></div>
+                        </div>
+                        
+                        <div class="song-stats" id="song-stats" style="display:none;">
+                            <div class="stat-row"><span class="stat-label">BPM</span><span class="stat-value" id="stat-bpm">--</span></div>
+                            <div class="stat-row"><span class="stat-label">Notes</span><span class="stat-value" id="stat-notes">--</span></div>
+                            <div class="stat-row"><span class="stat-label">Start NPS</span><span class="stat-value" id="stat-nps-start">--</span></div>
+                            <div class="stat-row"><span class="stat-label">Avg NPS</span><span class="stat-value" id="stat-nps-avg">--</span></div>
+                            <div class="stat-row"><span class="stat-label">Max NPS</span><span class="stat-value" id="stat-nps-max">--</span></div>
+                            <div class="stat-row"><span class="stat-label">Rank</span><span class="stat-value" id="stat-rank">--</span></div>
+                        </div>
+                        
+                        <div class="song-markers" id="song-markers"></div>
+                        
+                        <div class="start-btn-area">
+                            <button class="btn-start-main" id="btn-start" disabled>START</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Song List -->
+        <div class="song-list-panel">
+            <div class="song-list-header">
+                <span id="song-count">0</span> Songs
+            </div>
+            <div class="song-list" id="song-list"></div>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="screen-game">
+        <div class="game-bg" id="game-bg"></div>
+        <div class="game-bga" id="game-bga">
+            <img id="bga-img" style="display:none;">
+            <video id="bga-video" style="display:none;" muted></video>
+        </div>
+        <div class="lane-cover-top" id="lane-cover-top" style="height:0;"></div>
+        <div class="lane-cover-bottom" id="lane-cover-bottom" style="height:0;"></div>
+        <canvas id="game-canvas"></canvas>
+        <div class="hud">
+            <div class="hud-score">
+                <div style="font-size:12px; color:#888;">EX SCORE</div>
+                <div class="score-val" id="hud-score">0</div>
+            </div>
+            
+            <div class="hud-combo" id="hud-combo-box">
+                <div class="combo-num" id="hud-combo">0</div>
+                <div class="combo-text">COMBO</div>
+            </div>
+
+            <div class="hud-judge" id="hud-judge-box">
+                <div class="judge-text" id="judge-text">PGREAT</div>
+                <div class="judge-diff" id="judge-diff">+0ms</div>
+            </div>
+
+            <div class="hud-gauge-container">
+                <div class="gauge-marker"></div>
+                <div class="gauge-fill" id="gauge-bar"></div>
+                <div class="gauge-val" id="gauge-val">20%</div>
+            </div>
+
+            <div class="hud-tally" id="hud-tally">
+                <div class="tally-row pgreat"><span class="tally-label">PGREAT</span><span class="tally-value" id="tally-pg">0</span></div>
+                <div class="tally-row great"><span class="tally-label">GREAT</span><span class="tally-value" id="tally-gr">0</span></div>
+                <div class="tally-row good"><span class="tally-label">GOOD</span><span class="tally-value" id="tally-gd">0</span></div>
+                <div class="tally-row bad"><span class="tally-label">BAD</span><span class="tally-value" id="tally-bd">0</span></div>
+                <div class="tally-row poor"><span class="tally-label">POOR</span><span class="tally-value" id="tally-pr">0</span></div>
+                <hr class="tally-divider">
+                <div class="tally-row fast"><span class="tally-label">FAST</span><span class="tally-value" id="tally-fast">0</span></div>
+                <div class="tally-row slow"><span class="tally-label">SLOW</span><span class="tally-value" id="tally-slow">0</span></div>
+                <div class="tally-row cb"><span class="tally-label">C.BREAK</span><span class="tally-value" id="tally-cb">0</span></div>
+            </div>
+
+            <div style="position:absolute; bottom:20px; width:100%; text-align:center; font-size:12px; color:#555;">
+                [ESCAPE] to Exit
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="modal-settings" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">Settings</div>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">Display</div>
+                <div class="option-row">
+                    <span class="option-label">Show Judgement Tally</span>
+                    <input type="checkbox" id="opt-show-tally" checked>
+                </div>
+            </div>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">Key Bindings</div>
+                <div class="modal-grid">
+                    <div id="col-p1"><h4 style="margin:0 0 10px 0; color:#888;">Player 1</h4></div>
+                    <div id="col-p2"><h4 style="margin:0 0 10px 0; color:#888;">Player 2</h4></div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btn-save-settings">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLAYER OPTIONS MODAL -->
+    <div id="modal-options" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">Player Options</div>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">Speed & Lane Cover</div>
+                <div class="option-row">
+                    <span class="option-label">Hi-Speed</span>
+                    <div class="option-control">
+                        <input type="range" id="opt-hispeed" min="1" max="10" step="0.5" value="4">
+                        <span class="option-value" id="opt-hispeed-val">4.0</span>
+                    </div>
+                </div>
+                <div class="option-row">
+                    <span class="option-label">Sudden+ (Top Cover)</span>
+                    <div class="option-control">
+                        <input type="range" id="opt-sudden" min="0" max="80" step="1" value="0">
+                        <span class="option-value" id="opt-sudden-val">0%</span>
+                    </div>
+                </div>
+                <div class="option-row">
+                    <span class="option-label">Lift (Bottom Cover)</span>
+                    <div class="option-control">
+                        <input type="range" id="opt-lift" min="0" max="50" step="1" value="0">
+                        <span class="option-value" id="opt-lift-val">0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">Gauge</div>
+                <div class="option-row">
+                    <span class="option-label">Gauge Type</span>
+                    <select id="opt-gauge">
+                        <option value="GROOVE">GROOVE (Normal)</option>
+                        <option value="EASY">EASY</option>
+                        <option value="HARD">HARD</option>
+                        <option value="EXHARD">EX-HARD</option>
+                        <option value="ASSIST">ASSIST EASY</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">Note Modifier</div>
+                <div class="option-row">
+                    <span class="option-label">Modifier</span>
+                    <select id="opt-modifier">
+                        <option value="OFF">OFF</option>
+                        <option value="RANDOM">RANDOM</option>
+                        <option value="R-RANDOM">R-RANDOM</option>
+                        <option value="S-RANDOM">S-RANDOM</option>
+                        <option value="MIRROR">MIRROR</option>
+                    </select>
+                </div>
+                <div class="option-row">
+                    <span class="option-label">Auto-Scratch</span>
+                    <input type="checkbox" id="opt-autoscratch">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btn-save-options">Save & Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * ENGINE CORE
+ * ============================================================================
+ */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// ----------------------------------------------------------------------------
+// ABSTRACTION LAYER (WEB VS DESKTOP)
+// ----------------------------------------------------------------------------
+const IS_DESKTOP = !!window.electronAPI;
+
+class DataLayer {
+    constructor() {
+        this.webFiles = {}; // Map<filename, File>
+    }
+
+    async readFile(ref) {
+        if (IS_DESKTOP) {
+            // ref is absolute path string
+            const buffer = await window.electronAPI.readFile(ref);
+            return new TextDecoder('shift-jis').decode(buffer);
+        } else {
+            // ref is File object
+            const buffer = await ref.arrayBuffer();
+            return new TextDecoder('shift-jis').decode(buffer);
+        }
+    }
+
+    async readAudio(ref) {
+        let arrayBuffer;
+        if (IS_DESKTOP) {
+            arrayBuffer = await window.electronAPI.readFile(ref);
+        } else {
+            arrayBuffer = await ref.arrayBuffer();
+        }
+        return await audioCtx.decodeAudioData(arrayBuffer);
+    }
+}
+
+const dataLayer = new DataLayer();
+
+// ----------------------------------------------------------------------------
+// DATA STRUCTURES
+// ----------------------------------------------------------------------------
+
+const CHANNELS = {
+    P1: {
+        SCRATCH: [0x16, 0x56],
+        KEY1: [0x11, 0x51], KEY2: [0x12, 0x52], KEY3: [0x13, 0x53], KEY4: [0x14, 0x54],
+        KEY5: [0x15, 0x55], KEY6: [0x18, 0x58], KEY7: [0x19, 0x59]
+    },
+    P2: {
+        SCRATCH: [0x26, 0x66],
+        KEY1: [0x21, 0x61], KEY2: [0x22, 0x62], KEY3: [0x23, 0x63], KEY4: [0x24, 0x64],
+        KEY5: [0x25, 0x65], KEY6: [0x28, 0x68], KEY7: [0x29, 0x69]
+    },
+    BGM: 0x01
+};
+
+const ACTIONS = {
+    P1_SC: 'p1_sc', P1_1: 'p1_1', P1_2: 'p1_2', P1_3: 'p1_3', P1_4: 'p1_4', P1_5: 'p1_5', P1_6: 'p1_6', P1_7: 'p1_7',
+    P2_SC: 'p2_sc', P2_1: 'p2_1', P2_2: 'p2_2', P2_3: 'p2_3', P2_4: 'p2_4', P2_5: 'p2_5', P2_6: 'p2_6', P2_7: 'p2_7',
+};
+
+const KEYBINDS = {
+    [ACTIONS.P1_SC]: 'ShiftLeft',
+    [ACTIONS.P1_1]: 'KeyZ', [ACTIONS.P1_2]: 'KeyS', [ACTIONS.P1_3]: 'KeyX', [ACTIONS.P1_4]: 'KeyD',
+    [ACTIONS.P1_5]: 'KeyC', [ACTIONS.P1_6]: 'KeyF', [ACTIONS.P1_7]: 'KeyV',
+
+    [ACTIONS.P2_SC]: 'ShiftRight',
+    [ACTIONS.P2_1]: 'KeyN', [ACTIONS.P2_2]: 'KeyJ', [ACTIONS.P2_3]: 'KeyM', [ACTIONS.P2_4]: 'KeyK',
+    [ACTIONS.P2_5]: 'Comma', [ACTIONS.P2_6]: 'KeyL', [ACTIONS.P2_7]: 'Period'
+};
+
+const ACTION_TO_CHANNELS = {
+    [ACTIONS.P1_SC]: CHANNELS.P1.SCRATCH,
+    [ACTIONS.P1_1]: CHANNELS.P1.KEY1, [ACTIONS.P1_2]: CHANNELS.P1.KEY2, [ACTIONS.P1_3]: CHANNELS.P1.KEY3,
+    [ACTIONS.P1_4]: CHANNELS.P1.KEY4, [ACTIONS.P1_5]: CHANNELS.P1.KEY5, [ACTIONS.P1_6]: CHANNELS.P1.KEY6, [ACTIONS.P1_7]: CHANNELS.P1.KEY7,
+    
+    [ACTIONS.P2_SC]: CHANNELS.P2.SCRATCH,
+    [ACTIONS.P2_1]: CHANNELS.P2.KEY1, [ACTIONS.P2_2]: CHANNELS.P2.KEY2, [ACTIONS.P2_3]: CHANNELS.P2.KEY3,
+    [ACTIONS.P2_4]: CHANNELS.P2.KEY4, [ACTIONS.P2_5]: CHANNELS.P2.KEY5, [ACTIONS.P2_6]: CHANNELS.P2.KEY6, [ACTIONS.P2_7]: CHANNELS.P2.KEY7
+};
+
+// TIMING WINDOWS (ms +/-)
+const JUDGE_WINDOWS = {
+    0: { PG: 8, GR: 24, GD: 40, BD: 100, PR: 200 },
+    1: { PG: 15, GR: 32, GD: 60, BD: 100, PR: 200 },
+    2: { PG: 18, GR: 40, GD: 80, BD: 100, PR: 200 },
+    3: { PG: 21, GR: 60, GD: 120, BD: 200, PR: 200 } 
+};
+
+const STATE = {
+    files: {}, // Web: File objects. Desktop: Path strings
+    charts: [], // { title, artist, fileRef, ... }
+    loadedSong: null, 
+    audioBuffers: {},
+    currentFileRef: null,
+    
+    // Player Options
+    speed: 4.0,
+    gaugeType: 'GROOVE',
+    suddenPlus: 0,
+    lift: 0,
+    modifier: 'OFF',
+    autoScratch: false,
+    showTally: true,
+    
+    // Game State
+    isPlaying: false,
+    startTime: 0,
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
+    gauge: 0, 
+    gaugeTick: 0,
+    
+    // Judgement Tally
+    judgeCounts: { pgreat: 0, great: 0, good: 0, bad: 0, poor: 0 },
+    fastSlow: { fast: 0, slow: 0 },
+    comboBreaks: 0,
+    
+    // BGA
+    bgaDefinitions: {},
+    bgaEvents: [],
+    bgaCursor: 0,
+    stagefileUrl: null,
+    bannerUrl: null,
+    
+    // Input
+    keyCodeToAction: {}, 
+    activeActions: new Set()
+};
+
+function rebuildInputMap() {
+    STATE.keyCodeToAction = {};
+    for (const [action, code] of Object.entries(KEYBINDS)) {
+        if (!STATE.keyCodeToAction[code]) {
+            STATE.keyCodeToAction[code] = [];
+        }
+        STATE.keyCodeToAction[code].push(action);
+    }
+}
+rebuildInputMap();
+
+// ----------------------------------------------------------------------------
+// PARSER
+// ----------------------------------------------------------------------------
+class BMSParser {
+    static parse(text) {
+        const lines = text.split(/\r?\n/);
+        const headers = {};
+        const measures = {}; 
+        let maxMeasure = 0;
+
+        lines.forEach(line => {
+            if(!line.startsWith('#')) return;
+            const spaceIdx = line.indexOf(' ');
+            if (spaceIdx !== -1) {
+                const key = line.substring(1, spaceIdx).toUpperCase();
+                const val = line.substring(spaceIdx+1);
+                if(isNaN(parseInt(key.substring(0,3)))) {
+                    headers[key] = val;
+                    return;
+                }
+            }
+            const match = line.match(/^#(\d{3})(\w{2}):(.+)$/);
+            if(match) {
+                const mIdx = parseInt(match[1]);
+                const chHex = parseInt(match[2], 16); 
+                if(mIdx > maxMeasure) maxMeasure = mIdx;
+                if(!measures[mIdx]) measures[mIdx] = {};
+                if (!measures[mIdx][chHex]) measures[mIdx][chHex] = [];
+                measures[mIdx][chHex].push(match[3]);
+            }
+        });
+
+        const PLAYABLE_CHANNELS = new Set([
+            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19, // P1 Hit
+            0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x58, 0x59  // P1 LN
+        ]);
+
+        const notes = [];
+        const bgm = [];
+        const bgaEvents = [];
+        const bpm = parseFloat(headers['BPM'] || 130);
+        let time = 0;
+        let playableNoteCount = 0;
+
+        for(let i=0; i<=maxMeasure; i++) {
+            const measureLen = 240000 / bpm; 
+            if(measures[i]) {
+                for(let chStr in measures[i]) {
+                    const chNum = parseInt(chStr);
+                    const dataList = measures[i][chNum]; 
+                    
+                    dataList.forEach(dataStr => {
+                        const count = dataStr.length / 2;
+                        const step = measureLen / count;
+
+                        for(let n=0; n<count; n++) {
+                            const val = dataStr.substr(n*2, 2);
+                            if(val === '00') continue;
+                            
+                            const t = time + (step * n);
+                            const id = val.toUpperCase();
+
+                            if (PLAYABLE_CHANNELS.has(chNum)) {
+                                notes.push({ time: t, ch: chNum, id, hit: false });
+                                playableNoteCount++;
+                            } else {
+                                const isAudioChannel = (chNum === 0x01) || 
+                                                       (chNum >= 0x21 && chNum <= 0x29) || 
+                                                       (chNum >= 0x31 && chNum <= 0x39) || 
+                                                       (chNum >= 0x41 && chNum <= 0x49) || 
+                                                       (chNum >= 0x61 && chNum <= 0x69);   
+                                
+                                if (isAudioChannel) {
+                                    bgm.push({ time: t, id });
+                                }
+                                
+                                // BGA channel (04)
+                                if (chNum === 0x04) {
+                                    bgaEvents.push({ time: t, id });
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            time += measureLen;
+        }
+
+        let total = parseFloat(headers['TOTAL']);
+        if(isNaN(total)) total = 260; 
+        
+        let rank = parseInt(headers['RANK']);
+        if(isNaN(rank)) rank = 3;
+
+        // Calculate song duration and NPS
+        const songDuration = time; // in ms
+        const noteTimes = notes.map(n => n.time).sort((a,b) => a-b);
+        
+        // Start NPS (first 10 seconds)
+        const startNotes = noteTimes.filter(t => t <= 10000).length;
+        const startNps = startNotes / 10;
+        
+        // Average NPS
+        const avgNps = songDuration > 0 ? (playableNoteCount / (songDuration / 1000)) : 0;
+        
+        // Max NPS (peak in any 1-second window)
+        let maxNps = 0;
+        for (let i = 0; i < noteTimes.length; i++) {
+            const windowStart = noteTimes[i];
+            const windowEnd = windowStart + 1000;
+            const count = noteTimes.filter(t => t >= windowStart && t < windowEnd).length;
+            if (count > maxNps) maxNps = count;
+        }
+        
+        return { 
+            headers, 
+            notes: notes.sort((a,b)=>a.time-b.time), 
+            bgm: bgm.sort((a,b)=>a.time-b.time),
+            bgaEvents: bgaEvents.sort((a,b)=>a.time-b.time),
+            total,
+            rank,
+            noteCount: playableNoteCount,
+            songDuration,
+            startNps,
+            avgNps,
+            maxNps
+        };
+    }
+}
+
+// ----------------------------------------------------------------------------
+// UI & LOGIC
+// ----------------------------------------------------------------------------
+const ui = {
+    // Song Select
+    songList: document.getElementById('song-list'),
+    songCount: document.getElementById('song-count'),
+    selectBg: document.getElementById('select-bg'),
+    bannerArea: document.getElementById('banner-area'),
+    stagefileArea: document.getElementById('stagefile-area'),
+    titleMain: document.getElementById('song-title-main'),
+    subtitle: document.getElementById('song-subtitle'),
+    artistGenre: document.getElementById('song-artist-genre'),
+    diffDisplay: document.getElementById('difficulty-display'),
+    diffLevel: document.getElementById('diff-level'),
+    diffTier: document.getElementById('diff-tier'),
+    diffStars: document.getElementById('diff-stars'),
+    songStats: document.getElementById('song-stats'),
+    statBpm: document.getElementById('stat-bpm'),
+    statNotes: document.getElementById('stat-notes'),
+    statNpsStart: document.getElementById('stat-nps-start'),
+    statNpsAvg: document.getElementById('stat-nps-avg'),
+    statNpsMax: document.getElementById('stat-nps-max'),
+    statRank: document.getElementById('stat-rank'),
+    songMarkers: document.getElementById('song-markers'),
+    btnStart: document.getElementById('btn-start'),
+    
+    // Game HUD
+    score: document.getElementById('hud-score'),
+    combo: document.getElementById('hud-combo'),
+    comboBox: document.getElementById('hud-combo-box'),
+    gaugeBar: document.getElementById('gauge-bar'),
+    gaugeVal: document.getElementById('gauge-val'),
+    judgeBox: document.getElementById('hud-judge-box'),
+    judgeText: document.getElementById('judge-text'),
+    judgeDiff: document.getElementById('judge-diff'),
+    tally: document.getElementById('hud-tally'),
+    tallyPg: document.getElementById('tally-pg'),
+    tallyGr: document.getElementById('tally-gr'),
+    tallyGd: document.getElementById('tally-gd'),
+    tallyBd: document.getElementById('tally-bd'),
+    tallyPr: document.getElementById('tally-pr'),
+    tallyFast: document.getElementById('tally-fast'),
+    tallySlow: document.getElementById('tally-slow'),
+    tallyCb: document.getElementById('tally-cb'),
+    
+    // Game BGA
+    gameBg: document.getElementById('game-bg'),
+    gameBga: document.getElementById('game-bga'),
+    bgaImg: document.getElementById('bga-img'),
+    bgaVideo: document.getElementById('bga-video'),
+    laneCoverTop: document.getElementById('lane-cover-top'),
+    laneCoverBottom: document.getElementById('lane-cover-bottom'),
+    
+    // Modals
+    modalSettings: document.getElementById('modal-settings'),
+    modalOptions: document.getElementById('modal-options')
+};
+
+// --- INITIALIZATION ---
+if (IS_DESKTOP) {
+    // Show custom titlebar for desktop
+    document.getElementById('titlebar').style.display = 'flex';
+    
+    // Wire up window control buttons
+    document.getElementById('btn-minimize').onclick = () => window.electronAPI.minimizeWindow();
+    document.getElementById('btn-maximize').onclick = () => window.electronAPI.maximizeWindow();
+    document.getElementById('btn-close').onclick = () => window.electronAPI.closeWindow();
+    
+    // Auto load library
+    window.electronAPI.getLibrary().then(loadLibraryFromDesktop);
+}
+
+// Button Handlers
+document.getElementById('btn-settings').onclick = () => {
+    ui.modalSettings.classList.add('open');
+    renderConfig();
+};
+document.getElementById('btn-save-settings').onclick = () => {
+    ui.modalSettings.classList.remove('open');
+    STATE.showTally = document.getElementById('opt-show-tally').checked;
+    rebuildInputMap();
+};
+
+document.getElementById('btn-options').onclick = () => {
+    ui.modalOptions.classList.add('open');
+    // Sync UI with current state
+    document.getElementById('opt-hispeed').value = STATE.speed;
+    document.getElementById('opt-hispeed-val').textContent = STATE.speed.toFixed(1);
+    document.getElementById('opt-sudden').value = STATE.suddenPlus;
+    document.getElementById('opt-sudden-val').textContent = STATE.suddenPlus + '%';
+    document.getElementById('opt-lift').value = STATE.lift;
+    document.getElementById('opt-lift-val').textContent = STATE.lift + '%';
+    document.getElementById('opt-gauge').value = STATE.gaugeType;
+    document.getElementById('opt-modifier').value = STATE.modifier;
+    document.getElementById('opt-autoscratch').checked = STATE.autoScratch;
+};
+document.getElementById('btn-save-options').onclick = () => {
+    ui.modalOptions.classList.remove('open');
+    STATE.speed = parseFloat(document.getElementById('opt-hispeed').value);
+    STATE.suddenPlus = parseInt(document.getElementById('opt-sudden').value);
+    STATE.lift = parseInt(document.getElementById('opt-lift').value);
+    STATE.gaugeType = document.getElementById('opt-gauge').value;
+    STATE.modifier = document.getElementById('opt-modifier').value;
+    STATE.autoScratch = document.getElementById('opt-autoscratch').checked;
+};
+
+// Options sliders
+document.getElementById('opt-hispeed').oninput = (e) => {
+    document.getElementById('opt-hispeed-val').textContent = parseFloat(e.target.value).toFixed(1);
+};
+document.getElementById('opt-sudden').oninput = (e) => {
+    document.getElementById('opt-sudden-val').textContent = e.target.value + '%';
+};
+document.getElementById('opt-lift').oninput = (e) => {
+    document.getElementById('opt-lift-val').textContent = e.target.value + '%';
+};
+
+// Scan Library button
+document.getElementById('btn-scan-lib').onclick = async () => {
+    if (IS_DESKTOP) {
+        const songs = await window.electronAPI.scanLibrary();
+        loadLibraryFromDesktop(songs);
+    } else {
+        document.getElementById('file-picker').click();
+    }
+};
+
+// File picker (Web mode)
+document.getElementById('file-picker').addEventListener('change', async (e) => {
+    STATE.files = {};
+    STATE.charts = [];
+    ui.songList.innerHTML = '';
+
+    const list = Array.from(e.target.files);
+    for(let f of list) dataLayer.webFiles[f.name.toLowerCase()] = f;
+
+    const bmsFiles = list.filter(f => f.name.match(/\.(bms|bme|bml|pms)$/i));
+    
+    for(let f of bmsFiles) {
+        try {
+            const txt = await dataLayer.readFile(f);
+            const titleMatch = txt.match(/#TITLE\s+(.+)/i);
+            const artistMatch = txt.match(/#ARTIST\s+(.+)/i);
+            STATE.charts.push({
+                fileRef: f,
+                title: titleMatch ? titleMatch[1].trim() : 'Unknown',
+                artist: artistMatch ? artistMatch[1].trim() : 'Unknown',
+                raw: txt
+            });
+        } catch(e){}
+    }
+    renderSongList();
+});
+
+// Start button
+ui.btnStart.onclick = () => {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    enterGame();
+};
+
+function loadLibraryFromDesktop(songs) {
+    STATE.charts = songs.map(s => ({
+        title: s.title,
+        artist: s.artist,
+        fileRef: s.path,
+        raw: null
+    }));
+    renderSongList();
+}
+
+function renderSongList() {
+    ui.songList.innerHTML = '';
+    ui.songCount.textContent = STATE.charts.length;
+    
+    STATE.charts.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'song-card';
+        div.innerHTML = `
+            <div class="song-card-title">${c.title}</div>
+            <div class="song-card-artist">${c.artist}</div>
+        `;
+        div.onclick = () => loadChart(i, div);
+        ui.songList.appendChild(div);
+    });
+}
+
+async function loadChart(idx, el) {
+    document.querySelectorAll('.song-card').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+
+    const c = STATE.charts[idx];
+    
+    // Load BMS Text
+    let bmsText = c.raw;
+    if (!bmsText) {
+        bmsText = await dataLayer.readFile(c.fileRef);
+        c.raw = bmsText;
+    }
+
+    const data = BMSParser.parse(bmsText);
+    STATE.loadedSong = data;
+    STATE.currentFileRef = c.fileRef;
+    
+    // Update song info display
+    ui.titleMain.textContent = c.title;
+    ui.subtitle.textContent = data.headers['SUBTITLE'] || '';
+    
+    const genre = data.headers['GENRE'] || '';
+    ui.artistGenre.textContent = genre ? `${c.artist} | ${genre}` : c.artist;
+    
+    // Difficulty display
+    const level = data.headers['PLAYLEVEL'] || data.headers['DIFFICULTY'] || '?';
+    const diffTier = parseInt(data.headers['DIFFICULTY']) || 2;
+    const tierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+    const tierColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+    
+    ui.diffLevel.textContent = level;
+    ui.diffLevel.style.color = tierColors[Math.min(diffTier - 1, 4)] || '#fff';
+    ui.diffTier.textContent = tierNames[Math.min(diffTier - 1, 4)] || 'NORMAL';
+    ui.diffStars.textContent = '★'.repeat(Math.min(parseInt(level) || 0, 12));
+    ui.diffDisplay.style.display = 'flex';
+    
+    // Stats
+    const rankName = ["VERY HARD", "HARD", "NORMAL", "EASY"][data.rank] || "EASY";
+    ui.statBpm.textContent = data.headers['BPM'] || '???';
+    ui.statNotes.textContent = data.noteCount;
+    ui.statNpsStart.textContent = data.startNps.toFixed(1);
+    ui.statNpsAvg.textContent = data.avgNps.toFixed(1);
+    ui.statNpsMax.textContent = data.maxNps;
+    ui.statRank.textContent = rankName;
+    ui.songStats.style.display = 'grid';
+    
+    // Markers
+    ui.songMarkers.innerHTML = '';
+    if (data.headers['LNTYPE'] || data.headers['LNOBJ']) {
+        ui.songMarkers.innerHTML += '<span class="marker marker-ln">LN</span>';
+    }
+    if (data.headers['RANDOM']) {
+        ui.songMarkers.innerHTML += '<span class="marker marker-ran">RAN</span>';
+    }
+    
+    // Load images (STAGEFILE, BANNER)
+    if (IS_DESKTOP) {
+        const stagefileUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['STAGEFILE']);
+        const bannerUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['BANNER']);
+        
+        if (stagefileUrl) {
+            ui.stagefileArea.style.backgroundImage = `url('${stagefileUrl}')`;
+            ui.selectBg.style.backgroundImage = `url('${stagefileUrl}')`;
+            STATE.stagefileUrl = stagefileUrl;
+        } else {
+            ui.stagefileArea.style.backgroundImage = '';
+            ui.selectBg.style.backgroundImage = '';
+            STATE.stagefileUrl = null;
+        }
+        
+        if (bannerUrl) {
+            ui.bannerArea.innerHTML = `<img src="${bannerUrl}">`;
+            STATE.bannerUrl = bannerUrl;
+        } else {
+            ui.bannerArea.innerHTML = '<span class="banner-placeholder">No Banner</span>';
+            STATE.bannerUrl = null;
+        }
+    }
+    
+    // Enable start button
+    ui.btnStart.disabled = false;
+
+    // Load Audio
+    STATE.audioBuffers = {};
+    STATE.bgaDefinitions = {};
+    const promises = [];
+    
+    for(let k in data.headers) {
+        if(k.startsWith('WAV')) {
+            const id = k.substring(3).toUpperCase();
+            const rawFilename = data.headers[k];
+            
+            let fileRef = null;
+            if (IS_DESKTOP) {
+                fileRef = await window.electronAPI.resolvePath(STATE.currentFileRef, rawFilename);
+            } else {
+                const baseName = rawFilename.substring(0, rawFilename.lastIndexOf('.')).toLowerCase();
+                fileRef = dataLayer.webFiles[rawFilename.toLowerCase()];
+                if(!fileRef) {
+                    const fuzzyKey = Object.keys(dataLayer.webFiles).find(key => 
+                        key.startsWith(baseName + '.') || key === baseName
+                    );
+                    if(fuzzyKey) fileRef = dataLayer.webFiles[fuzzyKey];
+                }
+            }
+
+            if(fileRef) {
+                promises.push(
+                    dataLayer.readAudio(fileRef)
+                    .then(ab => STATE.audioBuffers[id] = ab)
+                    .catch(e => {})
+                );
+            }
+        }
+        
+        // Load BMP definitions for BGA
+        if(k.startsWith('BMP') && IS_DESKTOP) {
+            const id = k.substring(3).toUpperCase();
+            const filename = data.headers[k];
+            const url = await window.electronAPI.resolveImage(STATE.currentFileRef, filename);
+            if(url) {
+                STATE.bgaDefinitions[id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg)$/i.test(filename) };
+            }
+        }
+    }
+    await Promise.all(promises);
+}
+
+function renderConfig() {
+    const p1 = document.getElementById('col-p1'); const p2 = document.getElementById('col-p2');
+    p1.innerHTML = '<h4 style="margin:0 0 10px 0; color:#888;">Player 1</h4>'; 
+    p2.innerHTML = '<h4 style="margin:0 0 10px 0; color:#888;">Player 2</h4>';
+    const renderBtn = (action, label, container) => {
+        const div = document.createElement('div'); div.className = 'key-row';
+        div.innerHTML = `<span>${label}</span>`;
+        const btn = document.createElement('button'); btn.className = 'key-btn';
+        btn.textContent = KEYBINDS[action];
+        btn.onclick = () => {
+            btn.textContent = '...'; btn.classList.add('listening');
+            const h = (e) => { e.preventDefault(); KEYBINDS[action] = e.code; btn.textContent = e.code; btn.classList.remove('listening'); window.removeEventListener('keydown', h); };
+            window.addEventListener('keydown', h, {once:true});
+        };
+        div.appendChild(btn); container.appendChild(div);
+    };
+    renderBtn(ACTIONS.P1_SC, "Scratch", p1); for(let i=1; i<=7; i++) renderBtn(ACTIONS[`P1_${i}`], `Key ${i}`, p1);
+    renderBtn(ACTIONS.P2_SC, "Scratch", p2); for(let i=1; i<=7; i++) renderBtn(ACTIONS[`P2_${i}`], `Key ${i}`, p2);
+}
+
+// ----------------------------------------------------------------------------
+// GAME LOOP
+// ----------------------------------------------------------------------------
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+function enterGame() {
+    document.getElementById('screen-select').style.display = 'none';
+    document.getElementById('screen-game').style.display = 'block';
+    resize();
+    
+    STATE.isPlaying = true;
+    STATE.startTime = audioCtx.currentTime + 2.0;
+    STATE.score = 0;
+    STATE.combo = 0;
+    STATE.maxCombo = 0;
+    STATE.activeActions.clear();
+    STATE.loadedSong.notes.forEach(n => n.hit = false);
+    STATE.bgmCursor = 0;
+    STATE.bgaCursor = 0;
+    
+    // Reset tally
+    STATE.judgeCounts = { pgreat: 0, great: 0, good: 0, bad: 0, poor: 0 };
+    STATE.fastSlow = { fast: 0, slow: 0 };
+    STATE.comboBreaks = 0;
+    updateTallyDisplay();
+    
+    // Show/hide tally based on settings
+    ui.tally.classList.toggle('hidden', !STATE.showTally);
+    
+    // Set lane covers
+    ui.laneCoverTop.style.height = STATE.suddenPlus + '%';
+    ui.laneCoverBottom.style.height = STATE.lift + '%';
+    
+    // Set game background from stagefile
+    if (STATE.stagefileUrl) {
+        ui.gameBg.style.backgroundImage = `url('${STATE.stagefileUrl}')`;
+    } else {
+        ui.gameBg.style.backgroundImage = '';
+    }
+    
+    const rawTick = STATE.loadedSong.total / Math.max(1, STATE.loadedSong.noteCount);
+    STATE.gaugeTick = rawTick;
+    
+    // GAUGE INIT
+    ui.gaugeBar.className = 'gauge-fill';
+    if(STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') {
+        STATE.gauge = 100;
+        ui.gaugeBar.classList.add(STATE.gaugeType.toLowerCase());
+    } else {
+        STATE.gauge = 20;
+        if(STATE.gaugeType === 'EASY' || STATE.gaugeType === 'ASSIST') ui.gaugeBar.classList.add('easy');
+        else ui.gaugeBar.classList.add('normal');
+    }
+    updateGaugeDisplay();
+    updateHud();
+    
+    requestAnimationFrame(loop);
+}
+
+function exitGame() {
+    STATE.isPlaying = false;
+    document.getElementById('screen-select').style.display = 'flex';
+    document.getElementById('screen-game').style.display = 'none';
+    
+    // Stop BGA video if playing
+    ui.bgaVideo.pause();
+    ui.bgaVideo.style.display = 'none';
+    ui.bgaImg.style.display = 'none';
+}
+
+function updateTallyDisplay() {
+    ui.tallyPg.textContent = STATE.judgeCounts.pgreat;
+    ui.tallyGr.textContent = STATE.judgeCounts.great;
+    ui.tallyGd.textContent = STATE.judgeCounts.good;
+    ui.tallyBd.textContent = STATE.judgeCounts.bad;
+    ui.tallyPr.textContent = STATE.judgeCounts.poor;
+    ui.tallyFast.textContent = STATE.fastSlow.fast;
+    ui.tallySlow.textContent = STATE.fastSlow.slow;
+    ui.tallyCb.textContent = STATE.comboBreaks;
+}
+
+function playSound(id) {
+    if(STATE.audioBuffers[id]) {
+        const s = audioCtx.createBufferSource();
+        s.buffer = STATE.audioBuffers[id];
+        s.connect(audioCtx.destination);
+        s.start(0);
+    }
+}
+
+function loop() {
+    if(!STATE.isPlaying) return;
+    const now = (audioCtx.currentTime - STATE.startTime) * 1000;
+    
+    const bgm = STATE.loadedSong.bgm;
+    while(STATE.bgmCursor < bgm.length && bgm[STATE.bgmCursor].time <= now) {
+        playSound(bgm[STATE.bgmCursor].id);
+        STATE.bgmCursor++;
+    }
+    
+    const notes = STATE.loadedSong.notes;
+    const win = JUDGE_WINDOWS[STATE.loadedSong.rank] || JUDGE_WINDOWS[3];
+    
+    notes.forEach(n => {
+        if(!n.hit) {
+            const diff = now - n.time; 
+            
+            if(diff > win.BD) {
+                n.hit = true;
+                handleJudgment('POOR', diff);
+            }
+        }
+    });
+
+    render(now);
+    requestAnimationFrame(loop);
+}
+
+function render(time) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const wScratch = 60; const wKey = 40;
+    const p1Total = wScratch + (wKey * 7);
+    const startX = 30; // Left position instead of centered
+    const hitY = canvas.height - 100;
+    const speed = STATE.speed * 0.6;
+
+    ctx.save();
+    ctx.translate(startX, 0);
+
+    const drawLane = (action, x, w, isBlack, isBlue) => {
+        const active = STATE.activeActions.has(action);
+        if(action.includes('sc')) ctx.fillStyle = active ? '#500' : '#200';
+        else if(isBlue) ctx.fillStyle = active ? '#003355' : '#000510';
+        else ctx.fillStyle = active ? '#333' : '#111';
+        ctx.fillRect(x, 0, w, canvas.height);
+        ctx.strokeStyle = '#333'; ctx.strokeRect(x, 0, w, canvas.height);
+        if(active) {
+            ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x, 0, w, canvas.height);
+            const g = ctx.createLinearGradient(0, canvas.height, 0, canvas.height-300);
+            g.addColorStop(0, 'rgba(255,255,255,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g; ctx.fillRect(x, canvas.height-300, w, 300);
+        }
+    };
+
+    drawLane(ACTIONS.P1_SC, 0, wScratch);
+    let curX = wScratch;
+    for(let i=1; i<=7; i++) {
+        const isBlue = (i===2 || i===4 || i===6);
+        drawLane(ACTIONS[`P1_${i}`], curX, wKey, !isBlue, isBlue);
+        curX += wKey;
+    }
+
+    ctx.fillStyle = '#ff0055'; 
+    ctx.fillRect(0, hitY, p1Total, 15);
+
+    STATE.loadedSong.notes.forEach(n => {
+        if(n.hit) return;
+        let x = -1, w = wKey, isSc = false, isBlue = false;
+        const ch = n.ch;
+        if(CHANNELS.P1.SCRATCH.includes(ch)) { x = 0; w = wScratch; isSc = true; }
+        else if(CHANNELS.P1.KEY1.includes(ch)) { x = wScratch; }
+        else if(CHANNELS.P1.KEY2.includes(ch)) { x = wScratch + wKey; isBlue=true; }
+        else if(CHANNELS.P1.KEY3.includes(ch)) { x = wScratch + wKey*2; }
+        else if(CHANNELS.P1.KEY4.includes(ch)) { x = wScratch + wKey*3; isBlue=true; }
+        else if(CHANNELS.P1.KEY5.includes(ch)) { x = wScratch + wKey*4; }
+        else if(CHANNELS.P1.KEY6.includes(ch)) { x = wScratch + wKey*5; isBlue=true; }
+        else if(CHANNELS.P1.KEY7.includes(ch)) { x = wScratch + wKey*6; }
+        
+        if(x === -1) return;
+        
+        const dist = (n.time - time) * speed;
+        const y = hitY - dist;
+        
+        if(y < -50 || y > canvas.height + 50) return;
+
+        if(isSc) ctx.fillStyle = '#f00';
+        else if(isBlue) ctx.fillStyle = '#0cf';
+        else ctx.fillStyle = '#fff';
+        
+        ctx.fillRect(x+1, y, w-2, 15);
+    });
+    ctx.restore();
+}
+
+// ----------------------------------------------------------------------------
+// JUDGEMENT SYSTEM
+// ----------------------------------------------------------------------------
+function handleJudgment(result, diffMs, isEmptyPoor = false) {
+    // Scoring
+    let scoreAdd = 0;
+    if(result === 'PGREAT') scoreAdd = 2;
+    else if(result === 'GREAT') scoreAdd = 1;
+    STATE.score += scoreAdd;
+
+    // Combo
+    if(!isEmptyPoor) {
+        if(result === 'BAD' || result === 'POOR') {
+            if (STATE.combo > 0) {
+                STATE.comboBreaks++;
+            }
+            STATE.combo = 0;
+        } else {
+            STATE.combo++;
+            if (STATE.combo > STATE.maxCombo) STATE.maxCombo = STATE.combo;
+            
+            // Track fast/slow (only for PGREAT/GREAT/GOOD)
+            if (diffMs < 0) STATE.fastSlow.fast++;
+            else if (diffMs > 0) STATE.fastSlow.slow++;
+        }
+        
+        // Track judgement counts
+        if (result === 'PGREAT') STATE.judgeCounts.pgreat++;
+        else if (result === 'GREAT') STATE.judgeCounts.great++;
+        else if (result === 'GOOD') STATE.judgeCounts.good++;
+        else if (result === 'BAD') STATE.judgeCounts.bad++;
+        else if (result === 'POOR') STATE.judgeCounts.poor++;
+        
+        updateTallyDisplay();
+    }
+
+    // Gauge Logic
+    let damage = 0;
+    let recover = 0;
+
+    if(STATE.gaugeType === 'EXHARD') {
+        // EX-HARD
+        if (isEmptyPoor) damage = 8.0;
+        else if(result === 'PGREAT') recover = 0.1;
+        else if(result === 'GREAT') recover = 0.1;
+        else if(result === 'GOOD') recover = 0.1;
+        else if(result === 'BAD') damage = 10.0;
+        else if(result === 'POOR') damage = 18.0;
+        
+        STATE.gauge = STATE.gauge + recover - damage;
+    } 
+    else if(STATE.gaugeType === 'HARD') {
+        // HARD
+        if (isEmptyPoor) damage = 2.0;
+        else if(result === 'PGREAT') recover = 0.1;
+        else if(result === 'GREAT') recover = 0.1;
+        else if(result === 'GOOD') recover = 0.1;
+        else if(result === 'BAD') damage = 6.0;
+        else if(result === 'POOR') damage = 10.0;
+        
+        // LR2 Hard Gauge Adjustment
+        if (damage > 0 && STATE.gauge <= 30) {
+            damage *= 0.6;
+        }
+
+        STATE.gauge = STATE.gauge + recover - damage;
+    } 
+    else if(STATE.gaugeType === 'EASY') {
+        // EASY
+        if (isEmptyPoor) damage = 1.6;
+        else if(result === 'PGREAT' || result === 'GREAT') recover = STATE.gaugeTick;
+        else if(result === 'GOOD') recover = (STATE.gaugeTick / 2);
+        else if(result === 'BAD') damage = 1.6;
+        else if(result === 'POOR') damage = 4.8;
+        
+        STATE.gauge = STATE.gauge + recover - damage;
+    } 
+    else {
+        // GROOVE (Normal)
+        if (isEmptyPoor) damage = 2.0;
+        else if(result === 'PGREAT' || result === 'GREAT') recover = STATE.gaugeTick;
+        else if(result === 'GOOD') recover = (STATE.gaugeTick / 2);
+        else if(result === 'BAD') damage = 2.0;
+        else if(result === 'POOR') damage = 6.0;
+        
+        STATE.gauge = STATE.gauge + recover - damage;
+    }
+    
+    // Fail Check for Hard/ExHard
+    if((STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') && STATE.gauge <= 0) {
+        STATE.gauge = 0;
+        // Optional: Fail State Trigger
+    }
+    
+    // Clamp
+    if(STATE.gauge > 100) STATE.gauge = 100;
+    if(STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gauge < 2) STATE.gauge = 2; 
+
+    updateGaugeDisplay();
+    updateHud();
+    
+    showJudge(result, diffMs);
+}
+
+function updateGaugeDisplay() {
+    ui.gaugeBar.style.width = `${STATE.gauge}%`;
+    ui.gaugeVal.textContent = `${Math.floor(STATE.gauge)}%`;
+    
+    if(STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD') {
+        if(STATE.gauge >= 80) ui.gaugeBar.classList.add('cleared');
+        else ui.gaugeBar.classList.remove('cleared');
+    }
+}
+
+function showJudge(text, diff) {
+    ui.judgeText.textContent = text;
+    ui.judgeText.className = 'judge-text ' + text.toLowerCase();
+    
+    const sign = diff > 0 ? '+' : '';
+    ui.judgeDiff.textContent = (text !== 'POOR' && diff !== 0) ? `${sign}${Math.floor(diff)}ms` : '';
+    
+    ui.judgeBox.classList.remove('show');
+    void ui.judgeBox.offsetWidth;
+    ui.judgeBox.classList.add('show');
+}
+
+function updateHud() {
+    ui.score.textContent = STATE.score;
+    ui.combo.textContent = STATE.combo;
+    if(STATE.combo > 2) ui.comboBox.classList.add('show'); else ui.comboBox.classList.remove('show');
+}
+
+// ----------------------------------------------------------------------------
+// INPUT
+// ----------------------------------------------------------------------------
+window.addEventListener('keydown', e => {
+    if(ui.modalSettings.classList.contains('open') || ui.modalOptions.classList.contains('open')) return;
+    if(e.code === 'Escape' && STATE.isPlaying) { exitGame(); return; }
+    if(!STATE.isPlaying || e.repeat) return;
+
+    const actions = STATE.keyCodeToAction[e.code];
+    if(actions) {
+        e.preventDefault();
+        actions.forEach(action => {
+            STATE.activeActions.add(action);
+            
+            const targets = ACTION_TO_CHANNELS[action];
+            if(!targets) return;
+
+            const now = (audioCtx.currentTime - STATE.startTime) * 1000;
+            const win = JUDGE_WINDOWS[STATE.loadedSong.rank] || JUDGE_WINDOWS[3]; 
+            
+            // 1. Find nearest valid note in BAD window
+            const noteIdx = STATE.loadedSong.notes.findIndex(n => 
+                !n.hit && 
+                targets.includes(n.ch) && 
+                Math.abs(now - n.time) <= win.BD 
+            );
+
+            if(noteIdx !== -1) {
+                // HIT LOGIC
+                const note = STATE.loadedSong.notes[noteIdx];
+                note.hit = true;
+                playSound(note.id);
+                
+                // Diff: Now - Time. Early = Negative. Late = Positive.
+                const diff = now - note.time; 
+                const absDiff = Math.abs(diff);
+                let res = 'BAD';
+                
+                if(absDiff <= win.PG) res = 'PGREAT';
+                else if(absDiff <= win.GR) res = 'GREAT';
+                else if(absDiff <= win.GD) res = 'GOOD';
+                
+                handleJudgment(res, diff);
+            } else {
+                // 2. EMPTY POOR CHECK
+                const upcomingNoteIdx = STATE.loadedSong.notes.findIndex(n =>
+                    !n.hit &&
+                    targets.includes(n.ch) &&
+                    (n.time - now) > win.BD && 
+                    (n.time - now) <= 1000
+                );
+
+                if(upcomingNoteIdx !== -1) {
+                    handleJudgment('POOR', 0, true);
+                }
+            }
+        });
+    }
+});
+
+window.addEventListener('keyup', e => {
+    const actions = STATE.keyCodeToAction[e.code];
+    if(actions) actions.forEach(action => STATE.activeActions.delete(action));
+});
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+
+</script>
+</body>
+</html>
