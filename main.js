@@ -5,7 +5,15 @@ const glob = require('glob');
 const iconv = require('iconv-lite');
 
 let mainWindow;
-const DB_PATH = path.join(app.getPath('userData'), 'library.json');
+let DB_PATH;
+let FOLDERS_PATH;
+
+function initPaths() {
+    if (!DB_PATH) {
+        DB_PATH = path.join(app.getPath('userData'), 'library.json');
+        FOLDERS_PATH = path.join(app.getPath('userData'), 'folders.json');
+    }
+}
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -38,6 +46,7 @@ ipcMain.on('window-close', () => mainWindow.close());
 
 // 1. Scan Library
 ipcMain.handle('scan-library', async () => {
+    initPaths();
     // Open folder dialog
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory']
@@ -60,14 +69,36 @@ ipcMain.handle('scan-library', async () => {
 
             const titleMatch = text.match(/#TITLE\s+(.+)/i);
             const artistMatch = text.match(/#ARTIST\s+(.+)/i);
+            const diffMatch = text.match(/#DIFFICULTY\s+(\d+)/i);
+            const levelMatch = text.match(/#PLAYLEVEL\s+(\d+)/i);
 
-            // Clean up extracted values (remove \r and trim)
+            // Detect key mode
+            let keyMode = '7'; // Default
+            const isPMS = file.toLowerCase().endsWith('.pms');
+            const playerMatch = text.match(/#PLAYER\s+(\d+)/i);
+            const player = playerMatch ? parseInt(playerMatch[1]) : 1;
+
+            const has2P = text.match(/#\d{3}2[1-9]:/);
+            const has9K = isPMS || text.match(/#\d{3}1[79]:/) || text.match(/#\d{3}1[1-9]:/);
+
+            if (player === 3 || has2P) {
+                keyMode = has2P ? '14' : '10';
+            } else if (isPMS) {
+                keyMode = '9';
+            } else {
+                const has7K = text.match(/#\d{3}1[6-9]:/);
+                keyMode = has7K ? '7' : '5';
+            }
+
             const cleanStr = (s) => s ? s.replace(/\r/g, '').trim() : 'Unknown';
 
             songs.push({
                 path: file,
                 title: titleMatch ? cleanStr(titleMatch[1]) : 'Unknown',
-                artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown'
+                artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown',
+                difficulty: diffMatch ? parseInt(diffMatch[1]) : 2,
+                level: levelMatch ? parseInt(levelMatch[1]) : 0,
+                keyMode: keyMode
             });
         } catch (e) {
             console.error("Error parsing", file, e);
@@ -81,6 +112,7 @@ ipcMain.handle('scan-library', async () => {
 
 // 2. Get Library (On Launch)
 ipcMain.handle('get-library', async () => {
+    initPaths();
     if (await fs.pathExists(DB_PATH)) {
         return await fs.readJson(DB_PATH);
     }
@@ -94,21 +126,31 @@ ipcMain.handle('read-file', async (event, filePath) => {
 
 // 4. Resolve Path (for finding audio relative to BMS file)
 ipcMain.handle('resolve-path', async (event, bmsPath, audioFilename) => {
+    if (!audioFilename) return null;
+
     const dir = path.dirname(bmsPath);
     const audioPath = path.join(dir, audioFilename);
 
     // Check exact match
     if (await fs.pathExists(audioPath)) return audioPath;
 
-    // Fuzzy extension check (common in BMS)
-    const base = path.basename(audioFilename, path.extname(audioFilename));
-    const siblings = await fs.readdir(dir);
+    // Fuzzy extension check (common in BMS - file might have different extension)
+    const base = path.basename(audioFilename, path.extname(audioFilename)).toLowerCase();
 
-    for (const f of siblings) {
-        if (f.toLowerCase().startsWith(base.toLowerCase() + '.')) {
-            return path.join(dir, f);
+    try {
+        const siblings = await fs.readdir(dir);
+
+        for (const f of siblings) {
+            const siblingBase = path.basename(f, path.extname(f)).toLowerCase();
+            // Match exact base name (case-insensitive) with any audio extension
+            if (siblingBase === base && /\.(wav|ogg|mp3|flac)$/i.test(f)) {
+                return path.join(dir, f);
+            }
         }
+    } catch (e) {
+        console.error('Error reading directory for audio resolution:', dir, e);
     }
+
     return null;
 });
 
@@ -158,6 +200,121 @@ ipcMain.handle('resolve-image', async (event, bmsPath, filename) => {
         console.error('Error loading image:', filePath, e);
         return null;
     }
+});
+
+// 6. Get Library Folders
+ipcMain.handle('get-library-folders', async () => {
+    initPaths();
+    if (await fs.pathExists(FOLDERS_PATH)) {
+        return await fs.readJson(FOLDERS_PATH);
+    }
+    return [];
+});
+
+// 7. Add Library Folder
+ipcMain.handle('add-library-folder', async () => {
+    initPaths();
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory']
+    });
+
+    if (result.canceled) return null;
+
+    const folder = result.filePaths[0];
+    let folders = [];
+    if (await fs.pathExists(FOLDERS_PATH)) {
+        folders = await fs.readJson(FOLDERS_PATH);
+    }
+
+    if (!folders.includes(folder)) {
+        folders.push(folder);
+        await fs.writeJson(FOLDERS_PATH, folders);
+    }
+
+    return folder;
+});
+
+// 8. Remove Library Folder
+ipcMain.handle('remove-library-folder', async (event, folder) => {
+    initPaths();
+    let folders = [];
+    if (await fs.pathExists(FOLDERS_PATH)) {
+        folders = await fs.readJson(FOLDERS_PATH);
+    }
+    folders = folders.filter(f => f !== folder);
+    await fs.writeJson(FOLDERS_PATH, folders);
+    return folders;
+});
+
+// 9. Rescan All Folders (with progress)
+ipcMain.handle('rescan-all-folders', async () => {
+    initPaths();
+    let folders = [];
+    if (await fs.pathExists(FOLDERS_PATH)) {
+        folders = await fs.readJson(FOLDERS_PATH);
+    }
+
+    if (folders.length === 0) {
+        await fs.writeJson(DB_PATH, []);
+        return [];
+    }
+
+    // Collect all files first
+    let allFiles = [];
+    for (const folder of folders) {
+        try {
+            const files = await glob.glob('**/*.+(bms|bme|bml|pms)', { cwd: folder, nocase: true, absolute: true });
+            allFiles = allFiles.concat(files);
+        } catch (e) {
+            console.error("Error scanning folder", folder, e);
+        }
+    }
+
+    const totalFiles = allFiles.length;
+    const songs = [];
+
+    // Send initial progress
+    mainWindow.webContents.send('scan-progress', { current: 0, total: totalFiles, status: 'Starting scan...' });
+
+    // Parse each file
+    for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
+        try {
+            const content = await fs.readFile(file);
+            const text = iconv.decode(content, 'Shift_JIS');
+
+            const titleMatch = text.match(/#TITLE\s+(.+)/i);
+            const artistMatch = text.match(/#ARTIST\s+(.+)/i);
+            const diffMatch = text.match(/#DIFFICULTY\s+(\d+)/i);
+            const levelMatch = text.match(/#PLAYLEVEL\s+(\d+)/i);
+
+            const cleanStr = (s) => s ? s.replace(/\r/g, '').trim() : 'Unknown';
+
+            songs.push({
+                path: file,
+                title: titleMatch ? cleanStr(titleMatch[1]) : 'Unknown',
+                artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown',
+                difficulty: diffMatch ? parseInt(diffMatch[1]) : 2,
+                level: levelMatch ? parseInt(levelMatch[1]) : 0
+            });
+        } catch (e) {
+            console.error("Error parsing", file, e);
+        }
+
+        // Send progress update
+        mainWindow.webContents.send('scan-progress', {
+            current: i + 1,
+            total: totalFiles,
+            status: `Loading chart ${i + 1} of ${totalFiles}...`
+        });
+    }
+
+    // Send completion
+    mainWindow.webContents.send('scan-progress', { current: totalFiles, total: totalFiles, status: 'Complete!' });
+
+    // Save and return
+    await fs.writeJson(DB_PATH, songs);
+    return songs;
 });
 
 app.whenReady().then(createWindow);
