@@ -284,12 +284,48 @@
         }
 
         .song-list-header {
-            padding: 15px 20px;
+            padding: 12px 15px;
             border-bottom: 1px solid #333;
             font-size: 12px;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 11px;
+            color: #aaa;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-btn:hover {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
+        .filter-btn span {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .filter-btn:hover span {
+            color: #000;
         }
 
         .song-list {
@@ -308,6 +344,9 @@
         }
 
         .song-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             padding: 12px 15px;
             margin-bottom: 8px;
             background: rgba(30, 30, 40, 0.6);
@@ -328,6 +367,18 @@
             box-shadow: 0 0 15px var(--accent-dim);
         }
 
+        .song-card-lamp {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .song-card-content {
+            flex: 1;
+            min-width: 0;
+        }
+
         .song-card-title {
             font-size: 14px;
             font-weight: bold;
@@ -344,19 +395,25 @@
 
         .song-card-info {
             display: flex;
-            gap: 8px;
-            margin-top: 6px;
-            font-size: 10px;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            flex-shrink: 0;
         }
 
         .song-card-level {
-            padding: 2px 6px;
+            padding: 2px 8px;
             border-radius: 3px;
+            font-size: 12px;
             font-weight: bold;
+            min-width: 28px;
+            text-align: center;
         }
 
-        .song-card-markers {
-            color: #666;
+        .song-card-keymode {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
         }
 
         /* ========== GAME SCREEN ========== */
@@ -1277,8 +1334,8 @@
             background: #111;
             border: 2px solid #0ff;
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
-            width: 850px;
-            min-height: 550px;
+            width: 1000px;
+            min-height: 650px;
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -1477,6 +1534,106 @@
         .iidx-btn:hover {
             background: #cc0;
         }
+
+        /* ========== DECIDE SCREEN ========== */
+        #screen-decide {
+            position: fixed;
+            top: 32px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 32px);
+            background: #000;
+            display: none;
+            z-index: 500;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: opacity 1s ease-out;
+        }
+
+        #screen-decide.fade-out {
+            opacity: 0;
+        }
+
+        .decide-content {
+            padding: 40px;
+            border-top: 2px solid var(--accent);
+            border-bottom: 2px solid var(--accent);
+            background: rgba(0, 255, 157, 0.05);
+            width: 100%;
+        }
+
+        .decide-title {
+            font-size: 64px;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px var(--accent-dim);
+        }
+
+        .decide-artist {
+            font-size: 24px;
+            color: #888;
+            letter-spacing: 2px;
+        }
+
+        /* Folder styles */
+        .song-card.folder {
+            border-left-color: #fcc419 !important;
+            background: rgba(252, 196, 25, 0.05);
+        }
+        .song-card.folder:hover {
+            background: rgba(252, 196, 25, 0.1);
+        }
+        .song-card.folder .song-card-lamp {
+            background: #fcc419;
+            box-shadow: 0 0 8px #fcc419;
+        }
+
+        /* Course / Class items */
+        #btn-autoplay, #btn-replay {
+            font-size: 11px;
+            padding: 6px 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #fff;
+            border-color: #555;
+            text-shadow: 0 0 5px rgba(255,255,255,0.2);
+        }
+        #btn-autoplay:hover {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: #0ff;
+            color: #0ff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+        #btn-replay:hover {
+            background: rgba(255, 255, 0, 0.1);
+            border-color: #ff0;
+            color: #ff0;
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.2);
+        }
+
+        .song-card.focused {
+            border-color: #fff !important;
+            background: rgba(255, 255, 255, 0.15) !important;
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .song-card.folder-class {
+            border-left-color: #0ff !important;
+            background: rgba(0, 255, 255, 0.05);
+        }
+        .song-card.folder-class:hover, .song-card.folder-class.focused {
+            background: rgba(0, 255, 255, 0.1);
+        }
+        .song-card.folder-class .song-card-lamp {
+            background: #0ff;
+            box-shadow: 0 0 8px #0ff;
+        }
     </style>
 </head>
 
@@ -1556,6 +1713,10 @@
 
                             <div class="start-btn-area">
                                 <button class="btn-start-main" id="btn-start" disabled>START</button>
+                                <div style="display:flex; gap:10px; margin-top:10px;">
+                                    <button class="btn" id="btn-autoplay" style="flex:1;">AUTOPLAY</button>
+                                    <button class="btn" id="btn-replay" style="flex:1;">REPLAY</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1565,8 +1726,12 @@
             <!-- Right: Song List -->
             <div class="song-list-panel">
                 <div class="song-list-header">
-                    <span id="song-count">0</span> Songs | Diff: <span id="diff-filter">ALL</span> | Mode: <span
-                        id="km-filter">ALL</span>
+                    <span id="song-count">0</span> Songs
+                    <div class="filter-buttons">
+                        <button class="filter-btn" id="btn-diff-filter" title="Difficulty Filter">DIFF: <span id="diff-filter">ALL</span></button>
+                        <button class="filter-btn" id="btn-km-filter" title="Key Mode Filter">MODE: <span id="km-filter">ALL</span></button>
+                        <button class="filter-btn" id="btn-sort" title="Sort By">SORT: <span id="sort-mode">DEFAULT</span></button>
+                    </div>
                 </div>
                 <div class="song-list" id="song-list"></div>
             </div>
@@ -1895,6 +2060,14 @@
                 </div>
             </div>
         </div>
+
+        <!-- DECIDE SCREEN -->
+        <div id="screen-decide">
+            <div class="decide-content">
+                <div class="decide-title" id="decide-title">SONG TITLE</div>
+                <div class="decide-artist" id="decide-artist">ARTIST NAME</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -2101,6 +2274,7 @@
             keyModeFilter: 'ALL', // ALL, 单, 5, 7, 9, 双, 10, 14
             hiSpeedFix: 'NONE', // NONE, MIN, MAX, AVG, CONSTANT, START, MAIN
             rangeMode: 'OFF',
+            sortMode: 'DEFAULT', // DEFAULT, TITLE, LEVEL, LAMP
             startHoldTimer: null,
             isOptionsOpen: false,
             isOptionsPersistent: false,
@@ -2134,7 +2308,23 @@
                 gauge: [],
                 score: []
             },
-            lastNoteTime: 0
+            lastNoteTime: 0,
+
+            // System Audio & Navigation
+            systemAudio: {},
+            systemMapping: {},
+            currentFolder: null, // name of current folder or null for root
+            selectBgmSource: null,
+
+            // Course / Autoplay
+            courses: [],
+            activeCourse: null,
+            courseIndex: 0,
+            replayFileRef: null,
+
+            // Navigation
+            selectedIndex: 0,
+            currentList: [] // Array of { type: 'folder'|'chart'|'back', data: any, el: HTMLElement }
         };
 
         function rebuildInputMap() {
@@ -2354,7 +2544,12 @@
 
             // Modals
             modalSettings: document.getElementById('modal-settings'),
-            modalOptions: document.getElementById('modal-options')
+            modalOptions: document.getElementById('modal-options'),
+
+            // Decide Screen
+            screenDecide: document.getElementById('screen-decide'),
+            decideTitle: document.getElementById('decide-title'),
+            decideArtist: document.getElementById('decide-artist')
         };
 
         // --- INITIALIZATION ---
@@ -2367,16 +2562,51 @@
             document.getElementById('btn-maximize').onclick = () => window.electronAPI.maximizeWindow();
             document.getElementById('btn-close').onclick = () => window.electronAPI.closeWindow();
 
-            // Auto load library
             window.electronAPI.getLibrary().then(loadLibraryFromDesktop);
         }
 
+        // Drag & Drop Course Import
+        document.body.addEventListener('dragover', (e) => e.preventDefault());
+        document.body.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const files = Array.from(e.dataTransfer.files);
+            const lr2crs = files.filter(f => f.name.toLowerCase().endsWith('.lr2crs'));
+            if (lr2crs.length > 0 && IS_DESKTOP) {
+                for (const f of lr2crs) {
+                    await window.electronAPI.importCourse(f.path);
+                }
+                const lib = await window.electronAPI.getLibrary();
+                loadLibraryFromDesktop(lib);
+            }
+        });
+
+        // --- AUTOPLAY / REPLAY BINDINGS ---
+        document.getElementById('btn-autoplay').onclick = () => {
+            if (!STATE.loadedSong) return;
+            playSystemSound('scratch');
+            STATE.autoplay = true;
+            enterGame();
+        };
+
+        document.getElementById('btn-replay').onclick = () => {
+            if (!STATE.loadedSong) return;
+            playSystemSound('scratch');
+            // Re-load the current chart to reset it, then enter game
+            const currentIdx = STATE.charts.findIndex(c => c.fileRef === STATE.currentFileRef);
+            if (currentIdx !== -1) {
+                // Keep current autoplay state for replay? Usually yes.
+                enterGame();
+            }
+        };
+
         // Button Handlers
         document.getElementById('btn-settings').onclick = () => {
+            playSystemSound('o-open');
             ui.modalSettings.classList.add('open');
             renderConfig();
         };
         document.getElementById('btn-save-settings').onclick = () => {
+            playSystemSound('o-close');
             ui.modalSettings.classList.remove('open');
             STATE.showTally = document.getElementById('opt-show-tally').checked;
             saveKeybinds();
@@ -2384,6 +2614,7 @@
         };
 
         document.getElementById('btn-options').onclick = () => {
+            playSystemSound('o-open');
             STATE.isOptionsOpen = true;
             STATE.isOptionsPersistent = true;
             ui.modalOptions.classList.add('open');
@@ -2391,16 +2622,42 @@
             setTimeout(drawWiringLines, 50); // Delay to allow layout to render
         };
         document.getElementById('btn-save-options').onclick = () => {
+            playSystemSound('o-close');
             ui.modalOptions.classList.remove('open');
             STATE.isOptionsOpen = false;
             STATE.isOptionsPersistent = false;
             renderSongList(); // Refresh in case key mode filter changed
         };
 
+        // Filter button handlers
+        document.getElementById('btn-diff-filter').onclick = () => {
+            playSystemSound('difficulty');
+            const filters = ['ALL', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+            let idx = filters.indexOf(STATE.difficultyFilter);
+            STATE.difficultyFilter = filters[(idx + 1) % filters.length];
+            renderSongList();
+        };
+
+        document.getElementById('btn-km-filter').onclick = () => {
+            playSystemSound('o-change');
+            const filters = ['ALL', '单', '5', '7', '9', '双', '10', '14'];
+            let idx = filters.indexOf(STATE.keyModeFilter);
+            STATE.keyModeFilter = filters[(idx + 1) % filters.length];
+            renderSongList();
+        };
+
+        document.getElementById('btn-sort').onclick = () => {
+            playSystemSound('o-change');
+            const modes = ['DEFAULT', 'TITLE', 'LEVEL', 'LAMP'];
+            let idx = modes.indexOf(STATE.sortMode);
+            STATE.sortMode = modes[(idx + 1) % modes.length];
+            renderSongList();
+        };
 
         // Scan Library button - Open Library Folders Modal
         document.getElementById('btn-scan-lib').onclick = async () => {
             if (IS_DESKTOP) {
+                playSystemSound('o-open');
                 document.getElementById('modal-folders').classList.add('open');
                 await renderFolderList();
             } else {
@@ -2456,6 +2713,7 @@
         };
 
         document.getElementById('btn-close-folders').onclick = () => {
+            playSystemSound('o-close');
             document.getElementById('modal-folders').classList.remove('open');
         };
 
@@ -2498,10 +2756,25 @@
                     const txt = await dataLayer.readFile(f);
                     const titleMatch = txt.match(/#TITLE\s+(.+)/i);
                     const artistMatch = txt.match(/#ARTIST\s+(.+)/i);
+                    const levelMatch = txt.match(/#PLAYLEVEL\s+(\d+)/i);
+                    const diffMatch = txt.match(/#DIFFICULTY\s+(\d+)/i);
+                    
+                    // Determine key mode from filename or channels
+                    let keyMode = '7'; // Default
+                    const fname = f.name.toLowerCase();
+                    if (fname.includes('_dp') || fname.includes('14k') || fname.match(/\d{2}14/)) keyMode = '14';
+                    else if (fname.includes('_10k') || fname.includes('10k')) keyMode = '10';
+                    else if (fname.includes('_9k') || fname.includes('9k') || fname.endsWith('.pms')) keyMode = '9';
+                    else if (fname.includes('_5k') || fname.includes('5k')) keyMode = '5';
+                    else if (fname.includes('_7k') || fname.includes('7k')) keyMode = '7';
+                    
                     STATE.charts.push({
                         fileRef: f,
                         title: titleMatch ? titleMatch[1].trim() : 'Unknown',
                         artist: artistMatch ? artistMatch[1].trim() : 'Unknown',
+                        level: levelMatch ? parseInt(levelMatch[1]) : 0,
+                        difficulty: diffMatch ? parseInt(diffMatch[1]) : 0,
+                        keyMode: keyMode,
                         raw: txt
                     });
                 } catch (e) { }
@@ -2512,59 +2785,220 @@
         // Start button
         ui.btnStart.onclick = () => {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            enterGame();
+            
+            if (STATE.loadedSong) {
+                STATE.autoplay = false;
+                // Stop select loop
+                if (STATE.selectBgmSource) {
+                    try { STATE.selectBgmSource.stop(); } catch(e) {}
+                    STATE.selectBgmSource = null;
+                }
+                
+                playSystemSound('decide');
+                
+                // Set text
+                ui.decideTitle.textContent = ui.titleMain.textContent;
+                ui.decideArtist.textContent = STATE.loadedSong.headers['ARTIST'] || 'Unknown';
+                
+                // Show screen
+                ui.screenDecide.style.display = 'flex';
+                ui.screenDecide.classList.remove('fade-out');
+                
+                setTimeout(() => {
+                    ui.screenDecide.classList.add('fade-out');
+                    setTimeout(() => {
+                        ui.screenDecide.style.display = 'none';
+                        enterGame();
+                    }, 1000);
+                }, 4000);
+            }
         };
 
-        function loadLibraryFromDesktop(songs) {
+        function loadLibraryFromDesktop(data) {
+            const songs = data.songs || data; // handle both formats
             STATE.charts = songs.map(s => ({
                 title: s.title,
                 artist: s.artist,
+                level: s.level || 0,
+                difficulty: s.difficulty || 0,
+                keyMode: s.keyMode || '7',
+                md5: s.md5, // New
                 fileRef: s.path,
+                rootDir: s.rootDir,
                 raw: null
             }));
+            STATE.courses = data.courses || [];
             renderSongList();
         }
 
         function renderSongList() {
             ui.songList.innerHTML = '';
+            STATE.currentList = [];
 
-            const diffTierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
-            const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter) + 1;
-
-            const filtered = STATE.charts.filter(c => {
-                // Difficulty Filter
-                if (STATE.difficultyFilter !== 'ALL' && c.difficulty !== diffIdx) return false;
-
-                // Key Mode Filter
-                if (STATE.keyModeFilter !== 'ALL') {
-                    if (STATE.keyModeFilter === '单' && (c.keyMode === '10' || c.keyMode === '14')) return false;
-                    if (STATE.keyModeFilter === '双' && (c.keyMode !== '10' && c.keyMode !== '14')) return false;
-                    if (['5', '7', '9', '10', '14'].includes(STATE.keyModeFilter) && c.keyMode !== STATE.keyModeFilter) return false;
+            const getCategoryName = (c) => {
+                if (IS_DESKTOP) {
+                    const f = c.fileRef.replace(/\\/g, '/');
+                    const r = (c.rootDir || '').replace(/\\/g, '/').replace(/\/$/, '');
+                    const parentDir = f.substring(0, f.lastIndexOf('/'));
+                    const grandDir = parentDir.substring(0, parentDir.lastIndexOf('/'));
+                    if (!r || grandDir.toLowerCase().length <= r.toLowerCase().length) {
+                        const rootParts = r.split('/').filter(p => p);
+                        return rootParts[rootParts.length - 1] || 'Library';
+                    }
+                    return grandDir.substring(grandDir.lastIndexOf('/') + 1);
+                } else {
+                    const parts = c.fileRef.webkitRelativePath ? c.fileRef.webkitRelativePath.split('/') : [];
+                    return parts.length >= 3 ? parts[parts.length - 3] : 'Library';
                 }
+            };
 
-                return true;
-            });
+            const addToList = (type, data, el) => {
+                STATE.currentList.push({ type, data, el });
+                ui.songList.appendChild(el);
+            };
 
-            ui.songCount.textContent = filtered.length;
+            // 1. Root Directory View
+            if (STATE.currentFolder === null) {
+                // ALWAYS show CLASS folder first
+                const classDiv = document.createElement('div');
+                classDiv.className = 'song-card folder folder-class';
+                classDiv.innerHTML = `
+                    <div class="song-card-lamp"></div>
+                    <div class="song-card-content">
+                        <div class="song-card-title">CLASS</div>
+                        <div class="song-card-artist">COURSES</div>
+                    </div>
+                `;
+                classDiv.onclick = () => { STATE.currentFolder = 'CLASS'; STATE.selectedIndex = 0; playSystemSound('f-open'); renderSongList(); };
+                addToList('folder', { name: 'CLASS', count: STATE.courses.length, type: 'COURSE' }, classDiv);
+
+                const folderSet = new Set();
+                STATE.charts.forEach(c => folderSet.add(getCategoryName(c)));
+                
+                Array.from(folderSet).sort().forEach(folder => {
+                    const count = STATE.charts.filter(c => getCategoryName(c) === folder).length;
+                    const div = document.createElement('div');
+                    div.className = 'song-card folder';
+                    div.innerHTML = `
+                        <div class="song-card-lamp"></div>
+                        <div class="song-card-content">
+                            <div class="song-card-title">${folder}</div>
+                            <div class="song-card-artist">FOLDER</div>
+                        </div>
+                    `;
+                    div.onclick = () => { STATE.currentFolder = folder; STATE.selectedIndex = 0; playSystemSound('f-open'); renderSongList(); };
+                    addToList('folder', { name: folder, count: count, type: 'CATEGORY' }, div);
+                });
+                ui.songCount.textContent = STATE.currentList.length;
+            } 
+            // 2. CLASS (Courses) View
+            else if (STATE.currentFolder === 'CLASS') {
+                const backDiv = document.createElement('div');
+                backDiv.className = 'song-card folder';
+                backDiv.innerHTML = `<div class="song-card-lamp"></div><div class="song-card-content"><div class="song-card-title">.. [BACK]</div><div class="song-card-artist">RETURN TO LIBRARY</div></div>`;
+                backDiv.onclick = () => { STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList(); };
+                addToList('back', null, backDiv);
+
+                STATE.courses.forEach(course => {
+                    const div = document.createElement('div');
+                    div.className = 'song-card folder-class';
+                    div.innerHTML = `<div class="song-card-lamp"></div><div class="song-card-content"><div class="song-card-title">${course.title}</div><div class="song-card-artist">${course.hashes.length} STAGES</div></div>`;
+                    div.onclick = () => {
+                        STATE.activeCourse = course; STATE.courseIndex = 0;
+                        const song = STATE.charts.find(c => c.md5 === course.hashes[0]);
+                        if (song) loadChart(STATE.charts.indexOf(song), div);
+                    };
+                    addToList('course', course, div);
+                });
+                ui.songCount.textContent = STATE.courses.length;
+            }
+            // 3. Category (Songs) View
+            else {
+                const backDiv = document.createElement('div');
+                backDiv.className = 'song-card folder';
+                backDiv.innerHTML = `<div class="song-card-lamp"></div><div class="song-card-content"><div class="song-card-title">.. [BACK]</div><div class="song-card-artist">RETURN TO LIBRARY</div></div>`;
+                backDiv.onclick = () => { STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList(); };
+                addToList('back', null, backDiv);
+
+                const diffTierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+                const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter) + 1;
+                const filtered = STATE.charts.filter(c => {
+                    if (getCategoryName(c) !== STATE.currentFolder) return false;
+                    if (STATE.difficultyFilter !== 'ALL' && c.difficulty !== diffIdx) return false;
+                    if (STATE.keyModeFilter !== 'ALL') {
+                        if (STATE.keyModeFilter === '单' && (c.keyMode === '10' || c.keyMode === '14')) return false;
+                        if (STATE.keyModeFilter === '双' && (c.keyMode !== '10' && c.keyMode !== '14')) return false;
+                        if (['5', '7', '9', '10', '14'].includes(STATE.keyModeFilter) && c.keyMode !== STATE.keyModeFilter) return false;
+                    }
+                    return true;
+                });
+
+                const sortModes = {
+                    TITLE: (a, b) => a.title.localeCompare(b.title),
+                    LEVEL: (a, b) => (b.level || 0) - (a.level || 0),
+                    LAMP: (a, b) => {
+                        const order = { 'max': 9, 'perfect': 8, 'fc': 7, 'ex-hard': 6, 'hard': 5, 'clear': 4, 'easy': 3, 'assist': 2, 'failed': 1, 'no-play': 0 };
+                        return (order[getLamp(b.fileRef).class] || 0) - (order[getLamp(a.fileRef).class] || 0);
+                    }
+                };
+                if (sortModes[STATE.sortMode]) filtered.sort(sortModes[STATE.sortMode]);
+
+                const diffColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+                filtered.forEach(c => {
+                    const lamp = getLamp(c.fileRef);
+                    const diffColor = c.difficulty > 0 && c.difficulty <= 5 ? diffColors[c.difficulty - 1] : '#888';
+                    const div = document.createElement('div');
+                    div.className = 'song-card';
+                    div.innerHTML = `<div class="song-card-lamp ${lamp.class}"></div><div class="song-card-content"><div class="song-card-title">${c.title}</div><div class="song-card-artist">${c.artist}</div></div><div class="song-card-info"><span class="song-card-level" style="background:${diffColor}; color:#000;">${c.level || '?'}</span><span class="song-card-keymode">${c.keyMode || '7'}K</span></div>`;
+                    div.onclick = () => loadChart(STATE.charts.indexOf(c), div);
+                    addToList('chart', c, div);
+                });
+                ui.songCount.textContent = filtered.length;
+            }
+
+            // Update filter displays
             document.getElementById('diff-filter').textContent = STATE.difficultyFilter;
             const kmFilterEl = document.getElementById('km-filter');
-            if (kmFilterEl) kmFilterEl.textContent = STATE.keyModeFilter === '单' ? 'Single' : (STATE.keyModeFilter === '双' ? 'Double' : STATE.keyModeFilter);
+            if (kmFilterEl) kmFilterEl.textContent = STATE.keyModeFilter === '单' ? 'SINGLE' : (STATE.keyModeFilter === '双' ? 'DOUBLE' : STATE.keyModeFilter);
+            const sortModeEl = document.getElementById('sort-mode');
+            if (sortModeEl) sortModeEl.textContent = STATE.sortMode;
 
-            filtered.forEach((c, i) => {
-                const lamp = getLamp(c.fileRef);
-                const div = document.createElement('div');
-                div.className = 'song-card';
-                div.innerHTML = `
-            <div class="song-card-lamp ${lamp.class}"></div>
-            <div class="song-card-content">
-                <div class="song-card-title">${c.title}</div>
-                <div class="song-card-artist">${c.artist}</div>
-                <div class="song-card-meta">${c.keyMode || '7'}KEY | Lv.${c.level}</div>
-            </div>
-        `;
-                div.onclick = () => loadChart(STATE.charts.indexOf(c), div);
-                ui.songList.appendChild(div);
+            if (STATE.selectedIndex >= STATE.currentList.length) STATE.selectedIndex = Math.max(0, STATE.currentList.length - 1);
+            updateSelection();
+        }
+
+        function updateSelection() {
+            STATE.currentList.forEach((item, idx) => {
+                item.el.classList.toggle('focused', idx === STATE.selectedIndex);
+                if (idx === STATE.selectedIndex) {
+                    item.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    updateInfoCard(item);
+                }
             });
+        }
+
+        async function updateInfoCard(item) {
+            if (item.type === 'chart') {
+                loadChart(STATE.charts.indexOf(item.data), item.el, true); // true = focus only
+            } else if (item.type === 'folder' || item.type === 'course') {
+                ui.titleMain.textContent = item.data.name || item.data.title;
+                ui.subtitle.textContent = item.data.type || 'COURSE';
+                ui.artistGenre.textContent = `${item.data.count || item.data.hashes.length} ITEMS`;
+                ui.diffDisplay.style.display = 'none';
+                ui.songStats.style.display = 'none';
+                ui.songMarkers.innerHTML = '';
+                ui.btnStart.disabled = true;
+                ui.stagefileArea.style.backgroundImage = '';
+                ui.selectBg.style.backgroundImage = '';
+                ui.bannerArea.innerHTML = '<span class="banner-placeholder">Category selected</span>';
+            } else if (item.type === 'back') {
+                ui.titleMain.textContent = '.. [BACK]';
+                ui.subtitle.textContent = 'RETURN';
+                ui.artistGenre.textContent = 'Go up one level';
+                ui.diffDisplay.style.display = 'none';
+                ui.songStats.style.display = 'none';
+                ui.btnStart.disabled = true;
+            }
         }
 
         function updateOptionsUI() {
@@ -2649,13 +3083,13 @@
             });
         }
 
-        async function loadChart(idx, el) {
-            document.querySelectorAll('.song-card').forEach(e => e.classList.remove('active'));
-            el.classList.add('active');
+        async function loadChart(idx, el, focusOnly = false) {
+            if (el) {
+                document.querySelectorAll('.song-card').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+            }
 
             const c = STATE.charts[idx];
-
-            // Load BMS Text
             let bmsText = c.raw;
             if (!bmsText) {
                 bmsText = await dataLayer.readFile(c.fileRef);
@@ -2665,15 +3099,13 @@
             const data = BMSParser.parse(bmsText);
             STATE.loadedSong = data;
             STATE.currentFileRef = c.fileRef;
+            STATE.replayFileRef = c.fileRef;
 
-            // Update song info display
             ui.titleMain.textContent = c.title;
             ui.subtitle.textContent = data.headers['SUBTITLE'] || '';
-
             const genre = data.headers['GENRE'] || '';
             ui.artistGenre.textContent = genre ? `${c.artist} | ${genre}` : c.artist;
 
-            // Difficulty display
             const level = data.headers['PLAYLEVEL'] || data.headers['DIFFICULTY'] || '?';
             const diffTier = parseInt(data.headers['DIFFICULTY']) || 2;
             const tierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
@@ -2685,39 +3117,25 @@
             ui.diffStars.textContent = '★'.repeat(Math.min(parseInt(level) || 0, 12));
             ui.diffDisplay.style.display = 'flex';
 
-            // Stats
             const rankName = ["VERY HARD", "HARD", "NORMAL", "EASY"][data.rank] || "EASY";
-
             const bpms = data.bpmEvents.map(e => e.bpm);
             bpms.push(data.initialBpm);
             const minBpm = Math.min(...bpms);
             const maxBpm = Math.max(...bpms);
-            if (minBpm === maxBpm) {
-                ui.statBpm.textContent = Math.round(minBpm);
-            } else {
-                ui.statBpm.textContent = `${Math.round(minBpm)} - ${Math.round(maxBpm)}`;
-            }
+            ui.statBpm.textContent = minBpm === maxBpm ? Math.round(minBpm) : `${Math.round(minBpm)} - ${Math.round(maxBpm)}`;
             ui.statNotes.textContent = data.noteCount;
-            ui.statNpsStart.textContent = data.startNps.toFixed(1);
             ui.statNpsAvg.textContent = data.avgNps.toFixed(1);
             ui.statNpsMax.textContent = data.maxNps;
             ui.statRank.textContent = rankName;
             ui.songStats.style.display = 'grid';
 
-            // Markers
             ui.songMarkers.innerHTML = '';
-            if (data.headers['LNTYPE'] || data.headers['LNOBJ']) {
-                ui.songMarkers.innerHTML += '<span class="marker marker-ln">LN</span>';
-            }
-            if (data.headers['RANDOM']) {
-                ui.songMarkers.innerHTML += '<span class="marker marker-ran">RAN</span>';
-            }
+            if (data.headers['LNTYPE'] || data.headers['LNOBJ']) ui.songMarkers.innerHTML += '<span class="marker marker-ln">LN</span>';
+            if (data.headers['RANDOM']) ui.songMarkers.innerHTML += '<span class="marker marker-ran">RAN</span>';
 
-            // Load images (STAGEFILE, BANNER)
-            if (IS_DESKTOP) {
+            if (IS_DESKTOP && !focusOnly) {
                 const stagefileUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['STAGEFILE']);
                 const bannerUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['BANNER']);
-
                 if (stagefileUrl) {
                     ui.stagefileArea.style.backgroundImage = `url('${stagefileUrl}')`;
                     ui.selectBg.style.backgroundImage = `url('${stagefileUrl}')`;
@@ -2727,7 +3145,6 @@
                     ui.selectBg.style.backgroundImage = '';
                     STATE.stagefileUrl = null;
                 }
-
                 if (bannerUrl) {
                     ui.bannerArea.innerHTML = `<img src="${bannerUrl}">`;
                     STATE.bannerUrl = bannerUrl;
@@ -2737,57 +3154,29 @@
                 }
             }
 
-            // Enable start button
             ui.btnStart.disabled = false;
 
-            // Load Audio
-            STATE.audioBuffers = {};
-            STATE.bgaDefinitions = {};
-            const promises = [];
-
-            for (let k in data.headers) {
-                if (k.startsWith('WAV')) {
-                    const id = k.substring(3).toUpperCase();
-                    const rawFilename = data.headers[k];
-
-                    let fileRef = null;
-                    if (IS_DESKTOP) {
-                        fileRef = await window.electronAPI.resolvePath(STATE.currentFileRef, rawFilename);
-                    } else {
-                        const baseName = rawFilename.substring(0, rawFilename.lastIndexOf('.')).toLowerCase();
-                        fileRef = dataLayer.webFiles[rawFilename.toLowerCase()];
-                        if (!fileRef) {
-                            // Fuzzy match: find file with same base name but different extension
-                            const fuzzyKey = Object.keys(dataLayer.webFiles).find(key => {
-                                const keyBase = key.substring(0, key.lastIndexOf('.')).toLowerCase();
-                                return keyBase === baseName && /\.(wav|ogg|mp3|flac)$/i.test(key);
-                            });
-                            if (fuzzyKey) fileRef = dataLayer.webFiles[fuzzyKey];
+            if (!focusOnly) {
+                STATE.audioBuffers = {};
+                STATE.bgaDefinitions = {};
+                const promises = [];
+                for (let k in data.headers) {
+                    if (k.startsWith('WAV')) {
+                        const id = k.substring(3).toUpperCase();
+                        const rawFilename = data.headers[k];
+                        let fileRef = IS_DESKTOP ? await window.electronAPI.resolvePath(STATE.currentFileRef, rawFilename) : dataLayer.webFiles[rawFilename.toLowerCase()];
+                        if (fileRef) {
+                            promises.push(dataLayer.readAudio(fileRef).then(ab => STATE.audioBuffers[id] = ab).catch(e => console.warn(`Audio ${id} error:`, e.message)));
                         }
                     }
-
-                    if (fileRef) {
-                        promises.push(
-                            dataLayer.readAudio(fileRef)
-                                .then(ab => STATE.audioBuffers[id] = ab)
-                                .catch(e => console.warn(`Failed to decode audio ${id} (${rawFilename}):`, e.message))
-                        );
-                    } else {
-                        console.warn(`Audio file not found: WAV${id} = ${rawFilename}`);
+                    if (k.startsWith('BMP') && IS_DESKTOP) {
+                        const id = k.substring(3).toUpperCase();
+                        const url = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers[k]);
+                        if (url) STATE.bgaDefinitions[id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg)$/i.test(data.headers[k]) };
                     }
                 }
-
-                // Load BMP definitions for BGA
-                if (k.startsWith('BMP') && IS_DESKTOP) {
-                    const id = k.substring(3).toUpperCase();
-                    const filename = data.headers[k];
-                    const url = await window.electronAPI.resolveImage(STATE.currentFileRef, filename);
-                    if (url) {
-                        STATE.bgaDefinitions[id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg)$/i.test(filename) };
-                    }
-                }
+                await Promise.all(promises);
             }
-            await Promise.all(promises);
         }
 
         function renderConfig() {
@@ -2971,6 +3360,11 @@
             STATE.isPlaying = false;
             document.getElementById('screen-select').style.display = 'flex';
             document.getElementById('screen-game').style.display = 'none';
+            
+            // Restart select loop
+            if (!STATE.selectBgmSource) {
+                STATE.selectBgmSource = playSystemSound('select', true);
+            }
 
             // Stop BGA video if playing
             ui.bgaVideo.pause();
@@ -2995,6 +3389,43 @@
                 s.buffer = STATE.audioBuffers[id];
                 s.connect(audioCtx.destination);
                 s.start(0);
+            }
+        }
+
+        function playSystemSound(id, loop = false) {
+            if (STATE.systemAudio[id]) {
+                const s = audioCtx.createBufferSource();
+                s.buffer = STATE.systemAudio[id];
+                s.connect(audioCtx.destination);
+                s.loop = loop;
+                s.start(0);
+                return s;
+            }
+            return null;
+        }
+
+        async function loadSystemSounds() {
+            try {
+                const mappingText = await dataLayer.readFile(IS_DESKTOP ? 'sfxmapping.txt' : 'sfxmapping.txt'); // Assuming sfxmapping.txt is in root
+                const lines = mappingText.split(/\r?\n/);
+                for (let line of lines) {
+                    const match = line.match(/^([^:]+):\s+(.+)$/);
+                    if (match) {
+                        const filePath = match[1].trim();
+                        const description = match[2].trim();
+                        const id = filePath.split('/').pop().split('.')[0]; // e.g. 'clear'
+
+                        try {
+                            const fullPath = IS_DESKTOP ? `soundset/${filePath}` : `soundset/${filePath}`;
+                            const buffer = await dataLayer.readAudio(fullPath);
+                            STATE.systemAudio[id] = buffer;
+                        } catch (e) {
+                            console.warn("Failed to load system sound:", filePath, e);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load sfxmapping.txt:", e);
             }
         }
 
@@ -3222,6 +3653,7 @@
             // Fail Check for Hard/ExHard
             if ((STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') && STATE.gauge <= 0) {
                 STATE.gauge = 0;
+                playSystemSound('playstop');
                 showResults(false);
                 return;
             }
@@ -3269,6 +3701,10 @@
         // ----------------------------------------------------------------------------
         function showResults(isClear) {
             STATE.isPlaying = false;
+            
+            if (isClear) playSystemSound('clear');
+            else playSystemSound('fail');
+
             document.getElementById('screen-game').style.display = 'none';
             document.getElementById('screen-results').style.display = 'flex';
 
@@ -3318,9 +3754,40 @@
             // Global listener to exit results
             const returnHandler = (e) => {
                 document.getElementById('screen-results').style.display = 'none';
-                document.getElementById('screen-select').style.display = 'flex';
+                
+                if (STATE.activeCourse) {
+                    STATE.courseIndex++;
+                    if (STATE.courseIndex < STATE.activeCourse.hashes.length) {
+                        const nextHash = STATE.activeCourse.hashes[STATE.courseIndex];
+                        const song = STATE.charts.find(c => c.md5 === nextHash);
+                        if (song) {
+                            // Find card element if possible (or just use null)
+                            loadChart(STATE.charts.indexOf(song), { classList: { add:()=>{} }, classList: { remove:()=>{} }, style: {} });
+                            enterGame();
+                        } else {
+                            alert('Next song in course not found! Hash: ' + nextHash);
+                            STATE.activeCourse = null;
+                            exitToSelect();
+                        }
+                    } else {
+                        // Course Clear!
+                        STATE.activeCourse = null;
+                        exitToSelect();
+                    }
+                } else {
+                    exitToSelect();
+                }
+                
                 window.removeEventListener('keydown', returnHandler);
             };
+
+            function exitToSelect() {
+                document.getElementById('screen-select').style.display = 'flex';
+                if (!STATE.selectBgmSource) {
+                    STATE.selectBgmSource = playSystemSound('select', true);
+                }
+            }
+
             setTimeout(() => {
                 window.addEventListener('keydown', returnHandler);
             }, 500);
@@ -3459,6 +3926,9 @@
         // INPUT
         // ----------------------------------------------------------------------------
         window.addEventListener('keydown', e => {
+            // Handle Escape key first (before actions check)
+            if (e.code === 'Escape' && STATE.isPlaying) { exitGame(); return; }
+
             const actions = STATE.keyCodeToAction[e.code];
             if (!actions) return;
 
@@ -3467,6 +3937,7 @@
                 if (ui.modalSettings.classList.contains('open')) return; // Block if Settings is open
                 if (!STATE.isOptionsOpen) {
                     STATE.isOptionsOpen = true;
+                    STATE.startOpenedOptions = true; // Track that START was used to open options
                     ui.modalOptions.classList.add('open');
                     updateOptionsUI();
                     drawWiringLines();
@@ -3538,6 +4009,11 @@
                             STATE.assistMode = assists[(idx + 1) % assists.length];
                         }
                     }
+
+                    // Play change sound for relevant keys
+                    if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7].includes(action)) {
+                        playSystemSound('o-change');
+                    }
                 });
                 updateOptionsUI();
                 return;
@@ -3551,7 +4027,42 @@
             actions.forEach(action => {
                 STATE.activeActions.add(action);
 
-                // START logic (Already handled immediate open above)
+                if (!STATE.isPlaying && !STATE.isOptionsOpen) {
+                    // SCRATCH NAVIGATION
+                    if (action === ACTIONS.P1_SC_CCW) {
+                        STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
+                        playSystemSound('scratch');
+                        updateSelection();
+                        return;
+                    }
+                    if (action === ACTIONS.P1_SC_CW) {
+                        STATE.selectedIndex = (STATE.selectedIndex + 1) % STATE.currentList.length;
+                        playSystemSound('scratch');
+                        updateSelection();
+                        return;
+                    }
+
+                    // FOLDER CONTROLS (NUMERICAL)
+                    const item = STATE.currentList[STATE.selectedIndex];
+                    const isOpenKey = [ACTIONS.P1_1, ACTIONS.P1_3, ACTIONS.P1_5, ACTIONS.P1_7].includes(action);
+                    const isCloseKey = [ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_6].includes(action);
+
+                    if (isOpenKey) {
+                        if (item.type === 'back') {
+                             STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList();
+                        } else if (item.type === 'folder' || item.type === 'course') {
+                            item.el.click();
+                        } else if (item.type === 'chart') {
+                            if (ui.btnStart.disabled === false) ui.btnStart.click();
+                        }
+                        return;
+                    }
+
+                    if (isCloseKey && STATE.currentFolder !== null) {
+                        STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList();
+                        return;
+                    }
+                }
 
                 // SELECT KEY CYCLE LOGIC
                 if (action === ACTIONS.SELECT && !STATE.isPlaying) {
@@ -3562,7 +4073,6 @@
                     return;
                 }
 
-                if (e.code === 'Escape' && STATE.isPlaying) { exitGame(); return; }
                 if (!STATE.isPlaying || e.repeat) return;
 
                 const targets = ACTION_TO_CHANNELS[action];
@@ -3608,8 +4118,9 @@
                 STATE.activeActions.delete(action);
 
                 if (action === ACTIONS.START) {
-                    // Close options if held (not persistent)
-                    if (STATE.isOptionsOpen && !STATE.isOptionsPersistent) {
+                    const optionsWereOpen = STATE.isOptionsOpen;
+                    // Close options on release (if held or if we're tapping to close)
+                    if (STATE.isOptionsOpen && (!STATE.isOptionsPersistent || optionsWereOpen)) {
                         ui.modalOptions.classList.remove('open');
                         STATE.isOptionsOpen = false;
                         renderSongList();
@@ -3617,9 +4128,15 @@
                     // Reset persistence
                     STATE.isOptionsPersistent = false;
 
-                    // Start game logic (only if options closed and not mid-game)
+                    // Reset the flag
+                    STATE.startOpenedOptions = false;
+                }
+
+                // White keys to start game
+                if ([ACTIONS.P1_1, ACTIONS.P1_3, ACTIONS.P1_5, ACTIONS.P1_7,
+                ACTIONS.P2_1, ACTIONS.P2_3, ACTIONS.P2_5, ACTIONS.P2_7].includes(action)) {
                     if (!STATE.isPlaying && !STATE.isOptionsOpen) {
-                        if (ui.btnStart.disabled === false) enterGame();
+                        if (ui.btnStart.disabled === false) ui.btnStart.click();
                     }
                 }
             });
@@ -3633,6 +4150,20 @@
 
         // INITIALIZATION
         (async () => {
+            await loadSystemSounds();
+            
+            // Resume/Start BGM on first interaction
+            const startBgm = () => {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                if (!STATE.selectBgmSource) {
+                    STATE.selectBgmSource = playSystemSound('select', true);
+                }
+                window.removeEventListener('keydown', startBgm);
+                window.removeEventListener('mousedown', startBgm);
+            };
+            window.addEventListener('keydown', startBgm);
+            window.addEventListener('mousedown', startBgm);
+
             if (IS_DESKTOP) {
                 // Auto-rescan library on startup
                 console.log("Startup: Rescanning library...");

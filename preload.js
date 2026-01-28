@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeLibraryFolder: (folder) => ipcRenderer.invoke('remove-library-folder', folder),
     rescanAllFolders: () => ipcRenderer.invoke('rescan-all-folders'),
     onScanProgress: (callback) => ipcRenderer.on('scan-progress', (event, data) => callback(data)),
+    importCourse: (path) => ipcRenderer.invoke('import-course', path),
     // Window controls
     minimizeWindow: () => ipcRenderer.send('window-minimize'),
     maximizeWindow: () => ipcRenderer.send('window-maximize'),
