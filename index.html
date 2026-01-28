@@ -2434,151 +2434,37 @@
         // ----------------------------------------------------------------------------
         // PARSER
         // ----------------------------------------------------------------------------
-        class BMSParser {
-            static parse(text) {
-                const lines = text.split(/\r?\n/);
-                const headers = {};
-                const bpmTable = {};
-                const measureData = {}; // measure -> channel -> [data]
-                let maxMeasure = 0;
-
-                lines.forEach(line => {
-                    if (!line.startsWith('#')) return;
-
-                    // Headers & BPM Table
-                    const spaceIdx = line.indexOf(' ');
-                    if (spaceIdx !== -1) {
-                        const key = line.substring(1, spaceIdx).toUpperCase();
-                        const val = line.substring(spaceIdx + 1).trim();
-                        if (key.startsWith('BPM') && key.length > 3) {
-                            bpmTable[key.substring(3)] = parseFloat(val);
-                        } else if (isNaN(parseInt(key.substring(0, 3)))) {
-                            headers[key] = val;
-                        }
-                    }
-
-                    // Channels
-                    const match = line.match(/^#(\d{3})(\w{2}):(.+)$/);
-                    if (match) {
-                        const mIdx = parseInt(match[1]);
-                        const chHex = parseInt(match[2], 16);
-                        if (mIdx > maxMeasure) maxMeasure = mIdx;
-                        if (!measureData[mIdx]) measureData[mIdx] = {};
-                        if (!measureData[mIdx][chHex]) measureData[mIdx][chHex] = [];
-                        measureData[mIdx][chHex].push(match[3]);
-                    }
-                });
-
-                const PLAYABLE_CHANNELS = new Set([
-                    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19, // P1 Hit
-                    0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x58, 0x59  // P1 LN
-                ]);
-
-                const notes = [];
-                const bgm = [];
-                const bgaEvents = [];
-                const bpmEvents = [];
-
-                let currentBpm = parseFloat(headers['BPM'] || 130);
-                let currentTime = 0;
-                let playableNoteCount = 0;
-
-                // Process measure by measure
-                for (let m = 0; m <= maxMeasure; m++) {
-                    const data = measureData[m] || {};
-                    const measureScaling = (data[0x02] && data[0x02][0]) ? parseFloat(data[0x02][0]) : 1.0;
-
-                    // Collect all events in this measure to sort them by position
-                    const eventsInMeasure = [];
-
-                    for (let ch in data) {
-                        const chNum = parseInt(ch);
-                        if (chNum === 0x02) continue; // Skip scaling channel
-
-                        data[ch].forEach(dataStr => {
-                            const count = dataStr.length / 2;
-                            for (let i = 0; i < count; i++) {
-                                const val = dataStr.substr(i * 2, 2);
-                                if (val === '00') continue;
-                                eventsInMeasure.push({
-                                    pos: i / count,
-                                    ch: chNum,
-                                    val: val.toUpperCase()
-                                });
-                            }
-                        });
-                    }
-
-                    // Sort events by position in measure
-                    eventsInMeasure.sort((a, b) => a.pos - b.pos);
-
-                    // Calculate time for each event
-                    let lastPos = 0;
-                    eventsInMeasure.forEach(ev => {
-                        const posDiff = ev.pos - lastPos;
-                        // Duration of this slice: (beats in slice) * (ms per beat)
-                        // One measure is 4 beats. Measure length = 4 * scaling.
-                        const beatsInSlice = posDiff * 4 * measureScaling;
-                        const msPerBeat = 60000 / currentBpm;
-                        currentTime += beatsInSlice * msPerBeat;
-                        lastPos = ev.pos;
-
-                        const id = ev.val;
-                        const chNum = ev.ch;
-
-                        if (PLAYABLE_CHANNELS.has(chNum)) {
-                            notes.push({ time: currentTime, ch: chNum, id, hit: false });
-                            playableNoteCount++;
-                        } else if (chNum === 0x03) {
-                            currentBpm = parseInt(id, 16);
-                            bpmEvents.push({ time: currentTime, bpm: currentBpm });
-                        } else if (chNum === 0x08) {
-                            const newBpm = bpmTable[id];
-                            if (newBpm !== undefined) {
-                                currentBpm = newBpm;
-                                bpmEvents.push({ time: currentTime, bpm: currentBpm });
-                            }
-                        } else if (chNum === 0x01 || (chNum >= 0x21 && chNum <= 0x49) || (chNum >= 0x61 && chNum <= 0x69)) {
-                            bgm.push({ time: currentTime, id });
-                        } else if (chNum === 0x04) {
-                            bgaEvents.push({ time: currentTime, id });
-                        }
-                    });
-
-                    // Advance to end of measure
-                    const posDiff = 1.0 - lastPos;
-                    const beatsInSlice = posDiff * 4 * measureScaling;
-                    currentTime += beatsInSlice * (60000 / currentBpm);
-                }
-
-                let total = parseFloat(headers['TOTAL']);
-                if (isNaN(total)) total = 260;
-                let rank = parseInt(headers['RANK']);
-                if (isNaN(rank)) rank = 3;
-
-                const songDuration = currentTime;
-                const noteTimes = notes.map(n => n.time).sort((a, b) => a - b);
-                const startNps = noteTimes.filter(t => t <= 10000).length / 10;
-                const avgNps = songDuration > 0 ? (playableNoteCount / (songDuration / 1000)) : 0;
-
-                let maxNps = 0;
-                for (let i = 0; i < noteTimes.length; i++) {
-                    const start = noteTimes[i];
-                    const count = noteTimes.filter(t => t >= start && t < start + 1000).length;
-                    if (count > maxNps) maxNps = count;
-                }
-
-                return {
-                    headers,
-                    notes: notes.sort((a, b) => a.time - b.time),
-                    bgm: bgm.sort((a, b) => a.time - b.time),
-                    bgaEvents: bgaEvents.sort((a, b) => a.time - b.time),
-                    bpmEvents: bpmEvents.sort((a, b) => a.time - b.time),
-                    initialBpm: parseFloat(headers['BPM'] || 130),
-                    total, rank, noteCount: playableNoteCount, songDuration,
-                    startNps, avgNps, maxNps
+        // ----------------------------------------------------------------------------
+        // PARSER (WORKER)
+        // ----------------------------------------------------------------------------
+        // Use absolute URL resolution for Worker to avoid relative path issues in Electron
+        const workerUrl = new URL('./bms-parser.worker.js', window.location.href);
+        const parserWorker = new Worker(workerUrl);
+        
+        function parseChartAsync(text) {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error("Worker timed out"));
+                }, 60000);
+                
+                // One-off handler
+                const handler = (e) => {
+                    clearTimeout(timeout);
+                    parserWorker.removeEventListener('message', handler);
+                    if (e.data.success) resolve(e.data.data);
+                    else reject(new Error(e.data.error));
                 };
-            }
+                
+                const errHandler = (e) => {
+                    clearTimeout(timeout);
+                    parserWorker.removeEventListener('error', errHandler);
+                    reject(new Error("Worker error: " + (e.message || e)));
+                };
+
+                parserWorker.addEventListener('message', handler);
+                parserWorker.addEventListener('error', errHandler);
+                parserWorker.postMessage(text);
+            });
         }
 
         // ----------------------------------------------------------------------------
@@ -3279,90 +3165,144 @@
             const c = STATE.charts[idx];
             let bmsText = c.raw;
             if (!bmsText) {
+                // Show loading indicator locally if not from desktop scan
+                if (!IS_DESKTOP) ui.loadingStatus.textContent = "Reading file...";
                 bmsText = await dataLayer.readFile(c.fileRef);
                 c.raw = bmsText;
             }
 
-            const data = BMSParser.parse(bmsText);
-            STATE.loadedSong = data;
-            STATE.currentFileRef = c.fileRef;
-            STATE.replayFileRef = c.fileRef;
-
-            ui.titleMain.textContent = c.title;
-            ui.subtitle.textContent = data.headers['SUBTITLE'] || '';
-            const genre = data.headers['GENRE'] || '';
-            ui.artistGenre.textContent = genre ? `${c.artist} | ${genre}` : c.artist;
-
-            const level = data.headers['PLAYLEVEL'] || data.headers['DIFFICULTY'] || '?';
-            const diffTier = parseInt(data.headers['DIFFICULTY']) || 2;
-            const tierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
-            const tierColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
-
-            ui.diffLevel.textContent = level;
-            ui.diffLevel.style.color = tierColors[Math.min(diffTier - 1, 4)] || '#fff';
-            ui.diffTier.textContent = tierNames[Math.min(diffTier - 1, 4)] || 'NORMAL';
-            ui.diffStars.textContent = '★'.repeat(Math.min(parseInt(level) || 0, 12));
-            ui.diffDisplay.style.display = 'flex';
-
-            const rankName = ["VERY HARD", "HARD", "NORMAL", "EASY"][data.rank] || "EASY";
-            const bpms = data.bpmEvents.map(e => e.bpm);
-            bpms.push(data.initialBpm);
-            const minBpm = Math.min(...bpms);
-            const maxBpm = Math.max(...bpms);
-            ui.statBpm.textContent = minBpm === maxBpm ? Math.round(minBpm) : `${Math.round(minBpm)} - ${Math.round(maxBpm)}`;
-            ui.statNotes.textContent = data.noteCount;
-            ui.statNpsAvg.textContent = data.avgNps.toFixed(1);
-            ui.statNpsMax.textContent = data.maxNps;
-            ui.statRank.textContent = rankName;
-            ui.songStats.style.display = 'grid';
-
-            ui.songMarkers.innerHTML = '';
-            if (data.headers['LNTYPE'] || data.headers['LNOBJ']) ui.songMarkers.innerHTML += '<span class="marker marker-ln">LN</span>';
-            if (data.headers['RANDOM']) ui.songMarkers.innerHTML += '<span class="marker marker-ran">RAN</span>';
-
-            if (IS_DESKTOP && !focusOnly) {
-                const stagefileUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['STAGEFILE']);
-                const bannerUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['BANNER']);
-                if (stagefileUrl) {
-                    ui.stagefileArea.style.backgroundImage = `url('${stagefileUrl}')`;
-                    ui.selectBg.style.backgroundImage = `url('${stagefileUrl}')`;
-                    STATE.stagefileUrl = stagefileUrl;
-                } else {
-                    ui.stagefileArea.style.backgroundImage = '';
-                    ui.selectBg.style.backgroundImage = '';
-                    STATE.stagefileUrl = null;
-                }
-                if (bannerUrl) {
-                    ui.bannerArea.innerHTML = `<img src="${bannerUrl}">`;
-                    STATE.bannerUrl = bannerUrl;
-                } else {
-                    ui.bannerArea.innerHTML = '<span class="banner-placeholder">No Banner</span>';
-                    STATE.bannerUrl = null;
-                }
+            // Parse using Worker
+            if (!focusOnly) {
+                ui.screenLoading.style.display = 'flex';
+                ui.screenLoading.style.opacity = '1';
+                ui.loadingStatus.textContent = "Parsing Chart...";
+                ui.loadingBar.style.width = '20%';
             }
 
-            ui.btnStart.disabled = false;
+            try {
+                const data = await parseChartAsync(bmsText); // Worker call
+                
+                STATE.loadedSong = data;
+                STATE.currentFileRef = c.fileRef;
+                STATE.replayFileRef = c.fileRef;
 
-            if (!focusOnly) {
-                STATE.audioBuffers = {};
-                STATE.bgaDefinitions = {};
-                const promises = [];
-                for (let k in data.headers) {
-                    if (k.startsWith('WAV')) {
-                        const id = k.substring(3).toUpperCase();
-                        const rawFilename = data.headers[k];
-                        let fileRef = IS_DESKTOP ? await window.electronAPI.resolvePath(STATE.currentFileRef, rawFilename) : dataLayer.webFiles[rawFilename.toLowerCase()];
-                        if (fileRef) {
-                            promises.push(dataLayer.readAudio(fileRef).then(ab => STATE.audioBuffers[id] = ab).catch(e => console.warn(`Audio ${id} error:`, e.message)));
-                        }
+                ui.titleMain.textContent = c.title;
+                ui.subtitle.textContent = data.headers['SUBTITLE'] || '';
+                const genre = data.headers['GENRE'] || '';
+                ui.artistGenre.textContent = genre ? `${c.artist} | ${genre}` : c.artist;
+
+                const level = data.headers['PLAYLEVEL'] || data.headers['DIFFICULTY'] || '?';
+                const diffTier = parseInt(data.headers['DIFFICULTY']) || 2;
+                const tierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+                const tierColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+
+                ui.diffLevel.textContent = level;
+                ui.diffLevel.style.color = tierColors[Math.min(diffTier - 1, 4)] || '#fff';
+                ui.diffTier.textContent = tierNames[Math.min(diffTier - 1, 4)] || 'NORMAL';
+                ui.diffStars.textContent = '★'.repeat(Math.max(0, Math.min(parseInt(level) || 0, 12)));
+                ui.diffDisplay.style.display = 'flex';
+
+                const rankName = ["VERY HARD", "HARD", "NORMAL", "EASY"][data.rank] || "EASY";
+                const bpms = data.bpmEvents.map(e => e.bpm);
+                bpms.push(data.initialBpm);
+                const minBpm = Math.min(...bpms);
+                const maxBpm = Math.max(...bpms);
+                ui.statBpm.textContent = minBpm === maxBpm ? Math.round(minBpm) : `${Math.round(minBpm)} - ${Math.round(maxBpm)}`;
+                ui.statNotes.textContent = data.noteCount;
+                ui.statNpsAvg.textContent = data.avgNps.toFixed(1);
+                ui.statNpsMax.textContent = data.maxNps;
+                ui.statRank.textContent = rankName;
+                ui.songStats.style.display = 'grid';
+
+                ui.songMarkers.innerHTML = '';
+                if (data.headers['LNTYPE'] || data.headers['LNOBJ']) ui.songMarkers.innerHTML += '<span class="marker marker-ln">LN</span>';
+                if (data.headers['RANDOM']) ui.songMarkers.innerHTML += '<span class="marker marker-ran">RAN</span>';
+
+                if (IS_DESKTOP && !focusOnly) {
+                    const stagefileUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['STAGEFILE']);
+                    const bannerUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['BANNER']);
+                    if (stagefileUrl) {
+                        ui.stagefileArea.style.backgroundImage = `url('${stagefileUrl}')`;
+                        ui.selectBg.style.backgroundImage = `url('${stagefileUrl}')`;
+                        STATE.stagefileUrl = stagefileUrl;
+                    } else {
+                        ui.stagefileArea.style.backgroundImage = '';
+                        ui.selectBg.style.backgroundImage = '';
+                        STATE.stagefileUrl = null;
                     }
-                    if (k.startsWith('BMP') && IS_DESKTOP) {
-                        const id = k.substring(3).toUpperCase();
-                        const url = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers[k]);
-                        if (url) STATE.bgaDefinitions[id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg)$/i.test(data.headers[k]) };
+                    if (bannerUrl) {
+                        ui.bannerArea.innerHTML = `<img src="${bannerUrl}">`;
+                        STATE.bannerUrl = bannerUrl;
+                    } else {
+                        ui.bannerArea.innerHTML = '<span class="banner-placeholder">No Banner</span>';
+                        STATE.bannerUrl = null;
                     }
                 }
-                await Promise.all(promises);
+                
+                ui.btnStart.disabled = false;
+
+                if (!focusOnly) {
+                    STATE.audioBuffers = {};
+                    STATE.bgaDefinitions = {};
+                    
+                    // Collect Audio Files
+                    const audioTasks = [];
+                    for (let k in data.headers) {
+                        if (k.startsWith('WAV')) {
+                            audioTasks.push({ key: k, id: k.substring(3).toUpperCase(), filename: data.headers[k] });
+                        }
+                        if (k.startsWith('BMP') && IS_DESKTOP) {
+                            const id = k.substring(3).toUpperCase();
+                            // Fire and forget image loading (non-blocking)
+                            window.electronAPI.resolveImage(STATE.currentFileRef, data.headers[k]).then(url => {
+                                if (url) STATE.bgaDefinitions[id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg)$/i.test(data.headers[k]) };
+                            });
+                        }
+                    }
+
+                    // CHUNKED LOADING
+                    ui.loadingStatus.textContent = `Loading Audio (0/${audioTasks.length})...`;
+                    console.log(`DEBUG: Audio tasks: ${audioTasks.length}`);
+                    const CHUNK_SIZE = 10;
+                    for (let i = 0; i < audioTasks.length; i += CHUNK_SIZE) {
+                        const chunk = audioTasks.slice(i, i + CHUNK_SIZE);
+                        await Promise.all(chunk.map(task => {
+                            // Use appropriate reading method
+                            let filePromise;
+                            if (IS_DESKTOP) {
+                                filePromise = window.electronAPI.resolvePath(STATE.currentFileRef, task.filename).then(ref => {
+                                    if (ref) return dataLayer.readAudio(ref);
+                                    return null;
+                                });
+                            } else {
+                                const f = dataLayer.webFiles[task.filename.toLowerCase()];
+                                if (f) filePromise = dataLayer.readAudio(f);
+                                else filePromise = Promise.resolve(null);
+                            }
+                            
+                            return filePromise.then(ab => {
+                                if (ab) STATE.audioBuffers[task.id] = ab;
+                            }).catch(e => console.warn(`Audio ${task.id} error:`, e.message));
+                        }));
+                        
+                        // Update Progress
+                        const progress = Math.min(100, 20 + ((i + CHUNK_SIZE) / audioTasks.length * 80));
+                        ui.loadingBar.style.width = `${progress}%`;
+                        ui.loadingStatus.textContent = `Loading Audio (${Math.min(i + CHUNK_SIZE, audioTasks.length)}/${audioTasks.length})...`;
+                        
+                        // Small yield to UI
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                    console.log("DEBUG: Audio load finished");
+                    
+                    // Done
+                    ui.screenLoading.style.display = 'none';
+                }
+
+            } catch(e) {
+                console.error("Chart Load Error:", e);
+                ui.loadingStatus.textContent = "Error loading chart!";
+                setTimeout(() => { ui.screenLoading.style.display = 'none'; }, 2000);
             }
         }
 
@@ -3407,10 +3347,15 @@
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
 
-        function enterGame() {
+        async function enterGame() {
             document.getElementById('screen-select').style.display = 'none';
             document.getElementById('screen-game').style.display = 'block';
             resize();
+
+            // Ensure AudioContext is running
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
 
             STATE.isPlaying = true;
             STATE.startTime = audioCtx.currentTime + 2.0;
@@ -3423,6 +3368,7 @@
             STATE.bgmCursor = 0;
             STATE.bgaCursor = 0;
             STATE.bpmCursor = 0;
+            STATE.logicCursor = 0; // [NEW] Logic optimization cursor
 
             // Apply Style (Mirror/Random/R-Random/S-Random/H-Random/All-Scratch)
             if (STATE.modifier !== 'OFF') {
@@ -3591,28 +3537,35 @@
             return null;
         }
 
-        async function loadSystemSounds() {
-            try {
-                const mappingText = await dataLayer.readFile(IS_DESKTOP ? 'sfxmapping.txt' : 'sfxmapping.txt'); // Assuming sfxmapping.txt is in root
-                const lines = mappingText.split(/\r?\n/);
-                for (let line of lines) {
-                    const match = line.match(/^([^:]+):\s+(.+)$/);
-                    if (match) {
-                        const filePath = match[1].trim();
-                        const description = match[2].trim();
-                        const id = filePath.split('/').pop().split('.')[0]; // e.g. 'clear'
+        const SYSTEM_SOUND_FILES = [
+            'sfx/clear.ogg',
+            'sfx/difficulty.ogg',
+            'sfx/fail.ogg',
+            'sfx/f-open.ogg',
+            'sfx/f-close.ogg',
+            'sfx/o-open.ogg',
+            'sfx/o-close.ogg',
+            'sfx/o-change.ogg',
+            'sfx/playstop.ogg',
+            'sfx/scratch.ogg',
+            'sfx/screenshot.ogg',
+            'sfx/course_clear.ogg',
+            'sfx/course_fail.ogg',
+            'bgm/select.wav',
+            'bgm/decide.wav'
+        ];
 
-                        try {
-                            const fullPath = IS_DESKTOP ? `soundset/${filePath}` : `soundset/${filePath}`;
-                            const buffer = await dataLayer.readAudio(fullPath);
-                            STATE.systemAudio[id] = buffer;
-                        } catch (e) {
-                            console.warn("Failed to load system sound:", filePath, e);
-                        }
-                    }
+        async function loadSystemSounds() {
+            for (const filePath of SYSTEM_SOUND_FILES) {
+                const id = filePath.split('/').pop().split('.')[0]; 
+                try {
+                    // Assuming dataLayer.readAudio handles the path correctly
+                    const fullPath = `soundset/${filePath}`; 
+                    const buffer = await dataLayer.readAudio(fullPath);
+                    STATE.systemAudio[id] = buffer;
+                } catch (e) {
+                    console.warn("Failed to load system sound:", filePath, e);
                 }
-            } catch (e) {
-                console.error("Failed to load sfxmapping.txt:", e);
             }
         }
 
@@ -3641,23 +3594,37 @@
                 win = { PG: win.PG * 1.5, GR: win.GR * 1.5, GD: win.GD * 1.5, BD: win.BD * 1.5, PR: win.PR };
             }
 
-            notes.forEach(n => {
-                if (!n.hit) {
-                    const diff = now - n.time;
-
-                    // Autoplay: hit notes exactly at their time with PGREAT
-                    if (STATE.autoplay && diff >= 0) {
-                        n.hit = true;
-                        playSound(n.id);
-                        handleJudgment('PGREAT', 0);
-                    }
-                    // Normal play: miss if past BAD window
-                    else if (!STATE.autoplay && diff > win.BD) {
-                        n.hit = true;
-                        handleJudgment('POOR', diff);
-                    }
+            // OPTIMIZED: Sliding Window for Logic
+            // Start from logicCursor and stop when notes are too far in future
+            for (let i = STATE.logicCursor; i < notes.length; i++) {
+                const n = notes[i];
+                if (n.hit) {
+                    // Update cursor if this note is already processed
+                    if (i === STATE.logicCursor) STATE.logicCursor++;
+                    continue;
                 }
-            });
+
+                const diff = now - n.time;
+
+                // Stop if we are too far in the future (beyond poor window of 200ms)
+                // -200 means note is 200ms in the future
+                if (diff < -1000) break; // Optimization: Stop checking if note is >1s away
+
+                // Autoplay
+                if (STATE.autoplay && diff >= 0) {
+                    n.hit = true;
+                    playSound(n.id);
+                    handleJudgment('PGREAT', 0);
+                    if (i === STATE.logicCursor) STATE.logicCursor++;
+                }
+                // Miss Detection
+                else if (!STATE.autoplay && diff > win.BD) {
+                    // Passed Bad Window -> POOR
+                    n.hit = true;
+                    handleJudgment('POOR', diff);
+                    if (i === STATE.logicCursor) STATE.logicCursor++;
+                }
+            }
 
             render(now);
 
@@ -3720,10 +3687,57 @@
             ctx.fillStyle = '#ff0055';
             ctx.fillRect(0, hitY, p1Total, 15);
 
-            STATE.loadedSong.notes.forEach(n => {
-                if (n.hit) return;
+            // NEW: Batched Draw with Render Window
+            // 1. Calculate visible range first
+            // Reference BPM 150 for the HI-SPEED multiplier
+            const baseSpeed = (STATE.speed * 0.375) * (STATE.currentBpm / 150);
+            
+            // Calculate time range visible on screen
+            // Max visual range (hitY + 50 to -50) => height + 100
+            // distance = (noteTime - now) * speed
+            // maxDist = canvas.height
+            // maxTimeDiff = canvas.height / speed
+            
+            const maxTimeOffset = (canvas.height + 100) / baseSpeed;
+            const minTime = time - 200; // Just past hit line
+            const maxTime = time + maxTimeOffset;
+
+            // Find start and end indices via binary search (or simplistic linear scan from cursor) since array is sorted
+            // We can re-use logicCursor as a hint for start
+            let startIdx = STATE.logicCursor || 0;
+            // Validate startIdx against length
+            if (startIdx >= STATE.loadedSong.notes.length) startIdx = STATE.loadedSong.notes.length - 1;
+            
+            // Backtrack a bit just in case visual lags slightly behind logic
+            while(startIdx > 0 && STATE.loadedSong.notes[startIdx] && STATE.loadedSong.notes[startIdx].time > minTime) {
+                startIdx--;
+            }
+            // Forward track to find actual visual start
+            while(startIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[startIdx].time < minTime) {
+                startIdx++;
+            }
+            
+            let endIdx = startIdx;
+            while(endIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[endIdx].time < maxTime) {
+                endIdx++;
+            }
+            
+            // Note: endIdx is exclusive
+
+            const noteBatches = {
+                scratch: [],
+                white: [],
+                blue: []
+            };
+
+            for (let i = startIdx; i < endIdx; i++) {
+                const n = STATE.loadedSong.notes[i];
+                if (n.hit) continue;
+
                 let x = -1, w = wKey, isSc = false, isBlue = false;
                 const ch = n.ch;
+                
+                // Mappings (could be cached map but this is fast enough)
                 if (CHANNELS.P1.SCRATCH.includes(ch)) { x = 0; w = wScratch; isSc = true; }
                 else if (CHANNELS.P1.KEY1.includes(ch)) { x = wScratch; }
                 else if (CHANNELS.P1.KEY2.includes(ch)) { x = wScratch + wKey; isBlue = true; }
@@ -3733,19 +3747,29 @@
                 else if (CHANNELS.P1.KEY6.includes(ch)) { x = wScratch + wKey * 5; isBlue = true; }
                 else if (CHANNELS.P1.KEY7.includes(ch)) { x = wScratch + wKey * 6; }
 
-                if (x === -1) return;
+                if (x === -1) continue;
 
-                const dist = (n.time - time) * speed;
+                const dist = (n.time - time) * baseSpeed;
                 const y = hitY - dist;
 
-                if (y < -50 || y > canvas.height + 50) return;
+                // Double check bounds (though indices should cover it)
+                if (y < -50 || y > canvas.height + 50) continue;
 
-                if (isSc) ctx.fillStyle = '#f00';
-                else if (isBlue) ctx.fillStyle = '#0cf';
-                else ctx.fillStyle = '#fff';
+                if (isSc) noteBatches.scratch.push({x: x+1, y, w: w-2});
+                else if (isBlue) noteBatches.blue.push({x: x+1, y, w: w-2});
+                else noteBatches.white.push({x: x+1, y, w: w-2});
+            }
 
-                ctx.fillRect(x + 1, y, w - 2, 15);
-            });
+            // Draw Batches
+            ctx.fillStyle = '#fff';
+            noteBatches.white.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
+
+            ctx.fillStyle = '#0cf';
+            noteBatches.blue.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
+
+            ctx.fillStyle = '#f00';
+            noteBatches.scratch.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
+
             ctx.restore();
         }
 

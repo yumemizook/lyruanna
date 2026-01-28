@@ -88,10 +88,10 @@ ipcMain.handle('scan-library', async () => {
             const has2P = text.match(/#\d{3}2[1-9]:/);
             const has9K = isPMS || text.match(/#\d{3}1[79]:/) || text.match(/#\d{3}1[1-9]:/);
 
-            if (player === 3 || has2P) {
-                keyMode = has2P ? '14' : '10';
-            } else if (isPMS) {
+            if (isPMS) {
                 keyMode = '9';
+            } else if (player === 3 || has2P) {
+                keyMode = has2P ? '14' : '10';
             } else {
                 const has7K = text.match(/#\d{3}1[6-9]:/);
                 keyMode = has7K ? '7' : '5';
@@ -371,10 +371,10 @@ ipcMain.handle('rescan-all-folders', async () => {
             const has2P = text.match(/#\d{3}2[1-9]:/);
             const has9K = isPMS || text.match(/#\d{3}1[79]:/) || text.match(/#\d{3}1[1-9]:/);
 
-            if (player === 3 || has2P) {
-                keyMode = has2P ? '14' : '10';
-            } else if (isPMS) {
+            if (isPMS) {
                 keyMode = '9';
+            } else if (player === 3 || has2P) {
+                keyMode = has2P ? '14' : '10';
             } else {
                 const has7K = text.match(/#\d{3}1[6-9]:/);
                 keyMode = has7K ? '7' : '5';
