@@ -1,9 +1,0 @@
-database
-- folder containing all the chart folders -> display these folders in the folder list
-    - chart folder -> do not display these folders in the folder list
-        - chart file
-    - chart folder 2
-        - chart file
-    - ...
-- another folder containing all the chart folders
-    - ...

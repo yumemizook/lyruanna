@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     scanLibrary: () => ipcRenderer.invoke('scan-library'),
@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     rescanAllFolders: () => ipcRenderer.invoke('rescan-all-folders'),
     onScanProgress: (callback) => ipcRenderer.on('scan-progress', (event, data) => callback(data)),
     importCourse: (path) => ipcRenderer.invoke('import-course', path),
+    openCourseDialog: () => ipcRenderer.invoke('open-course-dialog'),
+    getPathForFile: (file) => webUtils.getPathForFile(file),
     // Window controls
     minimizeWindow: () => ipcRenderer.send('window-minimize'),
     maximizeWindow: () => ipcRenderer.send('window-maximize'),

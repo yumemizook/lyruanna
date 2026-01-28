@@ -158,8 +158,16 @@ ipcMain.handle('import-course', async (event, filePath) => {
     initPaths();
     try {
         const content = await fs.readFile(filePath);
-        const text = iconv.decode(content, 'Shift_JIS');
-        const courseMatches = text.matchAll(/<course>([\s\S]*?)<\/course>/gi);
+        // Try Shift_JIS first (common for LR2)
+        let text = iconv.decode(content, 'Shift_JIS');
+        let courseMatches = Array.from(text.matchAll(/<course>([\s\S]*?)<\/course>/gi));
+
+        // If no matches, try UTF-8
+        if (courseMatches.length === 0) {
+            text = iconv.decode(content, 'utf8');
+            courseMatches = Array.from(text.matchAll(/<course>([\s\S]*?)<\/course>/gi));
+        }
+
         let imported = [];
         for (const cm of courseMatches) {
             const cText = cm[1];
@@ -339,8 +347,10 @@ ipcMain.handle('rescan-all-folders', async () => {
     // Send initial progress
     mainWindow.webContents.send('scan-progress', { current: 0, total: totalFiles, status: 'Starting scan...' });
 
+    let lastProgressTime = 0;
     // Parse each file
     for (let i = 0; i < allFiles.length; i++) {
+        if (mainWindow.isDestroyed()) break;
         const { file, rootDir } = allFiles[i];
         try {
             const content = await fs.readFile(file);
@@ -386,16 +396,24 @@ ipcMain.handle('rescan-all-folders', async () => {
             console.error("Error parsing", file, e);
         }
 
-        // Send progress update
-        mainWindow.webContents.send('scan-progress', {
-            current: i + 1,
-            total: totalFiles,
-            status: `Loading chart ${i + 1} of ${totalFiles}...`
-        });
+        // Send progress update (throttle to every 50ms)
+        const now = Date.now();
+        if (now - lastProgressTime > 50) {
+            if (!mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('scan-progress', {
+                    current: i + 1,
+                    total: totalFiles,
+                    status: `Loading chart ${i + 1} of ${totalFiles}...`
+                });
+            }
+            lastProgressTime = now;
+        }
     }
 
     // Send completion
-    mainWindow.webContents.send('scan-progress', { current: totalFiles, total: totalFiles, status: 'Complete!' });
+    if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('scan-progress', { current: totalFiles, total: totalFiles, status: 'Complete!' });
+    }
 
     // Scan for and parse courses
     const courses = [];
@@ -422,6 +440,16 @@ ipcMain.handle('rescan-all-folders', async () => {
     // Save and return
     await fs.writeJson(DB_PATH, songs);
     return { songs, courses };
+});
+
+// 10. Open Course Dialog
+ipcMain.handle('open-course-dialog', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'LR2 Course File', extensions: ['lr2crs'] }]
+    });
+    if (result.canceled) return [];
+    return result.filePaths;
 });
 
 app.whenReady().then(createWindow);
