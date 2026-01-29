@@ -4,6 +4,93 @@ const fs = require('fs-extra');
 const glob = require('glob');
 const iconv = require('iconv-lite');
 const crypto = require('crypto');
+const url = require('url');
+const http = require('http');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
+
+// Set ffmpeg path
+if (ffmpegPath) {
+    ffmpeg.setFfmpegPath(ffmpegPath.replace('app.asar', 'app.asar.unpacked'));
+}
+
+// Global Streaming Server
+let streamServer;
+let streamPort = 0;
+
+function startStreamServer() {
+    streamServer = http.createServer((req, res) => {
+        const u = url.parse(req.url, true);
+        if (u.pathname === '/video') {
+            const filePath = u.query.path;
+            if (!filePath) {
+                res.statusCode = 400;
+                res.end('Missing path');
+                return;
+            }
+
+            console.log(`[Stream] Request for: ${filePath}`);
+
+            // Validate path exists
+            if (!fs.existsSync(filePath)) {
+                res.statusCode = 404;
+                res.end('File not found');
+                return;
+            }
+
+            // MJPEG Header
+            res.writeHead(200, {
+                'Content-Type': 'multipart/x-mixed-replace; boundary=--ffmpeg',
+                'Cache-Control': 'no-cache',
+                'Connection': 'close',
+                'Pragma': 'no-cache'
+            });
+
+            const command = ffmpeg(filePath)
+                .inputOptions(['-re']) // Read at native framerate
+                .outputOptions([
+                    '-f', 'mjpeg',             // Output format MJPEG
+                    '-q:v', '12',              // Medium Quality (2-31, higher = lower quality, 12 is good for BG)
+                    '-vf', 'scale=640:-1',     // Downscale for performance
+                    '-r', '20',                // Limit framerate to 20fps
+                    '-threads', '2'            // Start with 2 threads, ensures game loop isn't starved
+                ])
+                // Pipe to response
+                .on('start', (cmd) => console.log('[FFmpeg] Started:', cmd))
+                .on('error', (err) => {
+                    console.error('[FFmpeg] Error:', err.message);
+                    if (!res.writableEnded) res.end();
+                })
+                .on('end', () => {
+                    console.log('[FFmpeg] Finished');
+                    if (!res.writableEnded) res.end();
+                });
+
+            // Pipe stream to response
+            const stream = command.pipe();
+            stream.on('data', (chunk) => {
+                res.write('--ffmpeg\r\nContent-Type: image/jpeg\r\nContent-Length: ' + chunk.length + '\r\n\r\n');
+                res.write(chunk);
+                res.write('\r\n');
+            });
+
+            // Clean up on disconnect
+            res.on('close', () => {
+                console.log('[Stream] Client disconnected');
+                command.kill('SIGKILL');
+            });
+        } else {
+            res.statusCode = 404;
+            res.end();
+        }
+    });
+
+    streamServer.listen(0, '127.0.0.1', () => {
+        streamPort = streamServer.address().port;
+        console.log(`[Stream] Server listening on port ${streamPort}`);
+    });
+}
+
 
 let mainWindow;
 let DB_PATH;
@@ -27,6 +114,7 @@ function calculateMD5(content) {
 
 function createWindow() {
     initPaths();
+    if (!streamServer) startStreamServer();
 
     // Default settings
     let width = 1280;
@@ -115,6 +203,14 @@ ipcMain.on('window-set-resolution', (event, width, height) => {
     }
 });
 
+ipcMain.handle('get-window-settings', async () => {
+    initPaths();
+    if (await fs.pathExists(SETTINGS_PATH)) {
+        return await fs.readJson(SETTINGS_PATH);
+    }
+    return { width: 1280, height: 720, fullscreen: false };
+});
+
 // 1. Scan Library
 ipcMain.handle('scan-library', async () => {
     initPaths();
@@ -164,6 +260,16 @@ ipcMain.handle('scan-library', async () => {
 
             const cleanStr = (s) => s ? s.replace(/\r/g, '').trim() : 'Unknown';
 
+            // Simple note count estimation for metadata
+            const notesMatch = text.matchAll(/#\d{3}(1|2|5|6)[1-9]:(\w+)/g);
+            let noteCount = 0;
+            for (const nm of notesMatch) {
+                const data = nm[2];
+                for (let i = 0; i < data.length; i += 2) {
+                    if (data[i] !== '0' || data[i + 1] !== '0') noteCount++;
+                }
+            }
+
             songs.push({
                 path: file,
                 rootDir: rootDir,
@@ -172,7 +278,8 @@ ipcMain.handle('scan-library', async () => {
                 artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown',
                 difficulty: diffMatch ? parseInt(diffMatch[1]) : 2,
                 level: levelMatch ? parseInt(levelMatch[1]) : 0,
-                keyMode: keyMode
+                keyMode: keyMode,
+                noteCount: noteCount
             });
         } catch (e) {
             console.error("Error parsing", file, e);
@@ -257,7 +364,28 @@ ipcMain.handle('import-course', async (event, filePath) => {
 
 // 3. Read File (Binary)
 ipcMain.handle('read-file', async (event, filePath) => {
-    return await fs.readFile(filePath);
+    const finalPath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, filePath);
+    return await fs.readFile(finalPath);
+});
+
+// 3.1 Write File (Binary or String)
+ipcMain.handle('write-file', async (event, filePath, data) => {
+    await fs.ensureDir(path.dirname(filePath));
+    if (typeof data === 'string') {
+        await fs.writeFile(filePath, data);
+    } else {
+        // data is likely a Uint8Array from the renderer
+        if (data && data.buffer) {
+            await fs.writeFile(filePath, Buffer.from(data.buffer, data.byteOffset, data.byteLength));
+        } else {
+            await fs.writeFile(filePath, data);
+        }
+    }
+    return true;
+});
+
+ipcMain.handle('get-app-path', async (event, type) => {
+    return app.getPath(type || 'userData');
 });
 
 // 4. Resolve Path (for finding audio relative to BMS file)
@@ -290,53 +418,70 @@ ipcMain.handle('resolve-path', async (event, bmsPath, audioFilename) => {
     return null;
 });
 
-// 5. Resolve Image/Video (returns base64 data URL)
-ipcMain.handle('resolve-image', async (event, bmsPath, filename) => {
+// 5. Resolve Image/Video (returns file:// URL)
+// 5. Resolve Image/Video (returns file:// URL)
+ipcMain.handle('resolve-image', async (event, bmsPath, filename, type = 'any') => {
     if (!filename) return null;
 
     const dir = path.dirname(bmsPath);
-    let filePath = path.join(dir, filename);
+    const base = path.basename(filename, path.extname(filename));
 
-    // Check exact match
-    if (!await fs.pathExists(filePath)) {
-        // Fuzzy extension check
-        const base = path.basename(filename, path.extname(filename));
-        const siblings = await fs.readdir(dir);
-        const match = siblings.find(f => f.toLowerCase().startsWith(base.toLowerCase() + '.'));
-        if (match) {
-            filePath = path.join(dir, match);
-        } else {
-            return null;
+    // Extensions lists
+    const imgExts = ['.png', '.jpg', '.jpeg', '.bmp', '.gif'];
+    const vidExts = ['.mp4', '.webm', '.avi', '.wmv', '.mpg', '.mpeg', '.m4v'];
+
+    const getFileType = (f) => {
+        const ext = path.extname(f).toLowerCase();
+        if (imgExts.includes(ext)) return 'image';
+        if (vidExts.includes(ext)) return 'video';
+        return 'other';
+    };
+
+    let targetPath = null;
+
+    // 1. Try exact match first
+    let exactPath = path.join(dir, filename);
+    if (await fs.pathExists(exactPath)) {
+        // If we require a specific type, check it
+        const fType = getFileType(filename);
+        if (type === 'any' || type === fType) {
+            targetPath = exactPath;
         }
     }
 
-    try {
-        const buffer = await fs.readFile(filePath);
-        const ext = path.extname(filePath).toLowerCase();
+    // 2. If not found or type mismatch, try fuzzy search
+    if (!targetPath) {
+        try {
+            const siblings = await fs.readdir(dir);
+            // Find valid matches
+            const validMatches = siblings.filter(f => {
+                if (!f.toLowerCase().startsWith(base.toLowerCase() + '.')) return false;
+                const fType = getFileType(f);
+                if (type === 'image' && fType !== 'image') return false;
+                if (type === 'video' && fType !== 'video') return false;
+                // If type is 'any', we accept anything in our lists
+                if (type === 'any' && fType === 'other') return false;
+                return true;
+            });
 
-        // Determine MIME type
-        const mimeTypes = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.bmp': 'image/bmp',
-            '.gif': 'image/gif',
-            '.mp4': 'video/mp4',
-            '.webm': 'video/webm',
-            '.avi': 'video/x-msvideo',
-            '.wmv': 'video/x-ms-wmv',
-            '.mpg': 'video/mpeg',
-            '.mpeg': 'video/mpeg',
-            '.m4v': 'video/mp4'
-        };
-
-        const mime = mimeTypes[ext] || 'application/octet-stream';
-        const base64 = buffer.toString('base64');
-        return `data:${mime};base64,${base64}`;
-    } catch (e) {
-        console.error('Error loading image:', filePath, e);
-        return null;
+            // Prioritize: if we asked for 'any', prefer video, then image? Or just pick first?
+            // Let's pick the first valid one
+            if (validMatches.length > 0) {
+                targetPath = path.join(dir, validMatches[0]);
+            }
+        } catch (e) {
+            console.error('Error reading dir for fuzzy check:', e);
+        }
     }
+
+    if (targetPath) {
+        const fileUrl = url.pathToFileURL(targetPath).href;
+        console.log(`[resolve-image] FOUND (${type}): ${targetPath}`);
+        return fileUrl;
+    }
+
+    console.log(`[resolve-image] NOT FOUND (${type}): ${filename} in ${dir}`);
+    return null;
 });
 
 // 6. Get Library Folders
@@ -369,6 +514,12 @@ ipcMain.handle('add-library-folder', async () => {
     }
 
     return folder;
+});
+
+// 11. Get Stream URL
+ipcMain.handle('get-stream-url', async () => {
+    if (!streamPort) return null;
+    return `http://127.0.0.1:${streamPort}/video`;
 });
 
 // 8. Remove Library Folder
@@ -448,6 +599,16 @@ ipcMain.handle('rescan-all-folders', async () => {
 
             const cleanStr = (s) => s ? s.replace(/\r/g, '').trim() : 'Unknown';
 
+            // Simple note count estimation for metadata
+            const notesMatch = text.matchAll(/#\d{3}(1|2|5|6)[1-9]:(\w+)/g);
+            let noteCount = 0;
+            for (const nm of notesMatch) {
+                const data = nm[2];
+                for (let i = 0; i < data.length; i += 2) {
+                    if (data[i] !== '0' || data[i + 1] !== '0') noteCount++;
+                }
+            }
+
             songs.push({
                 path: file,
                 rootDir: rootDir,
@@ -456,7 +617,8 @@ ipcMain.handle('rescan-all-folders', async () => {
                 artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown',
                 difficulty: diffMatch ? parseInt(diffMatch[1]) : 2,
                 level: levelMatch ? parseInt(levelMatch[1]) : 0,
-                keyMode: keyMode
+                keyMode: keyMode,
+                noteCount: noteCount
             });
         } catch (e) {
             console.error("Error parsing", file, e);

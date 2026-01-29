@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getLibrary: () => ipcRenderer.invoke('get-library'),
     readFile: (path) => ipcRenderer.invoke('read-file', path),
     resolvePath: (base, file) => ipcRenderer.invoke('resolve-path', base, file),
-    resolveImage: (base, file) => ipcRenderer.invoke('resolve-image', base, file),
+    resolveImage: (base, file, type) => ipcRenderer.invoke('resolve-image', base, file, type),
     // Folder management
     getLibraryFolders: () => ipcRenderer.invoke('get-library-folders'),
     addLibraryFolder: () => ipcRenderer.invoke('add-library-folder'),
@@ -19,5 +19,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     closeWindow: () => ipcRenderer.send('window-close'),
     setWindowTitle: (title) => ipcRenderer.send('window-set-title', title),
     setFullscreen: (flag) => ipcRenderer.send('window-set-fullscreen', flag),
-    setResolution: (width, height) => ipcRenderer.send('window-set-resolution', width, height)
+    setResolution: (width, height) => ipcRenderer.send('window-set-resolution', width, height),
+    getWindowSettings: () => ipcRenderer.invoke('get-window-settings'),
+    getStreamUrl: () => ipcRenderer.invoke('get-stream-url'),
+    writeFile: (path, data) => ipcRenderer.invoke('write-file', path, data),
+    getAppPath: (type) => ipcRenderer.invoke('get-app-path', type)
 });

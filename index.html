@@ -22,11 +22,15 @@
             --diff-legg: #f0f;
 
             /* Gauge Colors */
-            --gauge-easy: #00ff00;
+            --gauge-assist: #aa44ff;
+            --gauge-assist-clear: #ffcc00;
+            --gauge-easy: #44ff44;
+            --gauge-easy-clear: #ffcc00;
             --gauge-normal: #00aaff;
-            --gauge-clear: #ff0055;
+            --gauge-normal-clear: #ff0055;
             --gauge-hard: #ff3333;
-            --gauge-exhard: #ffaa00;
+            --gauge-exhard: #ff8800;
+            --gauge-hazard: #ffffff;
         }
 
         body {
@@ -36,12 +40,6 @@
             font-family: 'Segoe UI', sans-serif;
             overflow: hidden;
             user-select: none;
-        }
-
-        #app {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
         }
 
         /* ========== SONG SELECT SCREEN ========== */
@@ -401,6 +399,63 @@
             flex-shrink: 0;
         }
 
+        .song-card-best {
+            display: none; /* Moved to info panel */
+        }
+
+        .song-best-score {
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 3px solid #555;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .best-score-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 900;
+        }
+
+        .best-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .best-lamp-tag {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #000;
+        }
+
+        .best-grade-text {
+            font-size: 28px;
+            font-family: 'Outfit', sans-serif;
+            line-height: 1;
+        }
+
+        .best-score-stats {
+            font-family: 'Consolas', monospace;
+            font-size: 18px;
+            color: var(--accent);
+            font-weight: 700;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .best-rate-text {
+            font-size: 13px;
+            color: #888;
+        }
+
         .song-card-level {
             padding: 2px 8px;
             border-radius: 3px;
@@ -482,18 +537,34 @@
 
 
 
+        .gauge-fill.assist {
+            background: linear-gradient(90deg, var(--gauge-assist), var(--gauge-assist));
+            box-shadow: 0 0 10px var(--gauge-assist);
+        }
+
+        .gauge-fill.assist.cleared {
+            background: linear-gradient(90deg, var(--gauge-assist), var(--gauge-assist-clear));
+            box-shadow: 0 0 10px var(--gauge-assist-clear);
+        }
+
         .gauge-fill.easy {
-            background: var(--gauge-easy);
+            background: linear-gradient(90deg, var(--gauge-easy), var(--gauge-easy));
             box-shadow: 0 0 10px var(--gauge-easy);
         }
 
-        .gauge-fill.normal {
-            background: var(--gauge-normal);
+        .gauge-fill.easy.cleared {
+            background: linear-gradient(90deg, var(--gauge-easy), var(--gauge-easy-clear));
+            box-shadow: 0 0 10px var(--gauge-easy-clear);
         }
 
-        .gauge-fill.cleared {
-            background: var(--gauge-clear);
-            box-shadow: 0 0 10px var(--gauge-clear);
+        .gauge-fill.normal {
+            background: linear-gradient(90deg, var(--gauge-normal), var(--gauge-normal));
+            box-shadow: 0 0 8px var(--gauge-normal);
+        }
+
+        .gauge-fill.normal.cleared {
+            background: linear-gradient(90deg, var(--gauge-normal), var(--gauge-normal-clear));
+            box-shadow: 0 0 10px var(--gauge-normal-clear);
         }
 
         .gauge-fill.hard {
@@ -506,6 +577,11 @@
             box-shadow: 0 0 10px var(--gauge-exhard);
         }
 
+        .gauge-fill.hazard {
+            background: var(--gauge-hazard);
+            box-shadow: 0 0 15px var(--gauge-hazard);
+        }
+
         .gauge-marker {
             position: absolute;
             left: 80%;
@@ -516,14 +592,61 @@
             z-index: 2;
         }
 
+        .gauge-info-under {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2px;
+        }
+
+        .gauge-grade {
+            font-size: 28px;
+            font-weight: 900;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+            line-height: 1;
+        }
+
         .gauge-val {
+            position: relative;
+            font-family: 'Consolas', monospace;
+            font-weight: 900;
+            color: #fff;
+            display: flex;
+            align-items: baseline;
+            line-height: 1;
+        }
+
+        .gauge-val .whole {
+            font-size: 28px;
+        }
+
+        .gauge-val .decimal {
+            font-size: 16px;
+            color: #888;
+        }
+
+        /* SONG PROGRESS BAR */
+        .song-progress-bar {
             position: absolute;
-            right: -50px;
-            top: -5px;
-            font-family: monospace;
-            font-weight: bold;
-            color: white;
-            font-size: 20px;
+            left: 10px;
+            top: 10%;
+            bottom: 10%;
+            width: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            z-index: 100;
+        }
+
+        .song-progress-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, var(--accent), #00aaff);
+            border-radius: 3px;
+            transition: height 0.1s linear;
+            box-shadow: 0 0 8px var(--accent);
         }
 
         /* JUDGEMENT DISPLAY */
@@ -659,13 +782,17 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.9);
             z-index: 200;
-            display: none;
+            display: flex; /* Always flex, control visibility */
             justify-content: center;
             align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
         }
 
         .modal.open {
-            display: flex;
+            opacity: 1;
+            visibility: visible;
         }
 
         .modal-box {
@@ -675,7 +802,7 @@
             max-width: 700px;
             width: 90%;
             border-radius: 12px;
-            max-height: 80vh;
+            max-height: 80%;
             overflow-y: auto;
         }
 
@@ -850,6 +977,12 @@
             box-sizing: border-box;
             color: #eee;
             flex-direction: column;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #screen-results.fade-out {
+            opacity: 0;
         }
 
         .results-header {
@@ -1140,15 +1273,20 @@
             fill: currentColor;
         }
 
-        /* Adjust app content to account for titlebar */
         #app {
-            padding-top: 32px;
-            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1600px;
+            height: 900px;
+            transform-origin: top left;
+            overflow: hidden;
+            background: var(--bg);
         }
 
         #screen-game {
-            top: 32px;
-            height: calc(100% - 32px);
+            top: 0;
+            height: 100%;
         }
 
         /* LIBRARY FOLDERS MODAL */
@@ -1513,6 +1651,10 @@
             transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
+        .iidx-target-wheel-strip.no-transition {
+            transition: none !important;
+        }
+
         .iidx-target-item {
             height: 40px;
             display: flex;
@@ -1658,34 +1800,65 @@
         }
 
         .hud-score {
-            position: absolute;
-            bottom: 10px;
-            left: 370px;
-            /* Align with new Tally position (370) */
-            width: 130px;
-            /* Match Tally Width */
-            text-align: right;
-            padding: 5px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            z-index: 10;
-            box-sizing: border-box;
+            display: none; /* Removed in favor of hud-bottom-left */
         }
 
-        .hud-score .label {
-            font-size: 9px;
+        .hud-bottom-left {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-score-row {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .score-label {
+            font-size: 10px;
             color: #888;
             font-weight: 800;
             text-transform: uppercase;
         }
 
         .score-val {
-            font-size: 24px !important;
+            font-size: 28px !important;
             color: #fff;
             font-weight: 900 !important;
             text-shadow: 0 0 10px var(--accent-dim);
             font-family: 'Consolas', monospace;
+            line-height: 1;
+        }
+
+        .hud-stat-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: #666;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-family: 'Consolas', monospace;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .stat-value.small {
+            font-size: 14px;
         }
 
         .hud-tally {
@@ -1726,23 +1899,36 @@
             font-size: 11px;
         }
 
-        .hud-gauge-container {
+        .hud-gauge-group {
             position: absolute;
-            bottom: 25px;
+            bottom: 120px;
             left: 30px;
             width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+        }
+
+        .hud-gauge-container {
+            position: relative;
+            width: 100%;
             height: 14px;
-            /* Sltly thinner */
             background: rgba(0, 0, 0, 0.8);
             border: 1px solid #333;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             box-sizing: border-box;
-            /* Critical for alignment */
+            overflow: hidden;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent calc(2% - 1px), rgba(255, 255, 255, 0.1) calc(2% - 1px), rgba(255, 255, 255, 0.1) 2%);
         }
 
         .gauge-fill {
             height: 100%;
             transition: width 0.1s linear, background 0.1s;
+        }
+
+        .gauge-fill.no-transition {
+            transition: none;
         }
 
         .hud-combo {
@@ -1812,10 +1998,10 @@
         /* ========== DECIDE SCREEN ========== */
         #screen-decide {
             position: fixed;
-            top: 32px;
+            top: 0;
             left: 0;
             width: 100%;
-            height: calc(100% - 32px);
+            height: 100%;
             background: #000;
             display: none;
             z-index: 500;
@@ -2146,6 +2332,18 @@
                                         id="stat-rank">--</span></div>
                             </div>
 
+                            <div class="song-best-score" id="song-best-score" style="display:none;">
+                                <div class="best-score-row">
+                                    <span class="best-label">BEST PLAY</span>
+                                    <span class="best-lamp-tag" id="best-lamp">-</span>
+                                    <span class="best-grade-text" id="best-grade">-</span>
+                                </div>
+                                <div class="best-score-stats">
+                                    <span id="best-ex-score">0</span>
+                                    <span class="best-rate-text">(<span id="best-rate">0.00%</span>)</span>
+                                </div>
+                            </div>
+
                             <div class="song-markers" id="song-markers"></div>
 
                             <div class="start-btn-area">
@@ -2187,29 +2385,39 @@
             <div class="lane-cover-top" id="lane-cover-top" style="height:0;"></div>
             <div class="lane-cover-bottom" id="lane-cover-bottom" style="height:0;"></div>
             <canvas id="game-canvas"></canvas>
+            <!-- Progress Bar -->
+            <div id="song-progress-bar" class="song-progress-bar">
+                <div id="song-progress-fill" class="song-progress-fill"></div>
+            </div>
             <div id="hud-ready">READY</div>
             <div class="hud">
-                <div class="hud-score">
-                    <div style="font-size:12px; color:#888;">EX SCORE</div>
-                    <div class="score-val" id="hud-score">0</div>
+                <div class="hud-bottom-left">
+                    <div class="hud-score-row">
+                        <div class="score-label">EX SCORE</div>
+                        <div class="score-val" id="hud-score">0</div>
+                    </div>
+                    <div class="hud-stat-row">
+                        <span class="stat-label">MAX COMBO</span>
+                        <span class="stat-value small" id="hud-max-combo">0</span>
+                        <span class="stat-label" style="margin-left: 10px;">RATE</span>
+                        <span class="stat-value" id="hud-rate">0.00%</span>
+                    </div>
                 </div>
 
-                <div class="hud-combo" id="hud-combo-box">
-                    <div class="combo-num" id="hud-combo">0</div>
-                    <div class="combo-text">COMBO</div>
-                </div>
-
-                <div class="hud-judge" id="hud-judge-box">
-                    <div class="judge-text" id="judge-text">PGREAT</div>
-                    <div class="judge-diff" id="judge-diff">+0.00ms</div>
-                </div>
 
                 <div id="hud-autoplay" class="hud-autoplay">AUTOPLAY</div>
 
-                <div class="hud-gauge-container">
-                    <div class="gauge-marker"></div>
-                    <div class="gauge-fill" id="gauge-bar"></div>
-                    <div class="gauge-val" id="gauge-val">20%</div>
+                <div class="hud-gauge-group">
+                    <div class="hud-gauge-container">
+                        <div class="gauge-marker"></div>
+                        <div class="gauge-fill" id="gauge-bar"></div>
+                    </div>
+                    <div class="gauge-info-under">
+                        <div class="gauge-grade" id="gauge-grade">F</div>
+                        <div class="gauge-val" id="gauge-val">
+                            <span class="whole">20</span><span class="decimal">.0%</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="hud-tally" id="hud-tally">
@@ -2490,6 +2698,7 @@
                             <div data-val="EASY">EASY</div>
                             <div data-val="HARD">HARD</div>
                             <div data-val="EXHARD">EX-HARD</div>
+                            <div data-val="HAZARD">HAZARD</div>
                             <div data-val="ASSIST">ASSIST EASY</div>
                         </div>
                     </div>
@@ -2683,6 +2892,18 @@
                 const replays = JSON.parse(data);
                 replays[fileRef] = replayData;
                 localStorage.setItem('replays', JSON.stringify(replays));
+
+                // Desktop: Save .rep file
+                if (IS_DESKTOP && window.electronAPI && window.electronAPI.writeFile) {
+                    (async () => {
+                        const userData = await window.electronAPI.getAppPath('userData');
+                        const safeName = fileRef.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                        const repPath = `${userData}/replays/${safeName}.rep`;
+                        await window.electronAPI.writeFile(repPath, JSON.stringify(replayData));
+                        console.log("Replay saved to file:", repPath);
+                    })();
+                }
+
                 console.log("Replay saved!", replayData);
             }
         }
@@ -2775,13 +2996,46 @@
             BGM: 0x01
         };
 
+        // Sprite Constants for judgement.png (1231x1488)
+        // GREAT rows 0-6: labels at x=0, digits at x=272
+        // Non-GREAT rows start at y=992
+        const J_ROW_H = 124;        // Row height
+        const J_WORD_W = 264;       // Label width
+        const J_DIGIT_START = 272;  // X where digits start
+        const J_DIGIT_W = 96;       // Digit width
+        const J_DIGIT_H = 124;      // Digit height
+
+        const JUDGE_SPRITES = {
+            PGREAT: Array.from({ length: 6 }, (_, i) => ({
+                label: { x: 0, y: i * J_ROW_H, w: J_WORD_W, h: J_ROW_H },
+                digits: Array.from({ length: 10 }, (_, d) => ({ x: J_DIGIT_START + d * J_DIGIT_W, y: i * J_ROW_H, w: J_DIGIT_W, h: J_DIGIT_H }))
+            })),
+            GREAT: {
+                label: { x: 0, y: 6 * J_ROW_H, w: J_WORD_W, h: J_ROW_H },
+                digits: Array.from({ length: 10 }, (_, d) => ({ x: J_DIGIT_START + d * J_DIGIT_W, y: 6 * J_ROW_H, w: J_DIGIT_W, h: J_DIGIT_H }))
+            },
+            GOOD: { x: 0, y: 992, w: J_WORD_W, h: J_ROW_H },
+            BAD:  { x: 0, y: 1116, w: J_WORD_W, h: J_ROW_H },
+            POOR: { x: 0, y: 1240, w: J_WORD_W, h: J_ROW_H },
+            FAIL: { x: 0, y: 1364, w: J_WORD_W, h: J_ROW_H }
+        };
+
         const PACEMAKER_TARGETS = ['OFF', 'AAA', 'AA', 'A', 'NEXT', 'MY BEST'];
 
         function rotatePacemakerTarget(delta) {
-            let idx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
-            if (idx === -1) idx = 0;
-            idx = (idx + delta + PACEMAKER_TARGETS.length) % PACEMAKER_TARGETS.length;
+            const setSize = PACEMAKER_TARGETS.length;
+            // Ensure visual index is initialized
+            if (typeof STATE.pacemakerVisualIndex === 'undefined') {
+                const currentLogicIdx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
+                STATE.pacemakerVisualIndex = (setSize * 2) + Math.max(0, currentLogicIdx);
+            }
+
+            STATE.pacemakerVisualIndex += delta;
+            
+            // Logic index
+            let idx = ((STATE.pacemakerVisualIndex % setSize) + setSize) % setSize;
             STATE.pacemakerTarget = PACEMAKER_TARGETS[idx];
+            
             updateOptionsUI();
         }
 
@@ -2924,29 +3178,21 @@
         function applyWindowSettings(skipIPC = false) {
             if (!IS_DESKTOP) return;
 
-            // Hide/Show Titlebar
-            const titlebar = document.getElementById('titlebar');
-            const app = document.getElementById('app');
-            const gameScreen = document.getElementById('screen-game');
-            const decideScreen = document.getElementById('screen-decide');
-
+            // Only handle titlebar toggle and IPC here.
+            // Internal layout of #app (padding, top, etc) should NOT be touched
+            // as it breaks the 1920x1080 scaling assumption.
             if (STATE.fullscreen) {
-                if (titlebar) titlebar.style.display = 'none';
-                if (app) app.style.paddingTop = '0';
-                if (gameScreen) { gameScreen.style.top = '0'; gameScreen.style.height = '100%'; }
-                if (decideScreen) { decideScreen.style.top = '0'; decideScreen.style.height = '100%'; }
+                if (ui.titlebar) ui.titlebar.style.display = 'none';
                 if (!skipIPC) window.electronAPI.setFullscreen(true);
             } else {
-                if (titlebar) titlebar.style.display = 'flex';
-                if (app) app.style.paddingTop = '32px';
-                if (gameScreen) { gameScreen.style.top = '32px'; gameScreen.style.height = 'calc(100% - 32px)'; }
-                if (decideScreen) { decideScreen.style.top = '32px'; decideScreen.style.height = 'calc(100% - 32px)'; }
-
+                if (ui.titlebar) ui.titlebar.style.display = 'flex';
                 if (!skipIPC) {
                     const [w, h] = STATE.resolution.split('x').map(Number);
                     window.electronAPI.setResolution(w, h);
                 }
             }
+            // Always update scaling after settings change
+            updateScaling();
         }
 
         function renderConfig() {
@@ -3005,6 +3251,7 @@
             startHoldTimer: null,
             isOptionsOpen: false,
             isOptionsPersistent: false,
+            optionsChangedFilter: false,
 
             // Game State
             isPlaying: false,
@@ -3028,8 +3275,9 @@
             stagefileUrl: null,
             bannerUrl: null,
 
-            // Input
             activeActions: new Set(),
+            judgement: { type: null, time: 0, combo: 0, isEmpty: false },
+            judgementImage: null,
 
             // History for Results
             history: {
@@ -3131,13 +3379,11 @@
 
             // Game HUD
             score: document.getElementById('hud-score'),
-            combo: document.getElementById('hud-combo'),
-            comboBox: document.getElementById('hud-combo-box'),
+            maxCombo: document.getElementById('hud-max-combo'),
+            rate: document.getElementById('hud-rate'),
             gaugeBar: document.getElementById('gauge-bar'),
             gaugeVal: document.getElementById('gauge-val'),
-            judgeBox: document.getElementById('hud-judge-box'),
-            judgeText: document.getElementById('judge-text'),
-            judgeDiff: document.getElementById('judge-diff'),
+            gaugeGrade: document.getElementById('gauge-grade'),
             tally: document.getElementById('hud-tally'),
             tallyPg: document.getElementById('tally-pg'),
             tallyGr: document.getElementById('tally-gr'),
@@ -3179,7 +3425,14 @@
             // Loading Screen
             screenLoading: document.getElementById('screen-loading'),
             loadingBar: document.getElementById('loading-bar'),
-            loadingStatus: document.getElementById('loading-status')
+            loadingStatus: document.getElementById('loading-status'),
+
+            // Global
+            titlebar: document.getElementById('titlebar'),
+
+            // Progress Bar
+            progressBar: document.getElementById('song-progress-bar'),
+            progressFill: document.getElementById('song-progress-fill')
         };
 
         // --- INITIALIZATION ---
@@ -3289,12 +3542,15 @@
             setTimeout(drawWiringLines, 50); // Delay to allow layout to render
         };
         document.getElementById('btn-save-options').onclick = () => {
+            const savedIndex = STATE.selectedIndex; // Preserve selection
             playSystemSound('o-close');
             ui.modalOptions.classList.remove('open');
             STATE.isOptionsOpen = false;
             STATE.isOptionsPersistent = false;
             savePlayerOptions();
             renderSongList(); // Refresh in case key mode filter changed
+            STATE.selectedIndex = Math.min(savedIndex, STATE.currentList.length - 1); // Restore selection
+            updateSelection();
         };
 
         // Filter button handlers
@@ -3463,6 +3719,7 @@
             if (STATE.loadedSong) {
                 STATE.isStarting = true;
                 STATE.autoplay = isAutoplay;
+                STATE.isDecideActive = true;
 
                 // Stop select loop
                 if (STATE.selectBgmSource) {
@@ -3483,24 +3740,63 @@
                 ui.screenDecide.style.display = 'flex';
                 ui.screenDecide.classList.remove('fade-out');
 
-                // Transition logic
-                // 1. Wait 1.5s (Decide screen animations)
-                // 2. Start fade out
-                // 3. Simultaneously call enterGame() which will handle loading resources
-                // 4. Hide Decide screen after fade
-
-                setTimeout(() => {
+                // Decide screen skip handler
+                const skipDecide = () => {
+                    if (!STATE.isDecideActive) return;
+                    clearTimeout(STATE.decideTimeout);
+                    STATE.isDecideActive = false;
                     ui.screenDecide.classList.add('fade-out');
-
-                    // Call enterGame exactly as we start fading
-                    // Gameplay screen will show up behind the fading black
                     enterGame();
-
                     setTimeout(() => {
                         ui.screenDecide.style.display = 'none';
-                        // Reset starting flag after game loop begins
                         setTimeout(() => { STATE.isStarting = false; }, 100);
-                    }, 500); // Wait for CSS opacity transition (0.5s)
+                    }, 500);
+                    window.removeEventListener('keydown', decideKeyHandler);
+                };
+
+                // Cancel decide and return to select
+                const cancelDecide = () => {
+                    if (!STATE.isDecideActive) return;
+                    clearTimeout(STATE.decideTimeout);
+                    STATE.isDecideActive = false;
+                    STATE.isStarting = false;
+                    ui.screenDecide.classList.add('fade-out');
+                    setTimeout(() => {
+                        ui.screenDecide.style.display = 'none';
+                        // Restart select BGM
+                        if (!STATE.selectBgmSource) {
+                            STATE.selectBgmSource = playSystemSound('select', true);
+                        }
+                        updateWindowTitle(null);
+                    }, 500);
+                    window.removeEventListener('keydown', decideKeyHandler);
+                };
+
+                const decideKeyHandler = (e) => {
+                    if (!STATE.isDecideActive) return;
+                    if (e.code === 'Escape') {
+                        cancelDecide();
+                    } else {
+                        skipDecide();
+                    }
+                };
+
+                // Add listener for skip/cancel
+                setTimeout(() => {
+                    window.addEventListener('keydown', decideKeyHandler);
+                }, 100); // Small delay to avoid catching the triggering key
+
+                // Normal timeout transition
+                STATE.decideTimeout = setTimeout(() => {
+                    if (!STATE.isDecideActive) return;
+                    STATE.isDecideActive = false;
+                    ui.screenDecide.classList.add('fade-out');
+                    enterGame();
+                    setTimeout(() => {
+                        ui.screenDecide.style.display = 'none';
+                        setTimeout(() => { STATE.isStarting = false; }, 100);
+                    }, 500);
+                    window.removeEventListener('keydown', decideKeyHandler);
                 }, 1500);
             }
         }
@@ -3604,11 +3900,7 @@
             }
             // 2. CLASS (Courses) View
             else if (STATE.currentFolder === 'CLASS') {
-                const backDiv = document.createElement('div');
-                backDiv.className = 'song-card folder';
-                backDiv.innerHTML = `<div class="song-card-lamp"></div><div class="song-card-content"><div class="song-card-title">.. [BACK]</div><div class="song-card-artist">RETURN TO LIBRARY</div></div>`;
-                backDiv.onclick = () => { STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList(); };
-                addToList('back', null, backDiv);
+                // Back navigation is now via Escape key only - no '..' folder shown
 
                 STATE.courses.forEach(course => {
                     const div = document.createElement('div');
@@ -3625,11 +3917,7 @@
             }
             // 3. Category (Songs) View
             else {
-                const backDiv = document.createElement('div');
-                backDiv.className = 'song-card folder';
-                backDiv.innerHTML = `<div class="song-card-lamp"></div><div class="song-card-content"><div class="song-card-title">.. [BACK]</div><div class="song-card-artist">RETURN TO LIBRARY</div></div>`;
-                backDiv.onclick = () => { STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList(); };
-                addToList('back', null, backDiv);
+                // Back navigation is now via Escape key only - no '..' folder shown
 
                 const diffTierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
                 const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter) + 1;
@@ -3660,7 +3948,18 @@
                     const diffColor = c.difficulty > 0 && c.difficulty <= 5 ? diffColors[c.difficulty - 1] : '#888';
                     const div = document.createElement('div');
                     div.className = 'song-card';
-                    div.innerHTML = `<div class="song-card-lamp ${lamp.class}"></div><div class="song-card-content"><div class="song-card-title">${c.title}</div><div class="song-card-artist">${c.artist}</div></div><div class="song-card-info"><span class="song-card-level" style="background:${diffColor}; color:#000;">${c.level || '?'}</span><span class="song-card-keymode">${c.keyMode || '7'}K</span></div>`;
+
+                    div.innerHTML = `
+                        <div class="song-card-lamp ${lamp.class}"></div>
+                        <div class="song-card-content">
+                            <div class="song-card-title">${c.title}</div>
+                            <div class="song-card-artist">${c.artist}</div>
+                        </div>
+                        <div class="song-card-info">
+                            <span class="song-card-level" style="background:${diffColor}; color:#000;">${c.level || '?'}</span>
+                            <span class="song-card-keymode">${c.keyMode || '7'}K</span>
+                        </div>
+                    `;
                     div.onclick = () => loadChart(STATE.charts.indexOf(c), div, true);
                     addToList('chart', c, div);
                 });
@@ -3690,8 +3989,34 @@
 
         async function updateInfoCard(item) {
             if (item.type === 'chart') {
-                loadChart(STATE.charts.indexOf(item.data), item.el, true); // true = focus only
+                const chart = item.data;
+                loadChart(STATE.charts.indexOf(chart), item.el, true); // true = focus only
                 ui.bannerArea.innerHTML = '<span class="banner-placeholder">Category selected</span>';
+
+                // Display Best Score
+                const bestReplay = getReplay(chart.fileRef);
+                const lamp = getLamp(chart.fileRef);
+                const bestArea = document.getElementById('song-best-score');
+                
+                if (bestArea) {
+                    if (bestReplay && bestReplay.score > 0) {
+                        bestArea.style.display = 'flex';
+                        const lampEl = document.getElementById('best-lamp');
+                        lampEl.textContent = lamp.name;
+                        lampEl.className = 'best-lamp-tag lamp ' + lamp.class;
+                        
+                        const totalNotes = chart.noteCount || 100;
+                        const rate = (bestReplay.score / Math.max(1, totalNotes * 2)) * 100;
+                        const grade = calculateRank(rate);
+                        
+                        document.getElementById('best-grade').textContent = grade;
+                        document.getElementById('best-grade').style.color = getRankColor(grade);
+                        document.getElementById('best-ex-score').textContent = bestReplay.score;
+                        document.getElementById('best-rate').textContent = rate.toFixed(2) + '%';
+                    } else {
+                        bestArea.style.display = 'none';
+                    }
+                }
             } else if (item.type === 'course') {
                 ui.titleMain.textContent = item.data.title;
                 ui.subtitle.textContent = 'COURSE';
@@ -3754,44 +4079,44 @@
         function updateOptionsUI() {
             if (!STATE.isOptionsOpen) return;
 
-            // Mode
-            document.querySelectorAll('#list-mode div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.keyModeFilter);
-            });
-            // Style
-            document.querySelectorAll('#list-modifier div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.modifier);
-            });
-            // Gauge
-            document.querySelectorAll('#list-gauge div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.gaugeType);
-            });
-            // Assist
-            document.querySelectorAll('#list-assist div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.assistMode);
-            });
-            // Range
-            document.querySelectorAll('#list-range div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.rangeMode);
-            });
-            // HS Fix
-            document.querySelectorAll('#list-hsfix div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.hiSpeedFix);
-            });
-            // Values
             const hsValEl = document.getElementById('opt-hispeed-val');
             if (hsValEl) hsValEl.textContent = STATE.speed.toFixed(1);
             const hsFixEl = document.getElementById('opt-hsfix-val');
             if (hsFixEl) hsFixEl.textContent = `FIX: ${STATE.hiSpeedFix}`;
 
-            // Target Wheel (Seamless)
+            // Sync other UI elements...
+            document.querySelectorAll('#list-mode div').forEach(div => {
+                div.classList.toggle('selected', div.dataset.val === STATE.keyModeFilter);
+            });
+            document.querySelectorAll('#list-modifier div').forEach(div => {
+                div.classList.toggle('selected', div.dataset.val === STATE.modifier);
+            });
+            document.querySelectorAll('#list-gauge div').forEach(div => {
+                div.classList.toggle('selected', div.dataset.val === STATE.gaugeType);
+            });
+            document.querySelectorAll('#list-assist div').forEach(div => {
+                div.classList.toggle('selected', div.dataset.val === STATE.assistMode);
+            });
+            document.querySelectorAll('#list-range div').forEach(div => {
+                div.classList.toggle('selected', div.dataset.val === STATE.rangeMode);
+            });
+            document.querySelectorAll('#list-hsfix div').forEach(div => {
+                div.classList.toggle('selected', div.dataset.val === STATE.hiSpeedFix);
+            });
+
+            // Target Wheel (Seamless with Snapping)
             if (ui.targetWheel) {
-                // Render 5 sets of targets to ensure seamlessness in both directions
                 const totalSets = 5;
                 const setSize = PACEMAKER_TARGETS.length;
-                const currentIdx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
+                const itemHeight = 40;
+                const centerOffset = 80;
 
-                // Only re-populate if needed (optimization) or just do it once
+                // 1. Initialize logic/DOM if needed
+                if (typeof STATE.pacemakerVisualIndex === 'undefined') {
+                    const currentLogicIdx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
+                    STATE.pacemakerVisualIndex = (setSize * 2) + Math.max(0, currentLogicIdx);
+                }
+
                 if (ui.targetWheel.children.length !== setSize * totalSets) {
                     ui.targetWheel.innerHTML = '';
                     for (let s = 0; s < totalSets; s++) {
@@ -3802,22 +4127,49 @@
                             ui.targetWheel.appendChild(item);
                         });
                     }
+                    // Disable transition for initialization
+                    ui.targetWheel.classList.add('no-transition');
+                    const targetPos = STATE.pacemakerVisualIndex * itemHeight;
+                    ui.targetWheel.style.transform = `translateY(${centerOffset - targetPos}px)`;
+                    ui.targetWheel.offsetHeight; // force reflow
+                    ui.targetWheel.classList.remove('no-transition');
                 }
 
-                // Calculate position: we want the current target to be in the middle of the viewport
-                // Viewport height is 200px, Item height is 40px. Center is at 100px.
-                // Middle item should be at y=80 relative to viewport top (center of 40px item at 100px)
-                // However, we can just use the middle set (set 2, index 2) as reference.
-                const centerOffset = 80;
-                const itemHeight = 40;
-                const targetPos = (setSize * 2 + currentIdx) * itemHeight;
+                // 2. Snapping Logic: Only snap if we drift to the extreme sets (0 or 4)
+                // We want to allow smooth scrolling into Set 1 or Set 3.
+                if (STATE.pacemakerVisualIndex < setSize || STATE.pacemakerVisualIndex >= setSize * 4) {
+                    ui.targetWheel.classList.add('no-transition');
+                    
+                    // Equivalent position in Set 2
+                    const modIdx = ((STATE.pacemakerVisualIndex % setSize) + setSize) % setSize;
+                    STATE.pacemakerVisualIndex = (setSize * 2) + modIdx;
+                    
+                    const snapPos = STATE.pacemakerVisualIndex * itemHeight;
+                    ui.targetWheel.style.transform = `translateY(${centerOffset - snapPos}px)`;
+                    ui.targetWheel.offsetHeight; // force reflow
+                    ui.targetWheel.classList.remove('no-transition');
+                }
 
+                // 3. Final Position Update (with transition if it was a user click)
+                const targetPos = STATE.pacemakerVisualIndex * itemHeight;
                 ui.targetWheel.style.transform = `translateY(${centerOffset - targetPos}px)`;
 
-                // Update selected class
+                // 4. Update highlights
                 Array.from(ui.targetWheel.children).forEach((child, i) => {
-                    child.classList.toggle('selected', (i % setSize) === currentIdx);
+                    child.classList.toggle('selected', i === STATE.pacemakerVisualIndex);
                 });
+            }
+        }
+
+        function closeOptions() {
+            if (!STATE.isOptionsOpen) return;
+            playSystemSound('o-close');
+            ui.modalOptions.classList.remove('open');
+            STATE.isOptionsOpen = false;
+
+            if (STATE.optionsChangedFilter) {
+                renderSongList();
+                STATE.optionsChangedFilter = false;
             }
         }
 
@@ -4026,7 +4378,11 @@
                         // BGA Task
                         if (IS_DESKTOP) {
                             return window.electronAPI.resolveImage(STATE.currentFileRef, task.filename).then(url => {
-                                if (url) STATE.bgaDefinitions[task.id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg|m4v)$/i.test(task.filename) };
+                                if (url) STATE.bgaDefinitions[task.id] = { 
+                                    url, 
+                                    isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg|m4v)$/i.test(task.filename),
+                                    filename: task.filename 
+                                };
                             }).catch(e => console.warn(`BGA ${task.id} error:`, e.message));
                         } else {
                             const filename = task.filename.toLowerCase();
@@ -4264,13 +4620,24 @@
             STATE.gaugeTick = rawTick;
 
             // GAUGE INIT
-            ui.gaugeBar.className = 'gauge-fill';
-            if (STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') {
+            ui.gaugeBar.className = 'gauge-fill no-transition'; // Disable transitions during gameplay
+            
+            // Set gauge clear marker position (80% for normal+, 60% for easy/assist)
+            const clearMarker = document.querySelector('.hud-gauge-container .gauge-marker');
+            if (clearMarker) {
+                const threshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
+                clearMarker.style.left = `${threshold}%`;
+                // Hide marker for survival gauges
+                clearMarker.style.display = (STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD' || STATE.gaugeType === 'HAZARD') ? 'none' : 'block';
+            }
+
+            if (STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD' || STATE.gaugeType === 'HAZARD') {
                 STATE.gauge = 100;
                 ui.gaugeBar.classList.add(STATE.gaugeType.toLowerCase());
             } else {
                 STATE.gauge = 20;
-                if (STATE.gaugeType === 'EASY' || STATE.gaugeType === 'ASSIST') ui.gaugeBar.classList.add('easy');
+                if (STATE.gaugeType === 'ASSIST') ui.gaugeBar.classList.add('assist');
+                else if (STATE.gaugeType === 'EASY') ui.gaugeBar.classList.add('easy');
                 else ui.gaugeBar.classList.add('normal');
             }
             updateGaugeDisplay();
@@ -4289,6 +4656,9 @@
             document.getElementById('screen-select').style.display = 'flex';
             document.getElementById('screen-game').style.display = 'none';
 
+            // Re-enable gauge transitions
+            ui.gaugeBar.classList.remove('no-transition');
+
             // Restart select loop
             if (!STATE.selectBgmSource) {
                 STATE.selectBgmSource = playSystemSound('select', true);
@@ -4301,6 +4671,21 @@
 
             // Reset Window Title
             updateWindowTitle(null);
+        }
+
+        // BATCHED HUD UPDATES - Defers DOM updates to next animation frame
+        let hudDirty = false;
+        function markHudDirty() {
+            if (!hudDirty) {
+                hudDirty = true;
+                requestAnimationFrame(flushHud);
+            }
+        }
+        function flushHud() {
+            hudDirty = false;
+            updateTallyDisplay();
+            updateGaugeDisplay();
+            updateHud();
         }
 
         function updateTallyDisplay() {
@@ -4335,26 +4720,61 @@
             return null;
         }
 
-        function updateBGA(id) {
-            console.log("updateBGA called with ID:", id);
+        async function updateBGA(id) {
             const def = STATE.bgaDefinitions[id];
-            if (!def) {
-                console.warn("BGA Definition not found for ID:", id, "Available:", Object.keys(STATE.bgaDefinitions));
-                return;
-            }
+            if (!def) return;
 
-            if (def.isVideo) {
-                console.log("Displaying Video BGA:", def.url.substring(0, 50) + "...");
+            if (def.isVideo && !STATE.bgaDefinitions[id].useStream && /\.(mp4|webm)$/i.test(def.url)) {
+                // Modern formats: Use native video element (better performance if supported)
+                // BUT: if we want to guarantee everything works, we could force stream.
+                // For now, let's keep MP4 native as an optimization, others use stream.
                 ui.bgaImg.style.display = 'none';
                 ui.bgaVideo.src = def.url;
                 ui.bgaVideo.style.display = 'block';
-                ui.bgaVideo.play().catch(e => console.warn("BGA Video play error:", e));
+                ui.bgaVideo.play().catch(() => {});
             } else {
-                console.log("Displaying Image BGA:", def.url.substring(0, 50) + "...");
-                ui.bgaVideo.pause();
-                ui.bgaVideo.style.display = 'none';
-                ui.bgaImg.src = def.url;
-                ui.bgaImg.style.display = 'block';
+                // Legacy formats (AVI, MPG) or forced stream or Image
+                // If it's a video file but we determined it needs streaming (or it's legacy extension)
+                if (/\.(avi|mpg|mpeg|wmv|m4v)$/i.test(def.filename) || def.isVideo) {
+                    // Use Image Element with MJPEG Stream
+                    console.log("Streaming BGA via FFmpeg:", def.filename);
+                    if (!STATE.streamBaseUrl) {
+                        STATE.streamBaseUrl = await window.electronAPI.getStreamUrl();
+                    }
+                    
+                    if (STATE.streamBaseUrl) {
+                        // Construct Stream URL
+                        // Extract path from file:// URL if present, or use raw path?
+                        // resolve-image returned file:// URL. We need valid OS path for ffmpeg.
+                        // We can't easily reverse file:// to path in browser securely without helper.
+                        // BUT: We stored 'url' which is file://...
+                        // We also have def.filename, but that's relative.
+                        // We need the absolute path.
+                        // Let's rely on resolve-image returning the path in a new field?
+                        // OR: Just parse the file:// URL.
+                        
+                        let videoPath = def.url.replace('file://', '');
+                        // On Windows, /C:/... -> C:/...
+                        if (videoPath.startsWith('/') && videoPath[2] === ':') videoPath = videoPath.substring(1);
+                        // Decode URI chars
+                        videoPath = decodeURIComponent(videoPath);
+                        
+                        const streamUrl = `${STATE.streamBaseUrl}?path=${encodeURIComponent(videoPath)}`;
+                        
+                        ui.bgaVideo.pause();
+                        ui.bgaVideo.style.display = 'none';
+                        ui.bgaImg.src = streamUrl;
+                        ui.bgaImg.style.display = 'block';
+                    } else {
+                         console.warn("Stream server not ready");
+                    }
+                } else {
+                    // Standard Image
+                    ui.bgaVideo.pause();
+                    ui.bgaVideo.style.display = 'none';
+                    ui.bgaImg.src = def.url;
+                    ui.bgaImg.style.display = 'block';
+                }
             }
         }
 
@@ -4393,6 +4813,12 @@
         function loop() {
             if (!STATE.isPlaying) return;
             const now = (audioCtx.currentTime - STATE.startTime) * 1000;
+
+            // Update progress bar
+            if (STATE.lastNoteTime > 0 && ui.progressFill) {
+                const progress = Math.min(100, Math.max(0, (now / STATE.lastNoteTime) * 100));
+                ui.progressFill.style.height = `${progress}%`;
+            }
 
             const bgm = STATE.loadedSong.bgm;
             while (STATE.bgmCursor < bgm.length && bgm[STATE.bgmCursor].time <= now) {
@@ -4672,6 +5098,9 @@
             noteBatches.scratch.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
 
             ctx.restore();
+
+            // Draw Judgement
+            drawJudgement(time);
         }
 
         // ----------------------------------------------------------------------------
@@ -4707,7 +5136,7 @@
                 else if (result === 'BAD') STATE.judgeCounts.bad++;
                 else if (result === 'POOR') STATE.judgeCounts.poor++;
 
-                updateTallyDisplay();
+                // Mark HUD dirty (batched update)
             }
 
             // Gauge Logic
@@ -4762,8 +5191,16 @@
                 STATE.gauge = STATE.gauge + recover - damage;
             }
 
-            // Fail Check for Hard/ExHard
+            // Fail Check for Hard/ExHard/Hazard
             if ((STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') && STATE.gauge <= 0) {
+                STATE.gauge = 0;
+                playSystemSound('playstop');
+                showResults(false);
+                return;
+            }
+
+            // Hazard mode: combo break fails (except empty POORs)
+            if (STATE.gaugeType === 'HAZARD' && !isEmptyPoor && (result === 'BAD' || result === 'POOR')) {
                 STATE.gauge = 0;
                 playSystemSound('playstop');
                 showResults(false);
@@ -4772,41 +5209,161 @@
 
             // Clamp
             if (STATE.gauge > 100) STATE.gauge = 100;
-            if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gauge < 2) STATE.gauge = 2;
+            if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD' && STATE.gauge < 2) STATE.gauge = 2;
 
-            updateGaugeDisplay();
-            updateHud();
+            // BATCHED: Mark HUD dirty instead of updating immediately
+            markHudDirty();
 
-            showJudge(result, diffMs);
+            showJudge(result, diffMs, isEmptyPoor);
+        }
+
+        function showJudge(text, diff, isEmpty = false) {
+            STATE.judgement = {
+                type: text,
+                time: performance.now(),
+                combo: STATE.combo,
+                isEmpty: isEmpty,
+                diff: diff
+            };
+        }
+
+        function drawJudgement(now) {
+            if (!STATE.judgement.type || !STATE.judgementImage) return;
+
+            const elapsed = performance.now() - STATE.judgement.time;
+            if (elapsed > 1000) {
+                STATE.judgement.type = null;
+                return;
+            }
+
+            let type = STATE.judgement.type;
+            if (type === 'POOR' && STATE.judgement.isEmpty) type = 'FAIL';
+
+            // Animation Params
+            const isPg = (type === 'PGREAT');
+            const isCbBreak = (type === 'BAD' || type === 'POOR' || type === 'FAIL');
+            const blinkFast = isCbBreak;
+            const blinkRate = blinkFast ? 50 : 100; // ms per blink
+            const visible = (Math.floor(elapsed / blinkRate) % 2 === 0);
+
+            if (!isPg && !visible) return;
+
+            // Determine Sprite
+            let sprite;
+            let digitSpriteSet;
+            if (isPg) {
+                // Cycle through 6 rows
+                const cycleIdx = Math.floor(elapsed / (1000 / 60)) % 6;
+                sprite = JUDGE_SPRITES.PGREAT[cycleIdx].label;
+                digitSpriteSet = JUDGE_SPRITES.PGREAT[cycleIdx].digits;
+            } else if (type === 'GREAT' || type === 'GOOD') {
+                sprite = JUDGE_SPRITES.GREAT.label;
+                digitSpriteSet = JUDGE_SPRITES.GREAT.digits;
+                if (type === 'GOOD') {
+                    sprite = JUDGE_SPRITES.GOOD;
+                }
+            } else {
+                sprite = JUDGE_SPRITES[type];
+            }
+
+            // Draw Position
+            const fieldCenterX = 30 + (60 + 40 * 7) / 2;
+            const drawX = fieldCenterX;
+            const drawY = canvas.height * 0.75 - 210; // Moved up 90px (was -120)
+
+            const SCALE = 0.8; // Reduce size
+
+            // Setup Combo
+            const comboStr = (!isCbBreak && STATE.judgement.combo > 0) ? STATE.judgement.combo.toString() : '';
+            // Decrease spacing by another 20px (was 35, now 55 overlap)
+            const digitOverlap = 55; 
+            const digitAdvance = (J_DIGIT_W - digitOverlap) * SCALE;
+            
+            const comboW = comboStr ? comboStr.length * digitAdvance : 0;
+            const gap = 10 * SCALE;
+            const totalW = (sprite.w * SCALE) + (comboStr ? gap + comboW : 0);
+
+            ctx.save();
+            ctx.translate(drawX, drawY);
+
+            // Draw unit centered
+            const startX = -totalW / 2;
+
+            // Draw Label
+            ctx.drawImage(
+                STATE.judgementImage,
+                sprite.x, sprite.y, sprite.w, sprite.h,
+                startX, (-sprite.h * SCALE) / 2, sprite.w * SCALE, sprite.h * SCALE
+            );
+
+            // Draw Combo
+            if (comboStr) {
+                let curX = startX + (sprite.w * SCALE) + gap;
+                for (let i = 0; i < comboStr.length; i++) {
+                    const digit = parseInt(comboStr[i]);
+                    const ds = digitSpriteSet[digit];
+                    ctx.drawImage(
+                        STATE.judgementImage,
+                        ds.x, ds.y, ds.w, ds.h,
+                        curX, (-ds.h * SCALE) / 2, ds.w * SCALE, ds.h * SCALE
+                    );
+                    curX += digitAdvance;
+                }
+            }
+
+            // Draw Fast/Slow Indicator
+            if (!isCbBreak && !isPg && STATE.judgement.diff !== 0) {
+                const diff = STATE.judgement.diff;
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 16px "Outfit", sans-serif';
+                ctx.shadowBlur = 4;
+                
+                if (diff < 0) {
+                    // FAST
+                    ctx.fillStyle = '#88f'; // Bluish
+                    ctx.shadowColor = '#00f';
+                    ctx.fillText('FAST', startX + (totalW / 2), (-sprite.h * SCALE) / 2 - 20);
+                } else if (diff > 0) {
+                    // SLOW
+                    ctx.fillStyle = '#f88'; // Reddish
+                    ctx.shadowColor = '#f00';
+                    ctx.fillText('SLOW', startX + (totalW / 2), (-sprite.h * SCALE) / 2 - 20);
+                }
+                ctx.shadowBlur = 0; // Reset
+            }
+            ctx.restore();
         }
 
         function updateGaugeDisplay() {
-            ui.gaugeBar.style.width = `${STATE.gauge}%`;
-            ui.gaugeVal.textContent = `${Math.floor(STATE.gauge)}%`;
+    ui.gaugeBar.style.width = `${STATE.gauge}%`;
+    
+    // Decimal formatting: big whole, small decimal
+    const valStr = STATE.gauge.toFixed(1);
+    const [whole, decimal] = valStr.split('.');
+    ui.gaugeVal.innerHTML = `<span class="whole">${whole}</span><span class="decimal">.${decimal}%</span>`;
 
-            if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD') {
-                if (STATE.gauge >= 80) ui.gaugeBar.classList.add('cleared');
-                else ui.gaugeBar.classList.remove('cleared');
-            }
-        }
+    // Grade display next to groove %
+    const maxEx = Math.max(1, (STATE.loadedSong ? STATE.loadedSong.notes.length : 0) * 2);
+    const percent = (STATE.score / maxEx) * 100;
+    const grade = calculateRank(percent);
+    ui.gaugeGrade.textContent = grade;
+    ui.gaugeGrade.style.color = getRankColor(grade);
 
-        function showJudge(text, diff) {
-            ui.judgeText.textContent = text;
-            ui.judgeText.className = 'judge-text ' + text.toLowerCase();
-
-            const sign = diff > 0 ? '+' : '';
-            ui.judgeDiff.textContent = (text !== 'POOR' && diff !== 0) ? `${sign}${Math.floor(diff)}ms` : '';
-
-            ui.judgeBox.classList.remove('show');
-            void ui.judgeBox.offsetWidth;
-            ui.judgeBox.classList.add('show');
-        }
+    if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD') {
+        const threshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
+        if (STATE.gauge >= threshold) ui.gaugeBar.classList.add('cleared');
+        else ui.gaugeBar.classList.remove('cleared');
+    }
+}
 
         function updateHud() {
-            ui.score.textContent = STATE.score;
-            ui.combo.textContent = STATE.combo;
-            if (STATE.combo > 2) ui.comboBox.classList.add('show'); else ui.comboBox.classList.remove('show');
-        }
+    ui.score.textContent = STATE.score;
+    ui.maxCombo.textContent = STATE.maxCombo;
+    
+    const maxEx = Math.max(1, (STATE.loadedSong ? STATE.loadedSong.notes.length : 0) * 2);
+    const percent = (STATE.score / maxEx) * 100;
+    ui.rate.textContent = percent.toFixed(2) + '%';
+}
 
         // ----------------------------------------------------------------------------
         // RESULTS SYSTEM
@@ -4840,7 +5397,7 @@
             document.getElementById('res-rank').style.color = getRankColor(calculateRank(percent));
 
             const nextRank = getNextRankInfo(percent, maxEx);
-            document.getElementById('res-rank-next').textContent = nextRank ? `NEXT RANK: ${nextRank.name} (+${nextRank.diff})` : 'MAX RANK ACHIEVED';
+            document.getElementById('res-rank-next').textContent = nextRank ? `NEXT RANK: ${nextRank.name} (-${nextRank.diff})` : 'MAX RANK ACHIEVED';
 
             // Tally
             document.getElementById('res-pg').textContent = STATE.judgeCounts.pgreat;
@@ -4862,41 +5419,75 @@
             document.getElementById('res-lamp-text').textContent = lamp.name;
             document.getElementById('res-lamp-text').style.color = getComputedStyle(lampEl).backgroundColor;
 
-            // Update song list UI if needed (proactive)
+            // Update song list UI if needed (proactive) - preserve selection
+            const savedIndex = STATE.selectedIndex;
             renderSongList();
+            STATE.selectedIndex = Math.min(savedIndex, STATE.currentList.length - 1);
 
-            // Graphs
-            drawGraph('graph-gauge', STATE.history.gauge, [2, 100], isClear ? '#00ff9d' : '#ff4444');
+            // Graphs - Gauge graph uses two-color with clear threshold
+            const clearThreshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
+            drawGaugeGraph('graph-gauge', STATE.history.gauge, [2, 100], clearThreshold, STATE.gaugeType);
             drawGraph('graph-score', STATE.history.score, [0, maxEx], '#55aaff');
 
             // Global listener to exit results
-            const returnHandler = (e) => {
-                document.getElementById('screen-results').style.display = 'none';
+            let isFadingResults = false;
+            const resultsScreen = document.getElementById('screen-results');
 
-                if (STATE.activeCourse) {
-                    STATE.courseIndex++;
-                    if (STATE.courseIndex < STATE.activeCourse.hashes.length) {
-                        const nextHash = STATE.activeCourse.hashes[STATE.courseIndex];
-                        const song = STATE.charts.find(c => c.md5 === nextHash);
-                        if (song) {
-                            // Find card element if possible (or just use null)
-                            loadChart(STATE.charts.indexOf(song), { classList: { add: () => { } }, classList: { remove: () => { } }, style: {} }, true);
-                            enterGame();
+            const returnHandler = (e) => {
+                // Ignore keypresses during fade animation
+                if (isFadingResults) return;
+
+                // Check for quick restart: 2/4/6 key held + 1/3/5/7 pressed
+                const blackKeyHeld = STATE.activeActions.has(ACTIONS.P1_2) || 
+                                     STATE.activeActions.has(ACTIONS.P1_4) || 
+                                     STATE.activeActions.has(ACTIONS.P1_6);
+                const whiteKeyPressed = [ACTIONS.P1_1, ACTIONS.P1_3, ACTIONS.P1_5, ACTIONS.P1_7].some(
+                    a => STATE.keyCodeToAction[e.code]?.includes(a)
+                );
+
+                if (blackKeyHeld && whiteKeyPressed && !STATE.activeCourse) {
+                    // Quick restart with same random seed
+                    isFadingResults = true;
+                    resultsScreen.classList.add('fade-out');
+                    window.removeEventListener('keydown', returnHandler);
+                    setTimeout(() => {
+                        resultsScreen.classList.remove('fade-out');
+                        resultsScreen.style.display = 'none';
+                        enterGame(); // Re-enter with same loaded song
+                    }, 500);
+                    return;
+                }
+
+                // Normal exit with fade animation
+                isFadingResults = true;
+                resultsScreen.classList.add('fade-out');
+                window.removeEventListener('keydown', returnHandler);
+
+                setTimeout(() => {
+                    resultsScreen.classList.remove('fade-out');
+                    resultsScreen.style.display = 'none';
+
+                    if (STATE.activeCourse) {
+                        STATE.courseIndex++;
+                        if (STATE.courseIndex < STATE.activeCourse.hashes.length) {
+                            const nextHash = STATE.activeCourse.hashes[STATE.courseIndex];
+                            const song = STATE.charts.find(c => c.md5 === nextHash);
+                            if (song) {
+                                loadChart(STATE.charts.indexOf(song), { classList: { add: () => { } }, classList: { remove: () => { } }, style: {} }, true);
+                                enterGame();
+                            } else {
+                                alert('Next song in course not found! Hash: ' + nextHash);
+                                STATE.activeCourse = null;
+                                exitToSelect();
+                            }
                         } else {
-                            alert('Next song in course not found! Hash: ' + nextHash);
                             STATE.activeCourse = null;
                             exitToSelect();
                         }
                     } else {
-                        // Course Clear!
-                        STATE.activeCourse = null;
                         exitToSelect();
                     }
-                } else {
-                    exitToSelect();
-                }
-
-                window.removeEventListener('keydown', returnHandler);
+                }, 500);
             };
 
             function exitToSelect() {
@@ -4904,7 +5495,6 @@
                 if (!STATE.selectBgmSource) {
                     STATE.selectBgmSource = playSystemSound('select', true);
                 }
-                // Reset Window Title
                 updateWindowTitle(null);
             }
 
@@ -5042,6 +5632,119 @@
             ctx.fill();
         }
 
+        // Two-color gauge graph: green below threshold, red above
+        function drawGaugeGraph(canvasId, data, range, threshold, gaugeType) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = canvas.clientWidth;
+            const h = canvas.height = canvas.clientHeight;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Draw grid
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                const y = (h / 4) * i;
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            const [min, max] = range;
+            const thresholdY = h - ((threshold - min) / (max - min)) * h;
+
+            // Draw threshold line
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, thresholdY);
+            ctx.lineTo(w, thresholdY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (data.length < 2) return;
+
+            const stepX = w / (data.length - 1);
+            const isHardMode = (gaugeType === 'HARD' || gaugeType === 'EXHARD' || gaugeType === 'HAZARD');
+
+            // Build path for line
+            ctx.beginPath();
+            for (let i = 0; i < data.length; i++) {
+                const val = (data[i] - min) / (max - min);
+                const x = i * stepX;
+                const y = h - (val * h);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+
+            if (isHardMode) {
+                // All red for hard modes
+                ctx.strokeStyle = '#ff4444';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Fill with red gradient
+                ctx.lineTo(w, h);
+                ctx.lineTo(0, h);
+                ctx.closePath();
+                const grad = ctx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, '#ff444466');
+                grad.addColorStop(1, '#ff444400');
+                ctx.fillStyle = grad;
+                ctx.fill();
+            } else {
+                // Two-color: green below, red above threshold
+                ctx.strokeStyle = '#00ff9d';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Below threshold: green
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, thresholdY, w, h - thresholdY);
+                ctx.clip();
+
+                ctx.beginPath();
+                for (let i = 0; i < data.length; i++) {
+                    const val = (data[i] - min) / (max - min);
+                    const x = i * stepX;
+                    const y = h - (val * h);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.lineTo(w, h);
+                ctx.lineTo(0, h);
+                ctx.closePath();
+                const greenGrad = ctx.createLinearGradient(0, thresholdY, 0, h);
+                greenGrad.addColorStop(0, '#00ff9d66');
+                greenGrad.addColorStop(1, '#00ff9d00');
+                ctx.fillStyle = greenGrad;
+                ctx.fill();
+                ctx.restore();
+
+                // Above threshold: red
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, w, thresholdY);
+                ctx.clip();
+
+                ctx.beginPath();
+                for (let i = 0; i < data.length; i++) {
+                    const val = (data[i] - min) / (max - min);
+                    const x = i * stepX;
+                    const y = h - (val * h);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.lineTo(w, thresholdY);
+                ctx.lineTo(0, thresholdY);
+                ctx.closePath();
+                const redGrad = ctx.createLinearGradient(0, 0, 0, thresholdY);
+                redGrad.addColorStop(0, '#ff444466');
+                redGrad.addColorStop(1, '#ff444433');
+                ctx.fillStyle = redGrad;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         // ----------------------------------------------------------------------------
         // INPUT
         // ----------------------------------------------------------------------------
@@ -5058,6 +5761,40 @@
                 });
             }
 
+            // Arrow keys for song navigation (song select only)
+            if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen && !STATE.isDecideActive) {
+                if (e.code === 'ArrowUp') {
+                    e.preventDefault();
+                    STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
+                    playSystemSound('scratch');
+                    updateSelection();
+                    return;
+                }
+                if (e.code === 'ArrowDown') {
+                    e.preventDefault();
+                    STATE.selectedIndex = (STATE.selectedIndex + 1) % STATE.currentList.length;
+                    playSystemSound('scratch');
+                    updateSelection();
+                    return;
+                }
+                // Escape to go up folder or exit game at root
+                if (e.code === 'Escape') {
+                    e.preventDefault();
+                    if (STATE.currentFolder !== null) {
+                        STATE.currentFolder = null;
+                        STATE.selectedIndex = 0;
+                        playSystemSound('f-close');
+                        renderSongList();
+                    } else {
+                        // At root level - exit the game
+                        if (IS_DESKTOP && window.electronAPI && window.electronAPI.closeWindow) {
+                            window.electronAPI.closeWindow();
+                        }
+                    }
+                    return;
+                }
+            }
+
             const actions = STATE.keyCodeToAction[e.code];
             if (!actions) return;
 
@@ -5068,6 +5805,7 @@
             if (actions.includes(ACTIONS.START) && !STATE.isPlaying) {
                 if (ui.modalSettings.classList.contains('open')) return; // Block if Settings is open
                 if (!STATE.isOptionsOpen) {
+                    playSystemSound('o-open'); // SFX Fix
                     STATE.isOptionsOpen = true;
                     STATE.startOpenedOptions = true; // Track that START was used to open options
                     ui.modalOptions.classList.add('open');
@@ -5092,6 +5830,7 @@
                         const modes = ['ALL', '单', '5', '7', '9', '双', '10', '14'];
                         let idx = modes.indexOf(STATE.keyModeFilter);
                         STATE.keyModeFilter = modes[(idx + 1) % modes.length];
+                        STATE.optionsChangedFilter = true;
                     }
                     // Key 2: Style Cycle
                     if (action === ACTIONS.P1_2) {
@@ -5103,7 +5842,7 @@
                     if (action === ACTIONS.P1_3) { /* placeholder */ }
                     // Key 4: Gauge Cycle
                     if (action === ACTIONS.P1_4) {
-                        const gauges = ['GROOVE', 'EASY', 'HARD', 'EXHARD', 'ASSIST'];
+                        const gauges = ['GROOVE', 'EASY', 'HARD', 'EXHARD', 'ASSIST', 'HAZARD'];
                         let idx = gauges.indexOf(STATE.gaugeType);
                         STATE.gaugeType = gauges[(idx + 1) % gauges.length];
                     }
@@ -5226,12 +5965,23 @@
                     win = { PG: win.PG * 1.5, GR: win.GR * 1.5, GD: win.GD * 1.5, BD: win.BD * 1.5, PR: win.PR };
                 }
 
-                const noteIdx = STATE.loadedSong.notes.findIndex(n =>
-                    !n.hit && targets.includes(n.ch) && Math.abs(now - n.time) <= win.BD
-                );
+                // OPTIMIZED: Sliding window note lookup instead of full array scan
+                // Uses logicCursor to limit search range from O(n) to O(~150) constant time
+                const notes = STATE.loadedSong.notes;
+                const scanStart = Math.max(0, (STATE.logicCursor || 0) - 20);
+                const scanEnd = Math.min(notes.length, (STATE.logicCursor || 0) + 150);
+                
+                let noteIdx = -1;
+                for (let i = scanStart; i < scanEnd; i++) {
+                    const n = notes[i];
+                    if (!n.hit && targets.includes(n.ch) && Math.abs(now - n.time) <= win.BD) {
+                        noteIdx = i;
+                        break;
+                    }
+                }
 
                 if (noteIdx !== -1) {
-                    const note = STATE.loadedSong.notes[noteIdx];
+                    const note = notes[noteIdx];
                     note.hit = true;
                     playSound(note.id);
                     const diff = now - note.time;
@@ -5242,10 +5992,17 @@
                     else if (absDiff <= win.GD) res = 'GOOD';
                     handleJudgment(res, diff);
                 } else {
-                    const upcomingNoteIdx = STATE.loadedSong.notes.findIndex(n =>
-                        !n.hit && targets.includes(n.ch) && (n.time - now) > win.BD && (n.time - now) <= 1000
-                    );
-                    if (upcomingNoteIdx !== -1) {
+                    // OPTIMIZED: Same sliding window for empty poor detection
+                    let hasUpcoming = false;
+                    for (let i = scanStart; i < scanEnd; i++) {
+                        const n = notes[i];
+                        const timeDiff = n.time - now;
+                        if (!n.hit && targets.includes(n.ch) && timeDiff > win.BD && timeDiff <= 1000) {
+                            hasUpcoming = true;
+                            break;
+                        }
+                    }
+                    if (hasUpcoming) {
                         handleJudgment('POOR', 0, true);
                     }
                 }
@@ -5273,9 +6030,7 @@
                     const optionsWereOpen = STATE.isOptionsOpen;
                     // Close options on release (if held or if we're tapping to close)
                     if (STATE.isOptionsOpen && (!STATE.isOptionsPersistent || optionsWereOpen)) {
-                        ui.modalOptions.classList.remove('open');
-                        STATE.isOptionsOpen = false;
-                        renderSongList();
+                        closeOptions();
                     }
                     // Reset persistence
                     STATE.isOptionsPersistent = false;
@@ -5294,9 +6049,25 @@
             });
         });
 
+        function updateScaling() {
+            const baseW = 1600;
+            const baseH = 900;
+            const winW = window.innerWidth;
+            const titlebarH = (IS_DESKTOP && ui.titlebar && ui.titlebar.style.display !== 'none') ? 32 : 0;
+            const winH = window.innerHeight - titlebarH;
+
+            const scale = Math.min(winW / baseW, winH / baseH);
+            const left = (winW - baseW * scale) / 2;
+            const top = titlebarH + (winH - baseH * scale) / 2;
+
+            const app = document.getElementById('app');
+            if (app) app.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
+        }
+
         function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            canvas.width = 1600;  // Internal resolution stays constant
+            canvas.height = 900;
+            updateScaling();
         }
         window.addEventListener('resize', resize);
 
@@ -5304,6 +6075,11 @@
         (async () => {
             loadPlayerOptions();
             await loadSystemSounds();
+
+            // Load Judgement Image
+            STATE.judgementImage = new Image();
+            STATE.judgementImage.src = 'judgement.png';
+            await new Promise(r => STATE.judgementImage.onload = r);
 
             // Resume/Start BGM on first interaction
             const startBgm = () => {
@@ -5316,6 +6092,23 @@
             };
             window.addEventListener('keydown', startBgm);
             window.addEventListener('mousedown', startBgm);
+
+            document.getElementById('btn-save-options').onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeOptions();
+            };
+
+            // Initial Settings Sync & Scaling
+            if (IS_DESKTOP) {
+                const settings = await window.electronAPI.getWindowSettings();
+                if (settings) {
+                    STATE.resolution = `${settings.width}x${settings.height}`;
+                    STATE.fullscreen = settings.fullscreen;
+                    applyWindowSettings(true); // Apply UI state without re-triggering IPC
+                }
+            }
+            resize();
 
             if (IS_DESKTOP) {
                 // Auto-rescan library on startup
