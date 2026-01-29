@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs-extra');
 const glob = require('glob');
@@ -8,12 +8,16 @@ const crypto = require('crypto');
 let mainWindow;
 let DB_PATH;
 let FOLDERS_PATH;
+let COURSES_PATH;
+let SETTINGS_PATH;
 
 function initPaths() {
     if (!DB_PATH) {
-        DB_PATH = path.join(app.getPath('userData'), 'library.json');
-        FOLDERS_PATH = path.join(app.getPath('userData'), 'folders.json');
-        COURSES_PATH = path.join(app.getPath('userData'), 'courses.json');
+        const userData = app.getPath('userData');
+        DB_PATH = path.join(userData, 'library.json');
+        FOLDERS_PATH = path.join(userData, 'folders.json');
+        COURSES_PATH = path.join(userData, 'courses.json');
+        SETTINGS_PATH = path.join(userData, 'window-settings.json');
     }
 }
 
@@ -22,11 +26,42 @@ function calculateMD5(content) {
 }
 
 function createWindow() {
+    initPaths();
+
+    // Default settings
+    let width = 1280;
+    let height = 720;
+    let fullscreen = false;
+
+    // Load saved settings
+    try {
+        if (fs.pathExistsSync(SETTINGS_PATH)) {
+            const saved = fs.readJsonSync(SETTINGS_PATH);
+            if (saved.width && saved.height) {
+                width = saved.width;
+                height = saved.height;
+            }
+            if (saved.fullscreen !== undefined) {
+                fullscreen = saved.fullscreen;
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load window settings", e);
+    }
+
+    // Factor in display scaling (DPI) for initial window
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const scaleFactor = primaryDisplay.scaleFactor;
+    const logicalWidth = Math.round(width / scaleFactor);
+    const logicalHeight = Math.round(height / scaleFactor);
+
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 720,
+        width: logicalWidth,
+        height: logicalHeight,
+        fullscreen: fullscreen,
         backgroundColor: '#121212',
         frame: false,
+        resizable: false,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -40,15 +75,45 @@ function createWindow() {
 // --- IPC HANDLERS ---
 
 // Window Controls
-ipcMain.on('window-minimize', () => mainWindow.minimize());
-ipcMain.on('window-maximize', () => {
-    if (mainWindow.isMaximized()) {
-        mainWindow.unmaximize();
-    } else {
-        mainWindow.maximize();
+ipcMain.on('window-close', () => mainWindow.close());
+ipcMain.on('window-set-title', (event, title) => {
+    if (mainWindow) mainWindow.setTitle(title);
+});
+ipcMain.on('window-set-fullscreen', (event, flag) => {
+    if (mainWindow) {
+        mainWindow.setFullScreen(flag);
+        // Save to file
+        try {
+            let current = { width: 1280, height: 720 };
+            if (fs.pathExistsSync(SETTINGS_PATH)) current = fs.readJsonSync(SETTINGS_PATH);
+            current.fullscreen = flag;
+            fs.writeJsonSync(SETTINGS_PATH, current);
+        } catch (e) { }
     }
 });
-ipcMain.on('window-close', () => mainWindow.close());
+ipcMain.on('window-set-resolution', (event, width, height) => {
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) mainWindow.unmaximize();
+        mainWindow.setFullScreen(false);
+        mainWindow.setResizable(true);
+
+        // Factor in display scaling (DPI)
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const scaleFactor = primaryDisplay.scaleFactor;
+        const logicalWidth = Math.round(width / scaleFactor);
+        const logicalHeight = Math.round(height / scaleFactor);
+
+        mainWindow.setSize(logicalWidth, logicalHeight);
+        mainWindow.setAspectRatio(16 / 9);
+        mainWindow.setResizable(false);
+        mainWindow.center();
+
+        // Save to file
+        try {
+            fs.writeJsonSync(SETTINGS_PATH, { width, height, fullscreen: false });
+        } catch (e) { }
+    }
+});
 
 // 1. Scan Library
 ipcMain.handle('scan-library', async () => {
@@ -261,7 +326,8 @@ ipcMain.handle('resolve-image', async (event, bmsPath, filename) => {
             '.avi': 'video/x-msvideo',
             '.wmv': 'video/x-ms-wmv',
             '.mpg': 'video/mpeg',
-            '.mpeg': 'video/mpeg'
+            '.mpeg': 'video/mpeg',
+            '.m4v': 'video/mp4'
         };
 
         const mime = mimeTypes[ext] || 'application/octet-stream';

@@ -14,19 +14,22 @@ class BMSParser {
         const lines = text.split(/\r?\n/);
         const headers = {};
         const bpmTable = {};
+        const stopTable = {};
         const measureData = {}; // measure -> channel -> [data]
         let maxMeasure = 0;
 
         lines.forEach(line => {
             if (!line.startsWith('#')) return;
 
-            // Headers & BPM Table
-            const spaceIdx = line.indexOf(' ');
-            if (spaceIdx !== -1) {
-                const key = line.substring(1, spaceIdx).toUpperCase();
-                const val = line.substring(spaceIdx + 1).trim();
+            // Improved Header Parsing
+            const headerMatch = line.match(/^#(\w+)(?:\s+|　+)(.+)$/);
+            if (headerMatch) {
+                const key = headerMatch[1].toUpperCase();
+                const val = headerMatch[2].trim();
                 if (key.startsWith('BPM') && key.length > 3) {
                     bpmTable[key.substring(3)] = parseFloat(val);
+                } else if (key.startsWith('STOP') && key.length > 4) {
+                    stopTable[key.substring(4)] = parseFloat(val);
                 } else if (isNaN(parseInt(key.substring(0, 3)))) {
                     headers[key] = val;
                 }
@@ -94,7 +97,7 @@ class BMSParser {
                 // Duration of this slice: (beats in slice) * (ms per beat)
                 // One measure is 4 beats. Measure length = 4 * scaling.
                 const beatsInSlice = posDiff * 4 * measureScaling;
-                const msPerBeat = 60000 / currentBpm;
+                const msPerBeat = 60000 / Math.max(0.001, currentBpm);
                 currentTime += beatsInSlice * msPerBeat;
                 lastPos = ev.pos;
 
@@ -105,25 +108,31 @@ class BMSParser {
                     notes.push({ time: currentTime, ch: chNum, id, hit: false });
                     playableNoteCount++;
                 } else if (chNum === 0x03) {
-                    currentBpm = parseInt(id, 16);
+                    currentBpm = Math.max(0.001, parseInt(id, 16));
                     bpmEvents.push({ time: currentTime, bpm: currentBpm });
                 } else if (chNum === 0x08) {
                     const newBpm = bpmTable[id];
                     if (newBpm !== undefined) {
-                        currentBpm = newBpm;
+                        currentBpm = Math.max(0.001, newBpm);
                         bpmEvents.push({ time: currentTime, bpm: currentBpm });
+                    }
+                } else if (chNum === 0x09) {
+                    const stopValue = stopTable[id];
+                    if (stopValue !== undefined) {
+                        const stopMs = (stopValue / 192) * 4 * (60000 / Math.max(0.001, currentBpm));
+                        currentTime += stopMs;
                     }
                 } else if (chNum === 0x01 || (chNum >= 0x21 && chNum <= 0x49) || (chNum >= 0x61 && chNum <= 0x69)) {
                     bgm.push({ time: currentTime, id });
-                } else if (chNum === 0x04) {
-                    bgaEvents.push({ time: currentTime, id });
+                } else if (chNum === 0x04 || chNum === 0x06 || chNum === 0x07) {
+                    bgaEvents.push({ time: currentTime, id, type: chNum });
                 }
             });
 
             // Advance to end of measure
             const posDiff = 1.0 - lastPos;
             const beatsInSlice = posDiff * 4 * measureScaling;
-            currentTime += beatsInSlice * (60000 / currentBpm);
+            currentTime += beatsInSlice * (60000 / Math.max(0.001, currentBpm));
         }
 
         let total = parseFloat(headers['TOTAL']);
@@ -133,7 +142,10 @@ class BMSParser {
 
         const songDuration = currentTime;
         const noteTimes = notes.map(n => n.time).sort((a, b) => a - b);
-        const startNps = noteTimes.filter(t => t <= 10000).length / 10;
+        const firstNoteTime = noteTimes.length > 0 ? noteTimes[0] : 0;
+        const startNps = noteTimes.length > 0
+            ? noteTimes.filter(t => t >= firstNoteTime && t <= firstNoteTime + 10000).length / 10
+            : 0;
         const avgNps = songDuration > 0 ? (playableNoteCount / (songDuration / 1000)) : 0;
 
         let maxNps = 0;
@@ -143,13 +155,47 @@ class BMSParser {
             if (count > maxNps) maxNps = count;
         }
 
+        const initialBpm = parseFloat(headers['BPM'] || 130);
+        const allBpmEvents = [{ time: 0, bpm: initialBpm }, ...bpmEvents.sort((a, b) => a.time - b.time)];
+
+        const bpmDurations = {}; // bpm -> total duration
+        let maxBpm = -Infinity;
+        let minBpm = Infinity;
+
+        for (let i = 0; i < allBpmEvents.length; i++) {
+            const current = allBpmEvents[i];
+            const nextTime = (i < allBpmEvents.length - 1) ? allBpmEvents[i + 1].time : currentTime;
+            const duration = nextTime - current.time;
+            const b = current.bpm;
+
+            if (b > maxBpm) maxBpm = b;
+            if (b < minBpm) minBpm = b;
+
+            bpmDurations[b] = (bpmDurations[b] || 0) + duration;
+        }
+
+        let mainBpm = initialBpm;
+        let maxDuration = -1;
+        for (const b in bpmDurations) {
+            if (bpmDurations[b] > maxDuration) {
+                maxDuration = bpmDurations[b];
+                mainBpm = parseFloat(b);
+            }
+        }
+
+        const avgFixBpm = (maxBpm + minBpm) / 2;
+
         return {
             headers,
             notes: notes.sort((a, b) => a.time - b.time),
             bgm: bgm.sort((a, b) => a.time - b.time),
             bgaEvents: bgaEvents.sort((a, b) => a.time - b.time),
             bpmEvents: bpmEvents.sort((a, b) => a.time - b.time),
-            initialBpm: parseFloat(headers['BPM'] || 130),
+            initialBpm,
+            minBpm,
+            maxBpm,
+            mainBpm,
+            avgFixBpm,
             total, rank, noteCount: playableNoteCount, songDuration,
             startNps, avgNps, maxNps
         };

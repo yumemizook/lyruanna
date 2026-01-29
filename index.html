@@ -453,9 +453,9 @@
 
         .game-bga img,
         .game-bga video {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
         }
 
         canvas {
@@ -473,68 +473,14 @@
             z-index: 10;
         }
 
-        .hud-score {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            text-align: right;
-        }
 
-        .score-val {
-            font-size: 48px;
-            font-family: 'Consolas', monospace;
-            font-weight: bold;
-            text-shadow: 0 0 10px var(--accent);
-        }
 
-        .hud-combo {
-            position: absolute;
-            top: 25%;
-            left: 35%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            opacity: 0;
-            transition: transform 0.1s;
-        }
 
-        .hud-combo.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.1);
-        }
-
-        .combo-num {
-            font-size: 80px;
-            font-weight: 900;
-            line-height: 1;
-            text-shadow: 0 0 20px var(--accent);
-            color: #fff;
-        }
-
-        .combo-text {
-            font-size: 14px;
-            letter-spacing: 4px;
-            color: var(--accent);
-            font-weight: bold;
-        }
 
         /* GAUGE BAR */
-        .hud-gauge-container {
-            position: absolute;
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 400px;
-            height: 16px;
-            background: #333;
-            border: 2px solid #555;
-        }
 
-        .gauge-fill {
-            width: 0%;
-            height: 100%;
-            background: var(--gauge-normal);
-            transition: width 0.1s linear, background 0.2s;
-        }
+
+
 
         .gauge-fill.easy {
             background: var(--gauge-easy);
@@ -581,34 +527,7 @@
         }
 
         /* JUDGEMENT DISPLAY */
-        .hud-judge {
-            position: absolute;
-            top: 50%;
-            left: 15%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            font-weight: bold;
-            font-family: sans-serif;
-            text-shadow: 0 0 10px #000;
-            opacity: 0;
-            transition: opacity 0.1s;
-        }
 
-        .hud-judge.show {
-            opacity: 1;
-            animation: judgePop 0.1s;
-        }
-
-        .judge-text {
-            font-size: 32px;
-            letter-spacing: 2px;
-        }
-
-        .judge-diff {
-            font-size: 14px;
-            margin-top: 5px;
-            color: #aaa;
-        }
 
         .pgreat {
             color: #aaaaff;
@@ -642,28 +561,9 @@
         }
 
         /* JUDGEMENT TALLY */
-        .hud-tally {
-            position: absolute;
-            top: 100px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px 20px;
-            border: 1px solid #333;
-            border-radius: 8px;
-            font-family: 'Consolas', monospace;
-        }
 
-        .hud-tally.hidden {
-            display: none;
-        }
 
-        .tally-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 25px;
-            font-size: 13px;
-            margin: 3px 0;
-        }
+
 
         .tally-row.pgreat .tally-label {
             color: #aaf;
@@ -697,17 +597,41 @@
             color: #888;
         }
 
-        .tally-value {
-            color: #fff;
-            font-weight: bold;
-            min-width: 40px;
-            text-align: right;
-        }
+
 
         .tally-divider {
             border: none;
             border-top: 1px solid #444;
             margin: 8px 0;
+        }
+
+        /* AUTOPLAY INDICATOR */
+        .hud-autoplay {
+            position: absolute;
+            top: 55%;
+            /* Just above 60% line */
+            left: 50%;
+            transform: translate(-50%, -100%);
+            color: #f00;
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px #f00;
+            z-index: 50;
+            display: none;
+            animation: pulse-ap 1s infinite alternate;
+        }
+
+        @keyframes pulse-ap {
+            0% {
+                opacity: 0.5;
+                text-shadow: 0 0 5px #f00;
+            }
+
+            100% {
+                opacity: 1;
+                text-shadow: 0 0 20px #f00;
+            }
         }
 
         /* LANE COVERS */
@@ -1328,6 +1252,10 @@
             opacity: 1;
             pointer-events: auto;
             background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
         }
 
         .iidx-options-container {
@@ -1535,6 +1463,352 @@
             background: #cc0;
         }
 
+        /* Target Selection Wheel */
+        .iidx-target-wheel-container {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .iidx-target-header {
+            font-size: 0.75rem;
+            color: #0ff;
+            font-weight: 800;
+            text-transform: uppercase;
+            text-align: center;
+            width: 100%;
+        }
+
+        .iidx-target-wheel-viewport {
+            width: 180px;
+            height: 200px;
+            /* Show about 5 items */
+            overflow: hidden;
+            position: relative;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        /* The selector box in the middle */
+        .iidx-target-wheel-viewport::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            transform: translateY(-50%);
+            border-top: 1px solid #0ff;
+            border-bottom: 1px solid #0ff;
+            background: rgba(0, 255, 255, 0.1);
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+
+        .iidx-target-wheel-strip {
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .iidx-target-item {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 700;
+            transition: 0.15s;
+        }
+
+        .iidx-target-item.selected {
+            color: #fff;
+            font-size: 1.1rem;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        /* PaceMaker Graph In-Game */
+        .hud-pacemaker {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 220px;
+            height: 100%;
+            background: rgba(0, 5, 10, 0.9);
+            border-left: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 15px;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .pace-score-top {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 15px;
+        }
+
+        .pace-score-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .pace-score-row .label {
+            font-size: 10px;
+            color: #888;
+            font-weight: 800;
+        }
+
+        .pace-score-row .val {
+            font-size: 20px;
+            font-weight: 900;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+        }
+
+        .pace-bars {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            padding: 20px 5px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .pace-bar {
+            flex: 1;
+            width: 100%;
+            background: #222;
+            transition: height 0.1s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .pace-bar.you {
+            background: linear-gradient(0deg, #0088ff, #00ffff);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
+
+        .pace-bar.target {
+            background: linear-gradient(0deg, #aa0000, #ff4444);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+
+        .pace-bar.best {
+            background: linear-gradient(0deg, #008800, #00ff00);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .pace-ghost-bottom {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-top: 1px solid #222;
+            padding-top: 15px;
+        }
+
+        .ghost-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .ghost-row .label {
+            font-size: 9px;
+            color: #666;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .ghost-row .val {
+            font-family: 'Consolas', monospace;
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .ghost-row .val.plus {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .ghost-row .val.minus {
+            color: #ff3333;
+            text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
+        }
+
+        /* HUD RELOCATION */
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .hud-score {
+            position: absolute;
+            bottom: 10px;
+            left: 370px;
+            /* Align with new Tally position (370) */
+            width: 130px;
+            /* Match Tally Width */
+            text-align: right;
+            padding: 5px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            z-index: 10;
+            box-sizing: border-box;
+        }
+
+        .hud-score .label {
+            font-size: 9px;
+            color: #888;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .score-val {
+            font-size: 24px !important;
+            color: #fff;
+            font-weight: 900 !important;
+            text-shadow: 0 0 10px var(--accent-dim);
+            font-family: 'Consolas', monospace;
+        }
+
+        .hud-tally {
+            position: absolute;
+            bottom: 60px;
+            /* Shifted down to be closer to score */
+            left: 370px;
+            /* 30 (margin) + 340 (lane) = 370. Right next to lane. */
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 8px;
+            /* Reduced padding */
+            width: 130px;
+            /* Smaller width */
+            border-left: 2px solid #555;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1px;
+            box-sizing: border-box;
+        }
+
+        .tally-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 1px 0;
+        }
+
+        .tally-label {
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .tally-value {
+            font-family: 'Consolas', monospace;
+            color: #fff;
+            font-size: 11px;
+        }
+
+        .hud-gauge-container {
+            position: absolute;
+            bottom: 25px;
+            left: 30px;
+            width: 340px;
+            height: 14px;
+            /* Sltly thinner */
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
+            /* Critical for alignment */
+        }
+
+        .gauge-fill {
+            height: 100%;
+            transition: width 0.1s linear, background 0.1s;
+        }
+
+        .hud-combo {
+            position: absolute;
+            bottom: 240px;
+            left: 30px;
+            width: 340px;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: 0.2s;
+        }
+
+        .hud-combo.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .combo-num {
+            font-size: 48px;
+            font-weight: 900;
+            color: #fff;
+            font-style: italic;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .combo-text {
+            font-size: 14px;
+            color: #aaa;
+            font-weight: 800;
+            letter-spacing: 4px;
+        }
+
+        .hud-judge {
+            position: absolute;
+            bottom: 180px;
+            left: 30px;
+            width: 340px;
+            text-align: center;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transition: 0.05s;
+        }
+
+        .hud-judge.show {
+            opacity: 1;
+        }
+
+        .judge-text {
+            font-size: 28px;
+            font-weight: 900;
+            font-style: italic;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .judge-diff {
+            font-size: 14px;
+            font-family: 'Consolas', monospace;
+            margin-top: -5px;
+        }
+
         /* ========== DECIDE SCREEN ========== */
         #screen-decide {
             position: fixed;
@@ -1568,8 +1842,15 @@
         }
 
         @keyframes decideContentIn {
-            0% { transform: scaleX(0); opacity: 0; }
-            100% { transform: scaleX(1); opacity: 1; }
+            0% {
+                transform: scaleX(0);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scaleX(1);
+                opacity: 1;
+            }
         }
 
         .decide-title {
@@ -1584,8 +1865,17 @@
         }
 
         @keyframes decideTitleIn {
-            0% { transform: translateY(30px); opacity: 0; letter-spacing: 30px; }
-            100% { transform: translateY(0); opacity: 1; letter-spacing: 12px; }
+            0% {
+                transform: translateY(30px);
+                opacity: 0;
+                letter-spacing: 30px;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+                letter-spacing: 12px;
+            }
         }
 
         .decide-artist {
@@ -1607,6 +1897,28 @@
             justify-content: center;
             background-image: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0f 100%);
             transition: opacity 0.5s ease-out;
+        }
+
+        #screen-loading.gameplay-loading {
+            background: rgba(0, 0, 0, 0.4);
+            background-image: none;
+            backdrop-filter: blur(4px);
+            z-index: 600;
+            /* Above game screen, but below decide fade if needed */
+        }
+
+        #screen-loading.gameplay-loading .loading-logo {
+            display: none;
+        }
+
+        #screen-loading.gameplay-loading .loading-container {
+            background: rgba(10, 10, 15, 0.9);
+            padding: 30px;
+            border: 1px solid var(--accent-dim);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            /* Position in center-right to avoid playfield */
+            margin-left: 300px;
         }
 
         .loading-logo {
@@ -1633,6 +1945,10 @@
             overflow: hidden;
         }
 
+        #screen-loading.gameplay-loading .loading-bar-bg {
+            display: none;
+        }
+
         .loading-bar-fill {
             width: 0%;
             height: 100%;
@@ -1649,9 +1965,47 @@
             letter-spacing: 1px;
         }
 
+        #screen-loading.gameplay-loading .loading-status {
+            font-size: 18px;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        #hud-ready {
+            position: absolute;
+            left: 30px;
+            /* startX */
+            top: calc(100% - 160px);
+            /* Above judgment line (hitY = 100 - 100) */
+            width: 340px;
+            /* p1Total: 60 + 40*7 */
+            text-align: center;
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 12px;
+            text-shadow: 0 0 20px var(--accent-dim);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.2s, transform 0.2s;
+            transform: scale(1.2);
+        }
+
+        #hud-ready.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
         @keyframes fadeIn {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         /* Folder styles */
@@ -1659,30 +2013,35 @@
             border-left-color: #fcc419 !important;
             background: rgba(252, 196, 25, 0.05);
         }
+
         .song-card.folder:hover {
             background: rgba(252, 196, 25, 0.1);
         }
+
         .song-card.folder .song-card-lamp {
             background: #fcc419;
             box-shadow: 0 0 8px #fcc419;
         }
 
         /* Course / Class items */
-        #btn-autoplay, #btn-replay {
+        #btn-autoplay,
+        #btn-replay {
             font-size: 11px;
             padding: 6px 10px;
             font-weight: 800;
             letter-spacing: 1px;
             color: #fff;
             border-color: #555;
-            text-shadow: 0 0 5px rgba(255,255,255,0.2);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
         }
+
         #btn-autoplay:hover {
             background: rgba(0, 255, 255, 0.1);
             border-color: #0ff;
             color: #0ff;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
         }
+
         #btn-replay:hover {
             background: rgba(255, 255, 0, 0.1);
             border-color: #ff0;
@@ -1701,9 +2060,12 @@
             border-left-color: #0ff !important;
             background: rgba(0, 255, 255, 0.05);
         }
-        .song-card.folder-class:hover, .song-card.folder-class.focused {
+
+        .song-card.folder-class:hover,
+        .song-card.folder-class.focused {
             background: rgba(0, 255, 255, 0.1);
         }
+
         .song-card.folder-class .song-card-lamp {
             background: #0ff;
             box-shadow: 0 0 8px #0ff;
@@ -1717,16 +2079,6 @@
     <div class="titlebar" id="titlebar" style="display:none;">
         <span class="titlebar-title">LYRUANNA - BMS Player</span>
         <div class="titlebar-controls">
-            <button class="titlebar-btn" id="btn-minimize" title="Minimize">
-                <svg viewBox="0 0 12 12">
-                    <rect y="5" width="12" height="2" />
-                </svg>
-            </button>
-            <button class="titlebar-btn" id="btn-maximize" title="Maximize">
-                <svg viewBox="0 0 12 12">
-                    <rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" />
-                </svg>
-            </button>
             <button class="titlebar-btn close" id="btn-close" title="Close">
                 <svg viewBox="0 0 12 12">
                     <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="2" />
@@ -1813,9 +2165,12 @@
                 <div class="song-list-header">
                     <span id="song-count">0</span> Songs
                     <div class="filter-buttons">
-                        <button class="filter-btn" id="btn-diff-filter" title="Difficulty Filter">DIFF: <span id="diff-filter">ALL</span></button>
-                        <button class="filter-btn" id="btn-km-filter" title="Key Mode Filter">MODE: <span id="km-filter">ALL</span></button>
-                        <button class="filter-btn" id="btn-sort" title="Sort By">SORT: <span id="sort-mode">DEFAULT</span></button>
+                        <button class="filter-btn" id="btn-diff-filter" title="Difficulty Filter">DIFF: <span
+                                id="diff-filter">ALL</span></button>
+                        <button class="filter-btn" id="btn-km-filter" title="Key Mode Filter">MODE: <span
+                                id="km-filter">ALL</span></button>
+                        <button class="filter-btn" id="btn-sort" title="Sort By">SORT: <span
+                                id="sort-mode">DEFAULT</span></button>
                     </div>
                 </div>
                 <div class="song-list" id="song-list"></div>
@@ -1832,6 +2187,7 @@
             <div class="lane-cover-top" id="lane-cover-top" style="height:0;"></div>
             <div class="lane-cover-bottom" id="lane-cover-bottom" style="height:0;"></div>
             <canvas id="game-canvas"></canvas>
+            <div id="hud-ready">READY</div>
             <div class="hud">
                 <div class="hud-score">
                     <div style="font-size:12px; color:#888;">EX SCORE</div>
@@ -1845,8 +2201,10 @@
 
                 <div class="hud-judge" id="hud-judge-box">
                     <div class="judge-text" id="judge-text">PGREAT</div>
-                    <div class="judge-diff" id="judge-diff">+0ms</div>
+                    <div class="judge-diff" id="judge-diff">+0.00ms</div>
                 </div>
+
+                <div id="hud-autoplay" class="hud-autoplay">AUTOPLAY</div>
 
                 <div class="hud-gauge-container">
                     <div class="gauge-marker"></div>
@@ -1876,6 +2234,35 @@
 
                 <div style="position:absolute; bottom:20px; width:100%; text-align:center; font-size:12px; color:#555;">
                     [ESCAPE] to Exit
+                </div>
+
+                <!-- PaceMaker Graph -->
+                <div class="hud-pacemaker" id="hud-pacemaker" style="display: none;">
+                    <div class="pace-score-top">
+                        <div class="pace-score-row">
+                            <span class="label">YOU</span>
+                            <span class="val" id="pace-score-you">0</span>
+                        </div>
+                        <div class="pace-score-row">
+                            <span class="label" id="pace-target-name">AAA</span>
+                            <span class="val" id="pace-score-target">0</span>
+                        </div>
+                    </div>
+                    <div class="pace-bars">
+                        <div class="pace-bar you" id="pace-bar-you" style="height: 0%;"></div>
+                        <div class="pace-bar best" id="pace-bar-best" style="height: 0%;"></div>
+                        <div class="pace-bar target" id="pace-bar-target" style="height: 0%;"></div>
+                    </div>
+                    <div class="pace-ghost-bottom">
+                        <div class="ghost-row">
+                            <span class="label" id="pace-ghost-label">vs TARGET</span>
+                            <span class="val" id="pace-diff-target">+0</span>
+                        </div>
+                        <div class="ghost-row">
+                            <span class="label">vs MY BEST</span>
+                            <span class="val" id="pace-diff-best">+0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1970,8 +2357,34 @@
                 <div class="modal-section">
                     <div class="modal-section-title">Display</div>
                     <div class="option-row">
+                        <span class="option-label">Fullscreen</span>
+                        <input type="checkbox" id="opt-fullscreen">
+                    </div>
+                    <div class="option-row">
+                        <span class="option-label">Resolution</span>
+                        <select id="opt-resolution">
+                            <option value="1280x720">1280 x 720</option>
+                            <option value="1600x900">1600 x 900</option>
+                            <option value="1920x1080">1920 x 1080</option>
+                            <option value="2560x1440">2560 x 1440</option>
+                        </select>
+                    </div>
+                    <div class="option-row">
                         <span class="option-label">Show Judgement Tally</span>
                         <input type="checkbox" id="opt-show-tally" checked>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Replay Settings</div>
+                    <div class="option-row">
+                        <span class="option-label">Replay Save Type</span>
+                        <select id="opt-replay-type">
+                            <option value="NONE">None (Do not save)</option>
+                            <option value="BEST_EX">Best EX Score</option>
+                            <option value="BEST_LAMP">Best Lamp</option>
+                            <option value="FULL_COMBO">Full Combo / Perfect</option>
+                        </select>
                     </div>
                 </div>
 
@@ -1990,7 +2403,8 @@
                 <div class="modal-section">
                     <div class="modal-section-title">Course Management</div>
                     <div class="option-row">
-                        <button class="btn" id="btn-import-course" style="width:100%;">Import Course File (.lr2crs)...</button>
+                        <button class="btn" id="btn-import-course" style="width:100%;">Import Course File
+                            (.lr2crs)...</button>
                     </div>
                 </div>
 
@@ -2002,6 +2416,14 @@
 
         <!-- PLAYER OPTIONS MODAL (IIDX-STYLE) -->
         <div id="modal-options" class="modal modal-iidx">
+            <div class="iidx-target-wheel-container">
+                <div class="iidx-target-header">TARGET SCORE GRAPH</div>
+                <div class="iidx-target-wheel-viewport">
+                    <div class="iidx-target-wheel-strip" id="iidx-target-wheel">
+                        <!-- Items populated by JS -->
+                    </div>
+                </div>
+            </div>
             <div class="iidx-options-container">
                 <div class="iidx-options-header">PLAYER OPTIONS</div>
 
@@ -2112,6 +2534,8 @@
                                 <div data-val="MAX">MAX BPM</div>
                                 <div data-val="AVG">AVG BPM</div>
                                 <div data-val="CONSTANT">CONSTANT</div>
+                                <div data-val="START">START BPM</div>
+                                <div data-val="MAIN">MAIN BPM</div>
                             </div>
                         </div>
                     </div>
@@ -2205,6 +2629,71 @@
             }
         }
 
+        function getBestScore(fileRef) {
+            const data = localStorage.getItem('best_scores');
+            if (!data) return 0;
+            const scores = JSON.parse(data);
+            return scores[fileRef] || 0;
+        }
+
+        function saveScore(fileRef, score) {
+            const data = localStorage.getItem('best_scores');
+            const scores = data ? JSON.parse(data) : {};
+            const currentBest = scores[fileRef] || 0;
+            if (score > currentBest) {
+                scores[fileRef] = score;
+                localStorage.setItem('best_scores', JSON.stringify(scores));
+            }
+        }
+
+        function saveReplay(fileRef, log, score, lamp, isFC) {
+            if (STATE.autoplay) return;
+            if (STATE.replaySaveType === 'NONE') return;
+
+            const existing = getReplay(fileRef);
+            let shouldSave = false;
+
+            if (!existing) {
+                shouldSave = true;
+            } else {
+                if (STATE.replaySaveType === 'BEST_EX') {
+                    if (score > existing.score) shouldSave = true;
+                } else if (STATE.replaySaveType === 'BEST_LAMP') {
+                    if (lamp.id > existing.lampId) shouldSave = true;
+                    // Tie-breaker: Score
+                    else if (lamp.id === existing.lampId && score > existing.score) shouldSave = true;
+                } else if (STATE.replaySaveType === 'FULL_COMBO') {
+                    // Only save if FC
+                    if (isFC) {
+                        if (!existing.isFC) shouldSave = true; // First FC
+                        else if (score > existing.score) shouldSave = true; // Better FC
+                    }
+                }
+            }
+
+            if (shouldSave) {
+                const replayData = {
+                    score: score,
+                    lampId: lamp.id,
+                    isFC: isFC,
+                    log: log,
+                    timestamp: Date.now()
+                };
+                const data = localStorage.getItem('replays') || '{}';
+                const replays = JSON.parse(data);
+                replays[fileRef] = replayData;
+                localStorage.setItem('replays', JSON.stringify(replays));
+                console.log("Replay saved!", replayData);
+            }
+        }
+
+        function getReplay(fileRef) {
+            const data = localStorage.getItem('replays');
+            if (!data) return null;
+            const replays = JSON.parse(data);
+            return replays[fileRef] || null;
+        }
+
         // ----------------------------------------------------------------------------
         // ABSTRACTION LAYER (WEB VS DESKTOP)
         // ----------------------------------------------------------------------------
@@ -2286,6 +2775,80 @@
             BGM: 0x01
         };
 
+        const PACEMAKER_TARGETS = ['OFF', 'AAA', 'AA', 'A', 'NEXT', 'MY BEST'];
+
+        function rotatePacemakerTarget(delta) {
+            let idx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
+            if (idx === -1) idx = 0;
+            idx = (idx + delta + PACEMAKER_TARGETS.length) % PACEMAKER_TARGETS.length;
+            STATE.pacemakerTarget = PACEMAKER_TARGETS[idx];
+            updateOptionsUI();
+        }
+
+        function updatePacemaker(now) {
+            if (STATE.pacemakerTarget === 'OFF' || !STATE.loadedSong) {
+                ui.pacemaker.style.display = 'none';
+                return;
+            }
+            ui.pacemaker.style.display = 'flex';
+
+            const totalNotes = STATE.loadedSong.notes.length;
+            const maxEx = totalNotes * 2;
+            const bestScore = getBestScore(STATE.currentFileRef);
+
+            // Calculate target fraction
+            let targetRatio = 0;
+            let currentLabel = STATE.pacemakerTarget;
+
+            if (STATE.pacemakerTarget === 'AAA') targetRatio = 8 / 9;
+            else if (STATE.pacemakerTarget === 'AA') targetRatio = 7 / 9;
+            else if (STATE.pacemakerTarget === 'A') targetRatio = 6 / 9;
+            else if (STATE.pacemakerTarget === 'MY BEST') {
+                targetRatio = bestScore / Math.max(1, maxEx);
+            }
+            else if (STATE.pacemakerTarget === 'NEXT') {
+                const ranks = [
+                    { name: 'AAA', ratio: 8 / 9 },
+                    { name: 'AA', ratio: 7 / 9 },
+                    { name: 'A', ratio: 6 / 9 },
+                    { name: 'B', ratio: 5 / 9 },
+                    { name: 'C', ratio: 4 / 9 },
+                    { name: 'D', ratio: 3 / 9 },
+                    { name: 'E', ratio: 2 / 9 }
+                ];
+                let next = ranks.find(r => (STATE.score / Math.max(1, maxEx)) < r.ratio);
+                if (!next) next = { name: 'MAX', ratio: 1.0 };
+                targetRatio = next.ratio;
+                currentLabel = next.name;
+            }
+
+            // Estimate how many notes should have been passed by 'now'
+            const notesPassed = STATE.loadedSong.notes.filter(n => n.time <= now).length;
+            const noteProgress = notesPassed / Math.max(1, totalNotes);
+
+            const targetScoreCurrent = Math.floor(maxEx * targetRatio * noteProgress);
+            const bestScoreCurrent = Math.floor(bestScore * noteProgress);
+
+            const diffTarget = STATE.score - targetScoreCurrent;
+            const diffBest = STATE.score - bestScoreCurrent;
+
+            // Update UI
+            ui.paceScoreYou.textContent = STATE.score;
+            ui.paceScoreTarget.textContent = targetScoreCurrent;
+            ui.paceTargetName.textContent = currentLabel;
+
+            ui.paceBarYou.style.height = ((STATE.score / Math.max(1, maxEx)) * 100) + '%';
+            ui.paceBarTarget.style.height = (targetRatio * noteProgress * 100) + '%';
+            ui.paceBarBest.style.height = (bestScore / Math.max(1, maxEx) * 100) + '%';
+
+            ui.paceDiffTarget.textContent = (diffTarget >= 0 ? '+' : '') + diffTarget;
+            ui.paceDiffTarget.className = 'val ' + (diffTarget >= 0 ? 'plus' : 'minus');
+            ui.paceDiffBest.textContent = (diffBest >= 0 ? '+' : '') + diffBest;
+            ui.paceDiffBest.className = 'val ' + (diffBest >= 0 ? 'plus' : 'minus');
+
+            ui.paceGhostLabel.textContent = 'vs ' + currentLabel;
+        }
+
         const ACTIONS = {
             P1_SC_CCW: 'p1_sc_ccw', P1_SC_CW: 'p1_sc_cw',
             P1_1: 'p1_1', P1_2: 'p1_2', P1_3: 'p1_3', P1_4: 'p1_4', P1_5: 'p1_5', P1_6: 'p1_6', P1_7: 'p1_7',
@@ -2326,6 +2889,75 @@
 
         const KEYBINDS = loadKeybinds();
 
+        function savePlayerOptions() {
+            const options = {
+                speed: STATE.speed,
+                gaugeType: STATE.gaugeType,
+                difficultyFilter: STATE.difficultyFilter,
+                keyModeFilter: STATE.keyModeFilter,
+                hiSpeedFix: STATE.hiSpeedFix,
+                sortMode: STATE.sortMode,
+                modifier: STATE.modifier,
+                assistMode: STATE.assistMode,
+                rangeMode: STATE.rangeMode,
+                pacemakerTarget: STATE.pacemakerTarget,
+                fullscreen: STATE.fullscreen,
+                resolution: STATE.resolution,
+                replaySaveType: STATE.replaySaveType
+            };
+            localStorage.setItem('lyruanna_player_options', JSON.stringify(options));
+        }
+
+        function loadPlayerOptions() {
+            const saved = localStorage.getItem('lyruanna_player_options');
+            if (saved) {
+                try {
+                    const options = JSON.parse(saved);
+                    Object.assign(STATE, options);
+                    applyWindowSettings(true);
+                } catch (e) {
+                    console.warn('Failed to parse saved player options');
+                }
+            }
+        }
+
+        function applyWindowSettings(skipIPC = false) {
+            if (!IS_DESKTOP) return;
+
+            // Hide/Show Titlebar
+            const titlebar = document.getElementById('titlebar');
+            const app = document.getElementById('app');
+            const gameScreen = document.getElementById('screen-game');
+            const decideScreen = document.getElementById('screen-decide');
+
+            if (STATE.fullscreen) {
+                if (titlebar) titlebar.style.display = 'none';
+                if (app) app.style.paddingTop = '0';
+                if (gameScreen) { gameScreen.style.top = '0'; gameScreen.style.height = '100%'; }
+                if (decideScreen) { decideScreen.style.top = '0'; decideScreen.style.height = '100%'; }
+                if (!skipIPC) window.electronAPI.setFullscreen(true);
+            } else {
+                if (titlebar) titlebar.style.display = 'flex';
+                if (app) app.style.paddingTop = '32px';
+                if (gameScreen) { gameScreen.style.top = '32px'; gameScreen.style.height = 'calc(100% - 32px)'; }
+                if (decideScreen) { decideScreen.style.top = '32px'; decideScreen.style.height = 'calc(100% - 32px)'; }
+
+                if (!skipIPC) {
+                    const [w, h] = STATE.resolution.split('x').map(Number);
+                    window.electronAPI.setResolution(w, h);
+                }
+            }
+        }
+
+        function renderConfig() {
+            document.getElementById('opt-fullscreen').checked = STATE.fullscreen;
+            document.getElementById('opt-resolution').value = STATE.resolution;
+            document.getElementById('opt-show-tally').checked = STATE.showTally;
+            document.getElementById('opt-replay-type').value = STATE.replaySaveType || 'BEST_EX';
+
+            // Keybindings can be added here if needed
+        }
+
         const ACTION_TO_CHANNELS = {
             [ACTIONS.P1_SC_CCW]: CHANNELS.P1.SCRATCH,
             [ACTIONS.P1_SC_CW]: CHANNELS.P1.SCRATCH,
@@ -2365,6 +2997,9 @@
             difficultyFilter: 'ALL', // ALL, BEGINNER, NORMAL, HYPER, ANOTHER, LEGGENDARIA
             keyModeFilter: 'ALL', // ALL, 单, 5, 7, 9, 双, 10, 14
             hiSpeedFix: 'NONE', // NONE, MIN, MAX, AVG, CONSTANT, START, MAIN
+            pacemakerTarget: 'OFF', // OFF, AAA, AA, A, NEXT, MY BEST
+            fullscreen: false,
+            resolution: '1280x720',
             rangeMode: 'OFF',
             sortMode: 'DEFAULT', // DEFAULT, TITLE, LEVEL, LAMP
             startHoldTimer: null,
@@ -2440,13 +3075,13 @@
         // Use absolute URL resolution for Worker to avoid relative path issues in Electron
         const workerUrl = new URL('./bms-parser.worker.js', window.location.href);
         const parserWorker = new Worker(workerUrl);
-        
+
         function parseChartAsync(text) {
             return new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     reject(new Error("Worker timed out"));
                 }, 60000);
-                
+
                 // One-off handler
                 const handler = (e) => {
                     clearTimeout(timeout);
@@ -2454,7 +3089,7 @@
                     if (e.data.success) resolve(e.data.data);
                     else reject(new Error(e.data.error));
                 };
-                
+
                 const errHandler = (e) => {
                     clearTimeout(timeout);
                     parserWorker.removeEventListener('error', errHandler);
@@ -2524,6 +3159,17 @@
             // Modals
             modalSettings: document.getElementById('modal-settings'),
             modalOptions: document.getElementById('modal-options'),
+            targetWheel: document.getElementById('iidx-target-wheel'),
+            pacemaker: document.getElementById('hud-pacemaker'),
+            paceBarYou: document.getElementById('pace-bar-you'),
+            paceBarTarget: document.getElementById('pace-bar-target'),
+            paceBarBest: document.getElementById('pace-bar-best'),
+            paceScoreYou: document.getElementById('pace-score-you'),
+            paceScoreTarget: document.getElementById('pace-score-target'),
+            paceTargetName: document.getElementById('pace-target-name'),
+            paceDiffTarget: document.getElementById('pace-diff-target'),
+            paceDiffBest: document.getElementById('pace-diff-best'),
+            paceGhostLabel: document.getElementById('pace-ghost-label'),
 
             // Decide Screen
             screenDecide: document.getElementById('screen-decide'),
@@ -2542,8 +3188,6 @@
             document.getElementById('titlebar').style.display = 'flex';
 
             // Wire up window control buttons
-            document.getElementById('btn-minimize').onclick = () => window.electronAPI.minimizeWindow();
-            document.getElementById('btn-maximize').onclick = () => window.electronAPI.maximizeWindow();
             document.getElementById('btn-close').onclick = () => window.electronAPI.closeWindow();
 
             // Handle scan progress
@@ -2604,13 +3248,19 @@
         // Button Handlers
         document.getElementById('btn-settings').onclick = () => {
             playSystemSound('o-open');
-            ui.modalSettings.classList.add('open');
             renderConfig();
+            ui.modalSettings.classList.add('open');
         };
         document.getElementById('btn-save-settings').onclick = () => {
             playSystemSound('o-close');
             ui.modalSettings.classList.remove('open');
+            STATE.fullscreen = document.getElementById('opt-fullscreen').checked;
+            STATE.resolution = document.getElementById('opt-resolution').value;
             STATE.showTally = document.getElementById('opt-show-tally').checked;
+            STATE.replaySaveType = document.getElementById('opt-replay-type').value;
+
+            savePlayerOptions();
+            applyWindowSettings();
             saveKeybinds();
             rebuildInputMap();
         };
@@ -2643,6 +3293,7 @@
             ui.modalOptions.classList.remove('open');
             STATE.isOptionsOpen = false;
             STATE.isOptionsPersistent = false;
+            savePlayerOptions();
             renderSongList(); // Refresh in case key mode filter changed
         };
 
@@ -2652,6 +3303,7 @@
             const filters = ['ALL', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
             let idx = filters.indexOf(STATE.difficultyFilter);
             STATE.difficultyFilter = filters[(idx + 1) % filters.length];
+            savePlayerOptions();
             renderSongList();
         };
 
@@ -2660,6 +3312,7 @@
             const filters = ['ALL', '单', '5', '7', '9', '双', '10', '14'];
             let idx = filters.indexOf(STATE.keyModeFilter);
             STATE.keyModeFilter = filters[(idx + 1) % filters.length];
+            savePlayerOptions();
             renderSongList();
         };
 
@@ -2668,6 +3321,7 @@
             const modes = ['DEFAULT', 'TITLE', 'LEVEL', 'LAMP'];
             let idx = modes.indexOf(STATE.sortMode);
             STATE.sortMode = modes[(idx + 1) % modes.length];
+            savePlayerOptions();
             renderSongList();
         };
 
@@ -2775,7 +3429,7 @@
                     const artistMatch = txt.match(/#ARTIST\s+(.+)/i);
                     const levelMatch = txt.match(/#PLAYLEVEL\s+(\d+)/i);
                     const diffMatch = txt.match(/#DIFFICULTY\s+(\d+)/i);
-                    
+
                     // Determine key mode from filename or channels
                     let keyMode = '7'; // Default
                     const fname = f.name.toLowerCase();
@@ -2784,7 +3438,7 @@
                     else if (fname.includes('_9k') || fname.includes('9k') || fname.endsWith('.pms')) keyMode = '9';
                     else if (fname.includes('_5k') || fname.includes('5k')) keyMode = '5';
                     else if (fname.includes('_7k') || fname.includes('7k')) keyMode = '7';
-                    
+
                     STATE.charts.push({
                         fileRef: f,
                         title: titleMatch ? titleMatch[1].trim() : 'Unknown',
@@ -2805,46 +3459,69 @@
         function triggerDecideScreen(isAutoplay) {
             if (STATE.isStarting || STATE.isPlaying) return;
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
+
             if (STATE.loadedSong) {
                 STATE.isStarting = true;
                 STATE.autoplay = isAutoplay;
-                
+
                 // Stop select loop
                 if (STATE.selectBgmSource) {
-                    try { STATE.selectBgmSource.stop(); } catch(e) {}
+                    try { STATE.selectBgmSource.stop(); } catch (e) { }
                     STATE.selectBgmSource = null;
                 }
-                
+
                 playSystemSound('decide');
-                
+
                 // Set text
                 ui.decideTitle.textContent = ui.titleMain.textContent;
                 ui.decideArtist.textContent = STATE.loadedSong.headers['ARTIST'] || 'Unknown';
-                
+
+                // Update Window Title for Gameplay
+                updateWindowTitle(STATE.loadedSong);
+
                 // Show screen
                 ui.screenDecide.style.display = 'flex';
                 ui.screenDecide.classList.remove('fade-out');
-                
+
                 // Transition logic
                 // 1. Wait 1.5s (Decide screen animations)
                 // 2. Start fade out
-                // 3. Simultaneously call enterGame() so it loads underneath
+                // 3. Simultaneously call enterGame() which will handle loading resources
                 // 4. Hide Decide screen after fade
-                
+
                 setTimeout(() => {
                     ui.screenDecide.classList.add('fade-out');
-                    
+
                     // Call enterGame exactly as we start fading
                     // Gameplay screen will show up behind the fading black
                     enterGame();
-                    
+
                     setTimeout(() => {
                         ui.screenDecide.style.display = 'none';
                         // Reset starting flag after game loop begins
                         setTimeout(() => { STATE.isStarting = false; }, 100);
                     }, 500); // Wait for CSS opacity transition (0.5s)
                 }, 1500);
+            }
+        }
+
+        function updateWindowTitle(chart) {
+            const base = "LYRUANNA - BMS Player";
+            let newTitle = base;
+
+            if (chart) {
+                const title = chart.headers['TITLE'] || 'Unknown';
+                const subtitle = chart.headers['SUBTITLE'] || '';
+                newTitle = `LYRUANNA - ${title}${subtitle ? ' [' + subtitle + ']' : ''}`;
+            }
+
+            // Update custom HTML titlebar
+            const titlebarText = document.querySelector('.titlebar-title');
+            if (titlebarText) titlebarText.textContent = newTitle;
+
+            // Update Electron window title
+            if (IS_DESKTOP && window.electronAPI.setWindowTitle) {
+                window.electronAPI.setWindowTitle(newTitle);
             }
         }
 
@@ -2908,7 +3585,7 @@
 
                 const folderSet = new Set();
                 STATE.charts.forEach(c => folderSet.add(getCategoryName(c)));
-                
+
                 Array.from(folderSet).sort().forEach(folder => {
                     const count = STATE.charts.filter(c => getCategoryName(c) === folder).length;
                     const div = document.createElement('div');
@@ -2924,7 +3601,7 @@
                     addToList('folder', { name: folder, count: count, type: 'CATEGORY' }, div);
                 });
                 ui.songCount.textContent = STATE.currentList.length;
-            } 
+            }
             // 2. CLASS (Courses) View
             else if (STATE.currentFolder === 'CLASS') {
                 const backDiv = document.createElement('div');
@@ -2940,7 +3617,7 @@
                     div.onclick = () => {
                         STATE.activeCourse = course; STATE.courseIndex = 0;
                         const song = STATE.charts.find(c => c.md5 === course.hashes[0]);
-                        if (song) loadChart(STATE.charts.indexOf(song), div);
+                        if (song) loadChart(STATE.charts.indexOf(song), div, true);
                     };
                     addToList('course', course, div);
                 });
@@ -2984,7 +3661,7 @@
                     const div = document.createElement('div');
                     div.className = 'song-card';
                     div.innerHTML = `<div class="song-card-lamp ${lamp.class}"></div><div class="song-card-content"><div class="song-card-title">${c.title}</div><div class="song-card-artist">${c.artist}</div></div><div class="song-card-info"><span class="song-card-level" style="background:${diffColor}; color:#000;">${c.level || '?'}</span><span class="song-card-keymode">${c.keyMode || '7'}K</span></div>`;
-                    div.onclick = () => loadChart(STATE.charts.indexOf(c), div);
+                    div.onclick = () => loadChart(STATE.charts.indexOf(c), div, true);
                     addToList('chart', c, div);
                 });
                 ui.songCount.textContent = filtered.length;
@@ -3025,23 +3702,23 @@
                 ui.btnStart.disabled = true; // Can implement course play later
                 ui.stagefileArea.style.backgroundImage = '';
                 ui.selectBg.style.backgroundImage = '';
-                
+
                 // Verify Songs
                 let html = '<div style="font-size:14px; text-align:left; padding:10px;">';
                 let missingCount = 0;
-                
+
                 item.data.hashes.forEach((hash, idx) => {
                     const song = STATE.charts.find(c => c.md5 === hash);
                     const color = song ? '#4f4' : '#f44';
                     const title = song ? `${song.title} <span style="font-size:0.8em; color:#888;">/ ${song.artist}</span>` : 'MISSING DATA (Not in library)';
                     html += `<div style="margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        <span style="color:#888; margin-right:8px;">STAGE ${idx+1}</span>
+                        <span style="color:#888; margin-right:8px;">STAGE ${idx + 1}</span>
                         <span style="color:${color}; font-weight:bold;">${song ? 'FOUND' : 'MISSING'}</span>
                         <span style="margin-left:8px;">${title}</span>
                     </div>`;
                     if (!song) missingCount++;
                 });
-                
+
                 if (missingCount > 0) {
                     html += `<div style="margin-top:10px; color:#f44; font-weight:bold; border-top:1px solid #444; padding-top:5px;">
                         ⚠️ ${missingCount} song(s) missing from library.
@@ -3106,6 +3783,42 @@
             if (hsValEl) hsValEl.textContent = STATE.speed.toFixed(1);
             const hsFixEl = document.getElementById('opt-hsfix-val');
             if (hsFixEl) hsFixEl.textContent = `FIX: ${STATE.hiSpeedFix}`;
+
+            // Target Wheel (Seamless)
+            if (ui.targetWheel) {
+                // Render 5 sets of targets to ensure seamlessness in both directions
+                const totalSets = 5;
+                const setSize = PACEMAKER_TARGETS.length;
+                const currentIdx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
+
+                // Only re-populate if needed (optimization) or just do it once
+                if (ui.targetWheel.children.length !== setSize * totalSets) {
+                    ui.targetWheel.innerHTML = '';
+                    for (let s = 0; s < totalSets; s++) {
+                        PACEMAKER_TARGETS.forEach(target => {
+                            const item = document.createElement('div');
+                            item.className = 'iidx-target-item';
+                            item.textContent = target;
+                            ui.targetWheel.appendChild(item);
+                        });
+                    }
+                }
+
+                // Calculate position: we want the current target to be in the middle of the viewport
+                // Viewport height is 200px, Item height is 40px. Center is at 100px.
+                // Middle item should be at y=80 relative to viewport top (center of 40px item at 100px)
+                // However, we can just use the middle set (set 2, index 2) as reference.
+                const centerOffset = 80;
+                const itemHeight = 40;
+                const targetPos = (setSize * 2 + currentIdx) * itemHeight;
+
+                ui.targetWheel.style.transform = `translateY(${centerOffset - targetPos}px)`;
+
+                // Update selected class
+                Array.from(ui.targetWheel.children).forEach((child, i) => {
+                    child.classList.toggle('selected', (i % setSize) === currentIdx);
+                });
+            }
         }
 
         function drawWiringLines() {
@@ -3173,6 +3886,7 @@
 
             // Parse using Worker
             if (!focusOnly) {
+                ui.screenLoading.classList.remove('gameplay-loading');
                 ui.screenLoading.style.display = 'flex';
                 ui.screenLoading.style.opacity = '1';
                 ui.loadingStatus.textContent = "Parsing Chart...";
@@ -3181,7 +3895,7 @@
 
             try {
                 const data = await parseChartAsync(bmsText); // Worker call
-                
+
                 STATE.loadedSong = data;
                 STATE.currentFileRef = c.fileRef;
                 STATE.replayFileRef = c.fileRef;
@@ -3218,7 +3932,7 @@
                 if (data.headers['LNTYPE'] || data.headers['LNOBJ']) ui.songMarkers.innerHTML += '<span class="marker marker-ln">LN</span>';
                 if (data.headers['RANDOM']) ui.songMarkers.innerHTML += '<span class="marker marker-ran">RAN</span>';
 
-                if (IS_DESKTOP && !focusOnly) {
+                if (IS_DESKTOP) {
                     const stagefileUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['STAGEFILE']);
                     const bannerUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['BANNER']);
                     if (stagefileUrl) {
@@ -3238,71 +3952,115 @@
                         STATE.bannerUrl = null;
                     }
                 }
-                
+
                 ui.btnStart.disabled = false;
 
-                if (!focusOnly) {
-                    STATE.audioBuffers = {};
-                    STATE.bgaDefinitions = {};
-                    
-                    // Collect Audio Files
-                    const audioTasks = [];
-                    for (let k in data.headers) {
-                        if (k.startsWith('WAV')) {
-                            audioTasks.push({ key: k, id: k.substring(3).toUpperCase(), filename: data.headers[k] });
-                        }
-                        if (k.startsWith('BMP') && IS_DESKTOP) {
-                            const id = k.substring(3).toUpperCase();
-                            // Fire and forget image loading (non-blocking)
-                            window.electronAPI.resolveImage(STATE.currentFileRef, data.headers[k]).then(url => {
-                                if (url) STATE.bgaDefinitions[id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg)$/i.test(data.headers[k]) };
-                            });
-                        }
-                    }
-
-                    // CHUNKED LOADING
-                    ui.loadingStatus.textContent = `Loading Audio (0/${audioTasks.length})...`;
-                    console.log(`DEBUG: Audio tasks: ${audioTasks.length}`);
-                    const CHUNK_SIZE = 10;
-                    for (let i = 0; i < audioTasks.length; i += CHUNK_SIZE) {
-                        const chunk = audioTasks.slice(i, i + CHUNK_SIZE);
-                        await Promise.all(chunk.map(task => {
-                            // Use appropriate reading method
-                            let filePromise;
-                            if (IS_DESKTOP) {
-                                filePromise = window.electronAPI.resolvePath(STATE.currentFileRef, task.filename).then(ref => {
-                                    if (ref) return dataLayer.readAudio(ref);
-                                    return null;
-                                });
-                            } else {
-                                const f = dataLayer.webFiles[task.filename.toLowerCase()];
-                                if (f) filePromise = dataLayer.readAudio(f);
-                                else filePromise = Promise.resolve(null);
-                            }
-                            
-                            return filePromise.then(ab => {
-                                if (ab) STATE.audioBuffers[task.id] = ab;
-                            }).catch(e => console.warn(`Audio ${task.id} error:`, e.message));
-                        }));
-                        
-                        // Update Progress
-                        const progress = Math.min(100, 20 + ((i + CHUNK_SIZE) / audioTasks.length * 80));
-                        ui.loadingBar.style.width = `${progress}%`;
-                        ui.loadingStatus.textContent = `Loading Audio (${Math.min(i + CHUNK_SIZE, audioTasks.length)}/${audioTasks.length})...`;
-                        
-                        // Small yield to UI
-                        await new Promise(r => setTimeout(r, 0));
-                    }
-                    console.log("DEBUG: Audio load finished");
-                    
-                    // Done
-                    ui.screenLoading.style.display = 'none';
+                // Replay Button Logic
+                const replayData = getReplay(c.fileRef);
+                const btnReplay = document.getElementById('btn-replay');
+                if (btnReplay) {
+                    btnReplay.disabled = !replayData;
+                    btnReplay.style.opacity = replayData ? '1' : '0.5';
+                    btnReplay.title = replayData ? `Replay: ${replayData.score} (${replayData.isFC ? 'FC' : 'Clear'})` : 'No Replay Data';
                 }
 
-            } catch(e) {
+                if (!focusOnly) {
+                    await loadAudioResources(data);
+                }
+
+            } catch (e) {
                 console.error("Chart Load Error:", e);
                 ui.loadingStatus.textContent = "Error loading chart!";
                 setTimeout(() => { ui.screenLoading.style.display = 'none'; }, 2000);
+            }
+        }
+
+        async function loadAudioResources(data) {
+            STATE.audioBuffers = {};
+            STATE.bgaDefinitions = {};
+
+            // Collect Audio & BGA Files
+            const loadingTasks = [];
+            for (let k in data.headers) {
+                if (k.startsWith('WAV')) {
+                    loadingTasks.push({ type: 'audio', key: k, id: k.substring(3).toUpperCase(), filename: data.headers[k] });
+                }
+                if (k.startsWith('BMP')) {
+                    let id = k.substring(3).toUpperCase();
+                    // Normalize to 2-chars if 1-char (e.g., #BMP1 -> id 01)
+                    if (id.length === 1) id = '0' + id;
+                    loadingTasks.push({ type: 'bga', key: k, id: id, filename: data.headers[k] });
+                }
+            }
+
+            // CHUNKED LOADING
+            const isGameplay = ui.screenLoading.classList.contains('gameplay-loading');
+            const totalTasks = loadingTasks.length;
+            const statusPrefix = isGameplay ? 'Now Loading: ' : 'Loading Resources (0/' + totalTasks + ')...';
+
+            if (isGameplay) ui.loadingStatus.textContent = statusPrefix + '0%';
+            else ui.loadingStatus.textContent = statusPrefix;
+
+            console.log(`DEBUG: Loading tasks: ${totalTasks}`);
+            const CHUNK_SIZE = 12;
+            for (let i = 0; i < totalTasks; i += CHUNK_SIZE) {
+                const chunk = loadingTasks.slice(i, i + CHUNK_SIZE);
+                await Promise.all(chunk.map(task => {
+                    if (task.type === 'audio') {
+                        let filePromise;
+                        if (IS_DESKTOP) {
+                            filePromise = window.electronAPI.resolvePath(STATE.currentFileRef, task.filename).then(ref => {
+                                if (ref) return dataLayer.readAudio(ref);
+                                return null;
+                            });
+                        } else {
+                            const f = dataLayer.webFiles[task.filename.toLowerCase()];
+                            if (f) filePromise = dataLayer.readAudio(f);
+                            else filePromise = Promise.resolve(null);
+                        }
+
+                        return filePromise.then(ab => {
+                            if (ab) STATE.audioBuffers[task.id] = ab;
+                        }).catch(e => console.warn(`Audio ${task.id} error:`, e.message));
+                    } else {
+                        // BGA Task
+                        if (IS_DESKTOP) {
+                            return window.electronAPI.resolveImage(STATE.currentFileRef, task.filename).then(url => {
+                                if (url) STATE.bgaDefinitions[task.id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg|m4v)$/i.test(task.filename) };
+                            }).catch(e => console.warn(`BGA ${task.id} error:`, e.message));
+                        } else {
+                            const filename = task.filename.toLowerCase();
+                            const file = dataLayer.webFiles[filename];
+                            if (file) {
+                                const url = URL.createObjectURL(file);
+                                STATE.bgaDefinitions[task.id] = { url, isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg|m4v)$/i.test(filename) };
+                            }
+                            return Promise.resolve();
+                        }
+                    }
+                }));
+
+                // Update Progress
+                const progress = Math.min(100, Math.floor(((i + CHUNK_SIZE) / totalTasks) * 100));
+
+                if (isGameplay) {
+                    ui.loadingStatus.textContent = statusPrefix + progress + '%';
+                } else {
+                    const uiProgress = Math.min(100, 20 + ((i + CHUNK_SIZE) / totalTasks * 80));
+                    ui.loadingBar.style.width = `${uiProgress}%`;
+                    ui.loadingStatus.textContent = `Loading Resources (${Math.min(i + CHUNK_SIZE, totalTasks)}/${totalTasks})...`;
+                }
+
+                // Small yield to UI
+                await new Promise(r => setTimeout(r, 0));
+            }
+            console.log("DEBUG: Resource load finished");
+
+            // Done
+            // We don't hide the screen here if it's part of a gameplay transition
+            // enterGame handles its own hiding. For other callers:
+            if (!ui.screenLoading.classList.contains('gameplay-loading')) {
+                ui.screenLoading.style.display = 'none';
             }
         }
 
@@ -3357,18 +4115,55 @@
                 await audioCtx.resume();
             }
 
+            // Show Loading UI (Centered for gameplay transition)
+            ui.screenLoading.classList.add('gameplay-loading');
+            ui.screenLoading.style.display = 'flex';
+            ui.screenLoading.style.opacity = '1';
+            ui.loadingBar.style.width = '0%';
+            ui.loadingStatus.textContent = "Preparing Stage...";
+
+            // Load Resources - This now happens AFTER select screen is gone
+            await loadAudioResources(STATE.loadedSong);
+
+            // Once resources are ready, hide loading
+            ui.screenLoading.style.opacity = '0';
+            setTimeout(() => {
+                ui.screenLoading.style.display = 'none';
+                ui.screenLoading.classList.remove('gameplay-loading');
+            }, 500);
+
+            // Show READY notification for 1 second before starting game
+            const readyEl = document.getElementById('hud-ready');
+            readyEl.classList.add('show');
+            await new Promise(r => setTimeout(r, 1000));
+            readyEl.classList.remove('show');
+
             STATE.isPlaying = true;
-            STATE.startTime = audioCtx.currentTime + 2.0;
+            STATE.startTime = audioCtx.currentTime + 1.0; // Start in 1s to allow animations to settle if needed, but 2s total from Ready start
             STATE.score = 0;
             STATE.combo = 0;
             STATE.maxCombo = 0;
             STATE.activeActions.clear();
             STATE.currentBpm = STATE.loadedSong.initialBpm;
-            STATE.loadedSong.notes.forEach(n => n.hit = false);
+            STATE.loadedSong.notes.forEach(n => {
+                n.hit = false;
+                n.isMissed = false;
+                n.missTime = undefined;
+            });
             STATE.bgmCursor = 0;
             STATE.bgaCursor = 0;
             STATE.bpmCursor = 0;
+            STATE.bpmCursor = 0;
             STATE.logicCursor = 0; // [NEW] Logic optimization cursor
+            STATE.inputLog = []; // Reset replay log
+
+            // Show Autoplay Indicator
+            const apEl = document.getElementById('hud-autoplay');
+            if (apEl) apEl.style.display = STATE.autoplay ? 'block' : 'none';
+
+            // Initialize beam opacity states for 8 lanes (Scratch + 7 Keys)
+            // Indices: 0=Scratch, 1-7=Keys
+            STATE.beamOpacity = new Array(8).fill(0);
 
             // Apply Style (Mirror/Random/R-Random/S-Random/H-Random/All-Scratch)
             if (STATE.modifier !== 'OFF') {
@@ -3493,7 +4288,7 @@
             STATE.isPlaying = false;
             document.getElementById('screen-select').style.display = 'flex';
             document.getElementById('screen-game').style.display = 'none';
-            
+
             // Restart select loop
             if (!STATE.selectBgmSource) {
                 STATE.selectBgmSource = playSystemSound('select', true);
@@ -3503,6 +4298,9 @@
             ui.bgaVideo.pause();
             ui.bgaVideo.style.display = 'none';
             ui.bgaImg.style.display = 'none';
+
+            // Reset Window Title
+            updateWindowTitle(null);
         }
 
         function updateTallyDisplay() {
@@ -3537,6 +4335,29 @@
             return null;
         }
 
+        function updateBGA(id) {
+            console.log("updateBGA called with ID:", id);
+            const def = STATE.bgaDefinitions[id];
+            if (!def) {
+                console.warn("BGA Definition not found for ID:", id, "Available:", Object.keys(STATE.bgaDefinitions));
+                return;
+            }
+
+            if (def.isVideo) {
+                console.log("Displaying Video BGA:", def.url.substring(0, 50) + "...");
+                ui.bgaImg.style.display = 'none';
+                ui.bgaVideo.src = def.url;
+                ui.bgaVideo.style.display = 'block';
+                ui.bgaVideo.play().catch(e => console.warn("BGA Video play error:", e));
+            } else {
+                console.log("Displaying Image BGA:", def.url.substring(0, 50) + "...");
+                ui.bgaVideo.pause();
+                ui.bgaVideo.style.display = 'none';
+                ui.bgaImg.src = def.url;
+                ui.bgaImg.style.display = 'block';
+            }
+        }
+
         const SYSTEM_SOUND_FILES = [
             'sfx/clear.ogg',
             'sfx/difficulty.ogg',
@@ -3557,10 +4378,10 @@
 
         async function loadSystemSounds() {
             for (const filePath of SYSTEM_SOUND_FILES) {
-                const id = filePath.split('/').pop().split('.')[0]; 
+                const id = filePath.split('/').pop().split('.')[0];
                 try {
                     // Assuming dataLayer.readAudio handles the path correctly
-                    const fullPath = `soundset/${filePath}`; 
+                    const fullPath = `soundset/${filePath}`;
                     const buffer = await dataLayer.readAudio(fullPath);
                     STATE.systemAudio[id] = buffer;
                 } catch (e) {
@@ -3581,9 +4402,15 @@
 
             const bpms = STATE.loadedSong.bpmEvents;
             while (STATE.bpmCursor < bpms.length && bpms[STATE.bpmCursor].time <= now) {
-                STATE.currentBpm = bpms[STATE.bpmCursor].bpm;
+                STATE.currentBpm = Math.max(0.001, bpms[STATE.bpmCursor].bpm);
                 STATE.bpmCursor++;
                 ui.statBpm.textContent = Math.round(STATE.currentBpm);
+            }
+
+            const bgas = STATE.loadedSong.bgaEvents;
+            while (STATE.bgaCursor < bgas.length && bgas[STATE.bgaCursor].time <= now) {
+                updateBGA(bgas[STATE.bgaCursor].id);
+                STATE.bgaCursor++;
             }
 
             const notes = STATE.loadedSong.notes;
@@ -3616,11 +4443,26 @@
                     playSound(n.id);
                     handleJudgment('PGREAT', 0);
                     if (i === STATE.logicCursor) STATE.logicCursor++;
+
+                    // Trigger Beam
+                    let targetIdx = -1;
+                    if (CHANNELS.P1.SCRATCH.includes(n.ch)) targetIdx = 0;
+                    else if (CHANNELS.P1.KEY1.includes(n.ch)) targetIdx = 1;
+                    else if (CHANNELS.P1.KEY2.includes(n.ch)) targetIdx = 2;
+                    else if (CHANNELS.P1.KEY3.includes(n.ch)) targetIdx = 3;
+                    else if (CHANNELS.P1.KEY4.includes(n.ch)) targetIdx = 4;
+                    else if (CHANNELS.P1.KEY5.includes(n.ch)) targetIdx = 5;
+                    else if (CHANNELS.P1.KEY6.includes(n.ch)) targetIdx = 6;
+                    else if (CHANNELS.P1.KEY7.includes(n.ch)) targetIdx = 7;
+
+                    if (targetIdx !== -1) STATE.beamOpacity[targetIdx] = 1.0;
                 }
                 // Miss Detection
                 else if (!STATE.autoplay && diff > win.BD) {
                     // Passed Bad Window -> POOR
                     n.hit = true;
+                    n.isMissed = true;
+                    n.missTime = now;
                     handleJudgment('POOR', diff);
                     if (i === STATE.logicCursor) STATE.logicCursor++;
                 }
@@ -3634,6 +4476,8 @@
                 STATE.history.score.push(STATE.score);
             }
 
+            updatePacemaker(now);
+
             // End of song check
             if (now > STATE.lastNoteTime + 2000) {
                 const isClear = (STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') ? (STATE.gauge > 0) : (STATE.gauge >= 80);
@@ -3645,42 +4489,81 @@
         }
 
         function render(time) {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const wScratch = 60; const wKey = 40;
             const p1Total = wScratch + (wKey * 7);
             const startX = 30; // Left position instead of centered
-            const hitY = canvas.height - 100;
+            const hitY = canvas.height * 0.75; // Shifted to 75% from top
             // Scroll speed scales with BPM to keep distance between beats constant
             // Reference BPM 150 for the HI-SPEED multiplier
             // Base speed increased by 2.5x (0.15 -> 0.375)
-            const speed = (STATE.speed * 0.375) * (STATE.currentBpm / 150);
+            let refBpm = 150;
+            if (STATE.hiSpeedFix === 'CONSTANT') refBpm = STATE.currentBpm;
+            else if (STATE.hiSpeedFix === 'MAX') refBpm = STATE.loadedSong.maxBpm;
+            else if (STATE.hiSpeedFix === 'MIN') refBpm = STATE.loadedSong.minBpm;
+            else if (STATE.hiSpeedFix === 'AVG') refBpm = STATE.loadedSong.avgFixBpm;
+            else if (STATE.hiSpeedFix === 'START') refBpm = STATE.loadedSong.initialBpm;
+            else if (STATE.hiSpeedFix === 'MAIN') refBpm = STATE.loadedSong.mainBpm;
+
+            const speed = (STATE.speed * 0.375) * (Math.max(0.001, STATE.currentBpm) / Math.max(0.001, refBpm));
 
             ctx.save();
             ctx.translate(startX, 0);
 
-            const drawLane = (actions, x, w, isBlack, isBlue, isScratch) => {
+            // Helper to map key index for beam array
+            // Scratch is index 0. Keys 1-7 match index 1-7.
+            const drawLane = (actions, x, w, isBlack, isBlue, isScratch, beamIndex) => {
                 const actionList = Array.isArray(actions) ? actions : [actions];
                 const active = actionList.some(a => STATE.activeActions.has(a));
-                if (isScratch) ctx.fillStyle = active ? '#500' : '#200';
-                else if (isBlue) ctx.fillStyle = active ? '#003355' : '#000510';
-                else ctx.fillStyle = active ? '#333' : '#111';
-                ctx.fillRect(x, 0, w, canvas.height);
-                ctx.strokeStyle = '#333'; ctx.strokeRect(x, 0, w, canvas.height);
+
+                // Beam Opacity Logic
                 if (active) {
-                    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x, 0, w, canvas.height);
-                    const g = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - 300);
-                    g.addColorStop(0, 'rgba(255,255,255,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.fillStyle = g; ctx.fillRect(x, canvas.height - 300, w, 300);
+                    STATE.beamOpacity[beamIndex] = Math.min(1.0, STATE.beamOpacity[beamIndex] + 0.2);
+                } else {
+                    STATE.beamOpacity[beamIndex] = Math.max(0.0, STATE.beamOpacity[beamIndex] - 0.1);
+                }
+
+                if (isScratch) ctx.fillStyle = '#200';
+                else if (isBlue) ctx.fillStyle = '#000510';
+                else ctx.fillStyle = '#111';
+                ctx.fillRect(x, 0, w, hitY + 50); // Trim height
+                ctx.strokeStyle = '#333'; ctx.strokeRect(x, 0, w, hitY + 50);
+
+                // Draw Beam (Laser) if opacity > 0
+                if (STATE.beamOpacity[beamIndex] > 0.01) {
+                    const beamH = hitY * 0.2; // 20% of notefield height from receptor upwards
+                    // Gradient: Transparent -> Color (at receptor)
+                    const g = ctx.createLinearGradient(0, hitY, 0, hitY - beamH);
+                    // Set color based on active state or lingering opacity
+                    const alpha = STATE.beamOpacity[beamIndex];
+                    // Use different colors for Scratch vs Keys?
+                    // Scratch: Red/White, Keys: Blue/White
+                    if (isScratch) {
+                        g.addColorStop(0, `rgba(255, 50, 50, ${alpha * 0.6})`);
+                        g.addColorStop(1, `rgba(255, 0, 0, 0)`);
+                    } else {
+                        g.addColorStop(0, `rgba(200, 255, 255, ${alpha * 0.5})`);
+                        g.addColorStop(1, `rgba(0, 255, 255, 0)`);
+                    }
+
+                    ctx.fillStyle = g;
+                    // Draw from hitY upwards
+                    ctx.fillRect(x, hitY - beamH, w, beamH);
+
+                    // Add a bright line at receptor for impact
+                    if (active) {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+                        ctx.fillRect(x, hitY - 2, w, 4);
+                    }
                 }
             };
 
-            drawLane([ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW], 0, wScratch, false, false, true);
+            drawLane([ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW], 0, wScratch, false, false, true, 0);
             let curX = wScratch;
             for (let i = 1; i <= 7; i++) {
                 const isBlue = (i === 2 || i === 4 || i === 6);
-                drawLane(ACTIONS[`P1_${i}`], curX, wKey, !isBlue, isBlue);
+                drawLane(ACTIONS[`P1_${i}`], curX, wKey, !isBlue, isBlue, false, i);
                 curX += wKey;
             }
 
@@ -3690,14 +4573,22 @@
             // NEW: Batched Draw with Render Window
             // 1. Calculate visible range first
             // Reference BPM 150 for the HI-SPEED multiplier
-            const baseSpeed = (STATE.speed * 0.375) * (STATE.currentBpm / 150);
-            
+            let baseRefBpm = 150;
+            if (STATE.hiSpeedFix === 'CONSTANT') baseRefBpm = STATE.currentBpm;
+            else if (STATE.hiSpeedFix === 'MAX') baseRefBpm = STATE.loadedSong.maxBpm;
+            else if (STATE.hiSpeedFix === 'MIN') baseRefBpm = STATE.loadedSong.minBpm;
+            else if (STATE.hiSpeedFix === 'AVG') baseRefBpm = STATE.loadedSong.avgFixBpm;
+            else if (STATE.hiSpeedFix === 'START') baseRefBpm = STATE.loadedSong.initialBpm;
+            else if (STATE.hiSpeedFix === 'MAIN') baseRefBpm = STATE.loadedSong.mainBpm;
+
+            const baseSpeed = (STATE.speed * 0.375) * (Math.max(0.001, STATE.currentBpm) / Math.max(0.001, baseRefBpm));
+
             // Calculate time range visible on screen
             // Max visual range (hitY + 50 to -50) => height + 100
             // distance = (noteTime - now) * speed
             // maxDist = canvas.height
             // maxTimeDiff = canvas.height / speed
-            
+
             const maxTimeOffset = (canvas.height + 100) / baseSpeed;
             const minTime = time - 200; // Just past hit line
             const maxTime = time + maxTimeOffset;
@@ -3707,21 +4598,21 @@
             let startIdx = STATE.logicCursor || 0;
             // Validate startIdx against length
             if (startIdx >= STATE.loadedSong.notes.length) startIdx = STATE.loadedSong.notes.length - 1;
-            
+
             // Backtrack a bit just in case visual lags slightly behind logic
-            while(startIdx > 0 && STATE.loadedSong.notes[startIdx] && STATE.loadedSong.notes[startIdx].time > minTime) {
+            while (startIdx > 0 && STATE.loadedSong.notes[startIdx] && STATE.loadedSong.notes[startIdx].time > minTime) {
                 startIdx--;
             }
             // Forward track to find actual visual start
-            while(startIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[startIdx].time < minTime) {
+            while (startIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[startIdx].time < minTime) {
                 startIdx++;
             }
-            
+
             let endIdx = startIdx;
-            while(endIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[endIdx].time < maxTime) {
+            while (endIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[endIdx].time < maxTime) {
                 endIdx++;
             }
-            
+
             // Note: endIdx is exclusive
 
             const noteBatches = {
@@ -3732,11 +4623,12 @@
 
             for (let i = startIdx; i < endIdx; i++) {
                 const n = STATE.loadedSong.notes[i];
-                if (n.hit) continue;
+                if (n.hit && !n.isMissed) continue;
+                if (n.isMissed && (time - n.missTime > 1000)) continue;
 
                 let x = -1, w = wKey, isSc = false, isBlue = false;
                 const ch = n.ch;
-                
+
                 // Mappings (could be cached map but this is fast enough)
                 if (CHANNELS.P1.SCRATCH.includes(ch)) { x = 0; w = wScratch; isSc = true; }
                 else if (CHANNELS.P1.KEY1.includes(ch)) { x = wScratch; }
@@ -3750,14 +4642,23 @@
                 if (x === -1) continue;
 
                 const dist = (n.time - time) * baseSpeed;
-                const y = hitY - dist;
+                let y = hitY - dist;
+
+                // Stop at receptor if falling past
+                if (y > hitY && !n.isMissed) {
+                    y = hitY;
+                }
+
+                if (n.isMissed) {
+                    y = hitY; // Clamp to receptor
+                }
 
                 // Double check bounds (though indices should cover it)
                 if (y < -50 || y > canvas.height + 50) continue;
 
-                if (isSc) noteBatches.scratch.push({x: x+1, y, w: w-2});
-                else if (isBlue) noteBatches.blue.push({x: x+1, y, w: w-2});
-                else noteBatches.white.push({x: x+1, y, w: w-2});
+                if (isSc) noteBatches.scratch.push({ x: x + 1, y, w: w - 2 });
+                else if (isBlue) noteBatches.blue.push({ x: x + 1, y, w: w - 2 });
+                else noteBatches.white.push({ x: x + 1, y, w: w - 2 });
             }
 
             // Draw Batches
@@ -3912,9 +4813,17 @@
         // ----------------------------------------------------------------------------
         function showResults(isClear) {
             STATE.isPlaying = false;
-            
+
             if (isClear) playSystemSound('clear');
             else playSystemSound('fail');
+
+            saveScore(STATE.currentFileRef, STATE.score);
+            const lamp = determineClearLamp(isClear);
+            saveLamp(STATE.currentFileRef, lamp);
+
+            // Save Replay
+            const isFC = (STATE.comboBreaks === 0 && STATE.judgeCounts.bad === 0 && STATE.judgeCounts.poor === 0);
+            saveReplay(STATE.currentFileRef, STATE.inputLog, STATE.score, lamp, isFC);
 
             document.getElementById('screen-game').style.display = 'none';
             document.getElementById('screen-results').style.display = 'flex';
@@ -3948,8 +4857,6 @@
             document.getElementById('res-percent').textContent = percent.toFixed(2) + '%';
 
             // Lamps
-            const lamp = determineClearLamp(isClear);
-            saveLamp(STATE.currentFileRef, lamp);
             const lampEl = document.getElementById('res-lamp');
             lampEl.className = 'lamp ' + lamp.class;
             document.getElementById('res-lamp-text').textContent = lamp.name;
@@ -3965,7 +4872,7 @@
             // Global listener to exit results
             const returnHandler = (e) => {
                 document.getElementById('screen-results').style.display = 'none';
-                
+
                 if (STATE.activeCourse) {
                     STATE.courseIndex++;
                     if (STATE.courseIndex < STATE.activeCourse.hashes.length) {
@@ -3973,7 +4880,7 @@
                         const song = STATE.charts.find(c => c.md5 === nextHash);
                         if (song) {
                             // Find card element if possible (or just use null)
-                            loadChart(STATE.charts.indexOf(song), { classList: { add:()=>{} }, classList: { remove:()=>{} }, style: {} });
+                            loadChart(STATE.charts.indexOf(song), { classList: { add: () => { } }, classList: { remove: () => { } }, style: {} }, true);
                             enterGame();
                         } else {
                             alert('Next song in course not found! Hash: ' + nextHash);
@@ -3988,7 +4895,7 @@
                 } else {
                     exitToSelect();
                 }
-                
+
                 window.removeEventListener('keydown', returnHandler);
             };
 
@@ -3997,6 +4904,8 @@
                 if (!STATE.selectBgmSource) {
                     STATE.selectBgmSource = playSystemSound('select', true);
                 }
+                // Reset Window Title
+                updateWindowTitle(null);
             }
 
             setTimeout(() => {
@@ -4140,8 +5049,20 @@
             // Handle Escape key first (before actions check)
             if (e.code === 'Escape' && STATE.isPlaying) { exitGame(); return; }
 
+            // Replay Recording
+            if (STATE.isPlaying && !STATE.autoplay && !e.repeat) {
+                STATE.inputLog.push({
+                    t: (audioCtx.currentTime - STATE.startTime) * 1000,
+                    k: e.code,
+                    d: true
+                });
+            }
+
             const actions = STATE.keyCodeToAction[e.code];
             if (!actions) return;
+
+            // Block input in Autoplay
+            if (STATE.autoplay && STATE.isPlaying) return;
 
             // Immediate START open (if Settings not open)
             if (actions.includes(ACTIONS.START) && !STATE.isPlaying) {
@@ -4159,6 +5080,7 @@
             if (STATE.isOptionsOpen) {
                 e.preventDefault();
                 actions.forEach(action => {
+                    // Update active actions for multi-key combos (like 5+7 or 6+7)
                     STATE.activeActions.add(action);
 
                     const has5 = STATE.activeActions.has(ACTIONS.P1_5);
@@ -4188,7 +5110,7 @@
                     // Key 5/7: HS / Fix
                     if (action === ACTIONS.P1_5) {
                         if (has7) {
-                            const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT'];
+                            const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
                             let idx = fixes.indexOf(STATE.hiSpeedFix);
                             STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
                         } else {
@@ -4197,7 +5119,7 @@
                     }
                     if (action === ACTIONS.P1_7) {
                         if (has5) {
-                            const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT'];
+                            const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
                             let idx = fixes.indexOf(STATE.hiSpeedFix);
                             STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
                         } else if (has6) {
@@ -4221,9 +5143,18 @@
                         }
                     }
 
+                    // SCRATCH: Pacemaker Target
+                    if (action === ACTIONS.P1_SC_CCW) {
+                        rotatePacemakerTarget(-1);
+                    }
+                    if (action === ACTIONS.P1_SC_CW) {
+                        rotatePacemakerTarget(1);
+                    }
+
                     // Play change sound for relevant keys
-                    if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7].includes(action)) {
+                    if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7, ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW].includes(action)) {
                         playSystemSound('o-change');
+                        savePlayerOptions();
                     }
                 });
                 updateOptionsUI();
@@ -4260,7 +5191,7 @@
 
                     if (isOpenKey) {
                         if (item.type === 'back') {
-                             STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList();
+                            STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList();
                         } else if (item.type === 'folder' || item.type === 'course') {
                             item.el.click();
                         } else if (item.type === 'chart') {
@@ -4323,6 +5254,16 @@
 
         window.addEventListener('keyup', e => {
             const actions = STATE.keyCodeToAction[e.code];
+
+            // Replay Recording (Release)
+            if (STATE.isPlaying && !STATE.autoplay) {
+                STATE.inputLog.push({
+                    t: (audioCtx.currentTime - STATE.startTime) * 1000,
+                    k: e.code,
+                    d: false
+                });
+            }
+
             if (!actions) return;
 
             actions.forEach(action => {
@@ -4361,8 +5302,9 @@
 
         // INITIALIZATION
         (async () => {
+            loadPlayerOptions();
             await loadSystemSounds();
-            
+
             // Resume/Start BGM on first interaction
             const startBgm = () => {
                 if (audioCtx.state === 'suspended') audioCtx.resume();

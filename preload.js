@@ -16,7 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openCourseDialog: () => ipcRenderer.invoke('open-course-dialog'),
     getPathForFile: (file) => webUtils.getPathForFile(file),
     // Window controls
-    minimizeWindow: () => ipcRenderer.send('window-minimize'),
-    maximizeWindow: () => ipcRenderer.send('window-maximize'),
-    closeWindow: () => ipcRenderer.send('window-close')
+    closeWindow: () => ipcRenderer.send('window-close'),
+    setWindowTitle: (title) => ipcRenderer.send('window-set-title', title),
+    setFullscreen: (flag) => ipcRenderer.send('window-set-fullscreen', flag),
+    setResolution: (width, height) => ipcRenderer.send('window-set-resolution', width, height)
 });
