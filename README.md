@@ -49,6 +49,7 @@ npm install
 # Run the application
 npm start
 ```
+... or go to Releases and download the latest version
 
 ## Controls
 
