@@ -192,7 +192,7 @@
         .stat-value {
             color: #fff;
             font-weight: bold;
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
         }
 
         .difficulty-display {
@@ -208,7 +208,7 @@
         .diff-level {
             font-size: 36px;
             font-weight: 900;
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
         }
 
         .diff-stars {
@@ -221,6 +221,25 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             opacity: 0.8;
+        }
+
+        @keyframes rainbow-anim {
+            0% {
+                background-position: 0% center;
+            }
+
+            100% {
+                background-position: 200% center;
+            }
+        }
+
+        .rainbow-text {
+            background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow-anim 2s linear infinite;
         }
 
         .song-markers {
@@ -400,7 +419,8 @@
         }
 
         .song-card-best {
-            display: none; /* Moved to info panel */
+            display: none;
+            /* Moved to info panel */
         }
 
         .song-best-score {
@@ -442,7 +462,7 @@
         }
 
         .best-score-stats {
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             font-size: 18px;
             color: var(--accent);
             font-weight: 700;
@@ -460,9 +480,6 @@
             padding: 2px 8px;
             border-radius: 3px;
             font-size: 12px;
-            font-weight: bold;
-            min-width: 28px;
-            text-align: center;
         }
 
         .song-card-keymode {
@@ -481,6 +498,15 @@
             background: #000;
             display: none;
             z-index: 100;
+        }
+
+        #screen-results {
+            transition: opacity 0.5s ease-out;
+        }
+
+        #screen-results.fade-out {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .game-bg {
@@ -604,13 +630,13 @@
             font-weight: 900;
             color: #fff;
             font-family: 'Outfit', sans-serif;
-            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
             line-height: 1;
         }
 
         .gauge-val {
             position: relative;
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             font-weight: 900;
             color: #fff;
             display: flex;
@@ -782,7 +808,8 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.9);
             z-index: 200;
-            display: flex; /* Always flex, control visibility */
+            display: flex;
+            /* Always flex, control visibility */
             justify-content: center;
             align-items: center;
             opacity: 0;
@@ -880,7 +907,7 @@
         }
 
         .option-value {
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             font-weight: bold;
             min-width: 50px;
             text-align: center;
@@ -1073,7 +1100,7 @@
         }
 
         .res-tally-val {
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
         }
 
         .res-pg {
@@ -1714,7 +1741,7 @@
             font-size: 20px;
             font-weight: 900;
             color: #fff;
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
         }
 
         .pace-bars {
@@ -1774,7 +1801,7 @@
         }
 
         .ghost-row .val {
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             font-size: 22px;
             font-weight: 900;
         }
@@ -1800,7 +1827,8 @@
         }
 
         .hud-score {
-            display: none; /* Removed in favor of hud-bottom-left */
+            display: none;
+            /* Removed in favor of hud-bottom-left */
         }
 
         .hud-bottom-left {
@@ -1832,7 +1860,7 @@
             color: #fff;
             font-weight: 900 !important;
             text-shadow: 0 0 10px var(--accent-dim);
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             line-height: 1;
         }
 
@@ -1851,7 +1879,7 @@
         }
 
         .stat-value {
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             color: #fff;
             font-size: 18px;
             font-weight: 900;
@@ -1894,7 +1922,7 @@
         }
 
         .tally-value {
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             color: #fff;
             font-size: 11px;
         }
@@ -1991,7 +2019,7 @@
 
         .judge-diff {
             font-size: 14px;
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             margin-top: -5px;
         }
 
@@ -2146,7 +2174,7 @@
         .loading-status {
             font-size: 13px;
             color: #888;
-            font-family: 'Consolas', monospace;
+            font-family: 'Century Gothic', monospace;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -2795,6 +2823,11 @@
         </div>
     </div>
 
+    <script src="renderers/Renderer7K.js"></script>
+    <script src="renderers/Renderer5K.js"></script>
+    <script src="renderers/Renderer9K.js"></script>
+    <script src="renderers/Renderer14K.js"></script>
+    <script src="renderers/Renderer10K.js"></script>
     <script>
         /**
          * ============================================================================
@@ -3015,7 +3048,7 @@
                 digits: Array.from({ length: 10 }, (_, d) => ({ x: J_DIGIT_START + d * J_DIGIT_W, y: 6 * J_ROW_H, w: J_DIGIT_W, h: J_DIGIT_H }))
             },
             GOOD: { x: 0, y: 992, w: J_WORD_W, h: J_ROW_H },
-            BAD:  { x: 0, y: 1116, w: J_WORD_W, h: J_ROW_H },
+            BAD: { x: 0, y: 1116, w: J_WORD_W, h: J_ROW_H },
             POOR: { x: 0, y: 1240, w: J_WORD_W, h: J_ROW_H },
             FAIL: { x: 0, y: 1364, w: J_WORD_W, h: J_ROW_H }
         };
@@ -3031,11 +3064,11 @@
             }
 
             STATE.pacemakerVisualIndex += delta;
-            
+
             // Logic index
             let idx = ((STATE.pacemakerVisualIndex % setSize) + setSize) % setSize;
             STATE.pacemakerTarget = PACEMAKER_TARGETS[idx];
-            
+
             updateOptionsUI();
         }
 
@@ -3858,7 +3891,6 @@
                     return parts.length >= 3 ? parts[parts.length - 3] : 'Library';
                 }
             };
-
             const addToList = (type, data, el) => {
                 STATE.currentList.push({ type, data, el });
                 ui.songList.appendChild(el);
@@ -3956,7 +3988,7 @@
                             <div class="song-card-artist">${c.artist}</div>
                         </div>
                         <div class="song-card-info">
-                            <span class="song-card-level" style="background:${diffColor}; color:#000;">${c.level || '?'}</span>
+                            <span class="song-card-level" style="color:${diffColor}; background:transparent; font-size:24px; font-family: 'Century Gothic', monospace; font-weight: 900;">${(c.level !== undefined && c.level !== null) ? c.level : '?'}</span>
                             <span class="song-card-keymode">${c.keyMode || '7'}K</span>
                         </div>
                     `;
@@ -3997,18 +4029,18 @@
                 const bestReplay = getReplay(chart.fileRef);
                 const lamp = getLamp(chart.fileRef);
                 const bestArea = document.getElementById('song-best-score');
-                
+
                 if (bestArea) {
                     if (bestReplay && bestReplay.score > 0) {
                         bestArea.style.display = 'flex';
                         const lampEl = document.getElementById('best-lamp');
                         lampEl.textContent = lamp.name;
                         lampEl.className = 'best-lamp-tag lamp ' + lamp.class;
-                        
+
                         const totalNotes = chart.noteCount || 100;
                         const rate = (bestReplay.score / Math.max(1, totalNotes * 2)) * 100;
                         const grade = calculateRank(rate);
-                        
+
                         document.getElementById('best-grade').textContent = grade;
                         document.getElementById('best-grade').style.color = getRankColor(grade);
                         document.getElementById('best-ex-score').textContent = bestReplay.score;
@@ -4139,11 +4171,11 @@
                 // We want to allow smooth scrolling into Set 1 or Set 3.
                 if (STATE.pacemakerVisualIndex < setSize || STATE.pacemakerVisualIndex >= setSize * 4) {
                     ui.targetWheel.classList.add('no-transition');
-                    
+
                     // Equivalent position in Set 2
                     const modIdx = ((STATE.pacemakerVisualIndex % setSize) + setSize) % setSize;
                     STATE.pacemakerVisualIndex = (setSize * 2) + modIdx;
-                    
+
                     const snapPos = STATE.pacemakerVisualIndex * itemHeight;
                     ui.targetWheel.style.transform = `translateY(${centerOffset - snapPos}px)`;
                     ui.targetWheel.offsetHeight; // force reflow
@@ -4248,7 +4280,20 @@
             try {
                 const data = await parseChartAsync(bmsText); // Worker call
 
-                STATE.loadedSong = data;
+                // STALENESS CHECK: If this card is no longer active (user selected another), discard
+                if (el && !el.classList.contains('active')) {
+                    // console.log("Discarding stale chart load:", c.title);
+                    return;
+                }
+
+                STATE.baseSongData = data; // Immutable source
+                // Propagate detected keyMode from library to base data
+                STATE.baseSongData.keyMode = c.keyMode || '7';
+
+                STATE.loadedSong = structuredClone(data); // Working copy
+                // Also ensures loadedSong has it immediately (though clone should carry it if set above)
+                STATE.loadedSong.keyMode = STATE.baseSongData.keyMode;
+
                 STATE.currentFileRef = c.fileRef;
                 STATE.replayFileRef = c.fileRef;
 
@@ -4265,7 +4310,56 @@
                 ui.diffLevel.textContent = level;
                 ui.diffLevel.style.color = tierColors[Math.min(diffTier - 1, 4)] || '#fff';
                 ui.diffTier.textContent = tierNames[Math.min(diffTier - 1, 4)] || 'NORMAL';
-                ui.diffStars.textContent = '★'.repeat(Math.max(0, Math.min(parseInt(level) || 0, 12)));
+
+                // Star Logic
+                const numLevel = parseInt(level) || 0;
+                ui.diffStars.className = 'diff-stars'; // Reset class
+                ui.diffStars.innerHTML = ''; // Reset content
+
+                if (c.keyMode === '9' || (c.keyMode === '10' && c.level > 12) || (c.keyMode === '14' && c.level > 12)) {
+                    // 9-Key / PMS Logic
+                    // "10 bars of 5" -> 50 stars max.
+                    const maxStars = 50;
+                    const starsToShow = Math.max(0, Math.min(numLevel, maxStars));
+
+                    let starStr = '';
+                    for (let i = 0; i < starsToShow; i++) {
+                        if (i > 0 && i % 5 === 0) starStr += '<span style="display:inline-block; width:8px;"></span>';
+                        starStr += '★';
+                    }
+                    ui.diffStars.innerHTML = starStr;
+                    ui.diffStars.style.whiteSpace = 'nowrap'; // Ensure single line
+                    // ui.diffStars.style.fontSize = '10px'; // Keep smaller size for fitting 50 stars
+                    ui.diffStars.style.fontSize = '10px';
+                    ui.diffStars.style.lineHeight = '';
+
+                    if (numLevel > 50) {
+                        ui.diffStars.classList.add('rainbow-text');
+                    }
+                } else if (c.keyMode === '5') {
+                    // 5-Key Logic (Max 9)
+                    const maxStars = 9;
+                    const starsToShow = Math.max(0, Math.min(numLevel, maxStars));
+                    ui.diffStars.textContent = '★'.repeat(starsToShow);
+                    ui.diffStars.style.lineHeight = '';
+                    ui.diffStars.style.fontSize = '';
+
+                    if (numLevel > 9) {
+                        ui.diffStars.classList.add('rainbow-text');
+                    }
+                } else {
+                    // Standard Logic
+                    const maxStars = 12;
+                    const starsToShow = Math.max(0, Math.min(numLevel, maxStars));
+                    ui.diffStars.textContent = '★'.repeat(starsToShow);
+                    ui.diffStars.style.lineHeight = '';
+                    ui.diffStars.style.fontSize = ''; // Reset
+
+                    if (numLevel > 12) {
+                        ui.diffStars.classList.add('rainbow-text');
+                    }
+                }
+
                 ui.diffDisplay.style.display = 'flex';
 
                 const rankName = ["VERY HARD", "HARD", "NORMAL", "EASY"][data.rank] || "EASY";
@@ -4287,6 +4381,10 @@
                 if (IS_DESKTOP) {
                     const stagefileUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['STAGEFILE']);
                     const bannerUrl = await window.electronAPI.resolveImage(STATE.currentFileRef, data.headers['BANNER']);
+
+                    // Re-check staleness after async image resolution
+                    if (el && !el.classList.contains('active')) return;
+
                     if (stagefileUrl) {
                         ui.stagefileArea.style.backgroundImage = `url('${stagefileUrl}')`;
                         ui.selectBg.style.backgroundImage = `url('${stagefileUrl}')`;
@@ -4321,6 +4419,7 @@
                 }
 
             } catch (e) {
+                if (el && !el.classList.contains('active')) return; // Ignore error for stale
                 console.error("Chart Load Error:", e);
                 ui.loadingStatus.textContent = "Error loading chart!";
                 setTimeout(() => { ui.screenLoading.style.display = 'none'; }, 2000);
@@ -4378,10 +4477,10 @@
                         // BGA Task
                         if (IS_DESKTOP) {
                             return window.electronAPI.resolveImage(STATE.currentFileRef, task.filename).then(url => {
-                                if (url) STATE.bgaDefinitions[task.id] = { 
-                                    url, 
+                                if (url) STATE.bgaDefinitions[task.id] = {
+                                    url,
                                     isVideo: /\.(mp4|webm|avi|wmv|mpg|mpeg|m4v)$/i.test(task.filename),
-                                    filename: task.filename 
+                                    filename: task.filename
                                 };
                             }).catch(e => console.warn(`BGA ${task.id} error:`, e.message));
                         } else {
@@ -4466,6 +4565,11 @@
             document.getElementById('screen-game').style.display = 'block';
             resize();
 
+            // Restore fresh chart data from base
+            if (STATE.baseSongData) {
+                STATE.loadedSong = structuredClone(STATE.baseSongData);
+            }
+
             // Ensure AudioContext is running
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
@@ -4495,11 +4599,27 @@
             readyEl.classList.remove('show');
 
             STATE.isPlaying = true;
+            STATE.isResults = false;
             STATE.startTime = audioCtx.currentTime + 1.0; // Start in 1s to allow animations to settle if needed, but 2s total from Ready start
             STATE.score = 0;
             STATE.combo = 0;
             STATE.maxCombo = 0;
             STATE.activeActions.clear();
+
+            // Initialize Renderer
+            if (STATE.loadedSong.keyMode === '5') {
+                STATE.renderer = new Renderer5K(canvas, ctx, STATE, ACTIONS, CHANNELS);
+            } else if (STATE.loadedSong.keyMode === '9') {
+                STATE.renderer = new Renderer9K(canvas, ctx, STATE, ACTIONS, CHANNELS);
+            } else if (STATE.loadedSong.keyMode === '14') {
+                STATE.renderer = new Renderer14K(canvas, ctx, STATE, ACTIONS, CHANNELS);
+            } else if (STATE.loadedSong.keyMode === '10') {
+                STATE.renderer = new Renderer10K(canvas, ctx, STATE, ACTIONS, CHANNELS);
+            } else {
+                // Default to 7K for now (covers 7K, and potentially others as fallback)
+                STATE.renderer = new Renderer7K(canvas, ctx, STATE, ACTIONS, CHANNELS);
+            }
+
             STATE.currentBpm = STATE.loadedSong.initialBpm;
             STATE.loadedSong.notes.forEach(n => {
                 n.hit = false;
@@ -4512,6 +4632,7 @@
             STATE.bpmCursor = 0;
             STATE.logicCursor = 0; // [NEW] Logic optimization cursor
             STATE.inputLog = []; // Reset replay log
+            STATE.currentMaxScore = 0; // [NEW] Running average denominator
 
             // Show Autoplay Indicator
             const apEl = document.getElementById('hud-autoplay');
@@ -4621,7 +4742,7 @@
 
             // GAUGE INIT
             ui.gaugeBar.className = 'gauge-fill no-transition'; // Disable transitions during gameplay
-            
+
             // Set gauge clear marker position (80% for normal+, 60% for easy/assist)
             const clearMarker = document.querySelector('.hud-gauge-container .gauge-marker');
             if (clearMarker) {
@@ -4731,7 +4852,7 @@
                 ui.bgaImg.style.display = 'none';
                 ui.bgaVideo.src = def.url;
                 ui.bgaVideo.style.display = 'block';
-                ui.bgaVideo.play().catch(() => {});
+                ui.bgaVideo.play().catch(() => { });
             } else {
                 // Legacy formats (AVI, MPG) or forced stream or Image
                 // If it's a video file but we determined it needs streaming (or it's legacy extension)
@@ -4741,7 +4862,7 @@
                     if (!STATE.streamBaseUrl) {
                         STATE.streamBaseUrl = await window.electronAPI.getStreamUrl();
                     }
-                    
+
                     if (STATE.streamBaseUrl) {
                         // Construct Stream URL
                         // Extract path from file:// URL if present, or use raw path?
@@ -4752,21 +4873,21 @@
                         // We need the absolute path.
                         // Let's rely on resolve-image returning the path in a new field?
                         // OR: Just parse the file:// URL.
-                        
+
                         let videoPath = def.url.replace('file://', '');
                         // On Windows, /C:/... -> C:/...
                         if (videoPath.startsWith('/') && videoPath[2] === ':') videoPath = videoPath.substring(1);
                         // Decode URI chars
                         videoPath = decodeURIComponent(videoPath);
-                        
+
                         const streamUrl = `${STATE.streamBaseUrl}?path=${encodeURIComponent(videoPath)}`;
-                        
+
                         ui.bgaVideo.pause();
                         ui.bgaVideo.style.display = 'none';
                         ui.bgaImg.src = streamUrl;
                         ui.bgaImg.style.display = 'block';
                     } else {
-                         console.warn("Stream server not ready");
+                        console.warn("Stream server not ready");
                     }
                 } else {
                     // Standard Image
@@ -4915,192 +5036,12 @@
         }
 
         function render(time) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            const wScratch = 60; const wKey = 40;
-            const p1Total = wScratch + (wKey * 7);
-            const startX = 30; // Left position instead of centered
-            const hitY = canvas.height * 0.75; // Shifted to 75% from top
-            // Scroll speed scales with BPM to keep distance between beats constant
-            // Reference BPM 150 for the HI-SPEED multiplier
-            // Base speed increased by 2.5x (0.15 -> 0.375)
-            let refBpm = 150;
-            if (STATE.hiSpeedFix === 'CONSTANT') refBpm = STATE.currentBpm;
-            else if (STATE.hiSpeedFix === 'MAX') refBpm = STATE.loadedSong.maxBpm;
-            else if (STATE.hiSpeedFix === 'MIN') refBpm = STATE.loadedSong.minBpm;
-            else if (STATE.hiSpeedFix === 'AVG') refBpm = STATE.loadedSong.avgFixBpm;
-            else if (STATE.hiSpeedFix === 'START') refBpm = STATE.loadedSong.initialBpm;
-            else if (STATE.hiSpeedFix === 'MAIN') refBpm = STATE.loadedSong.mainBpm;
-
-            const speed = (STATE.speed * 0.375) * (Math.max(0.001, STATE.currentBpm) / Math.max(0.001, refBpm));
-
-            ctx.save();
-            ctx.translate(startX, 0);
-
-            // Helper to map key index for beam array
-            // Scratch is index 0. Keys 1-7 match index 1-7.
-            const drawLane = (actions, x, w, isBlack, isBlue, isScratch, beamIndex) => {
-                const actionList = Array.isArray(actions) ? actions : [actions];
-                const active = actionList.some(a => STATE.activeActions.has(a));
-
-                // Beam Opacity Logic
-                if (active) {
-                    STATE.beamOpacity[beamIndex] = Math.min(1.0, STATE.beamOpacity[beamIndex] + 0.2);
-                } else {
-                    STATE.beamOpacity[beamIndex] = Math.max(0.0, STATE.beamOpacity[beamIndex] - 0.1);
-                }
-
-                if (isScratch) ctx.fillStyle = '#200';
-                else if (isBlue) ctx.fillStyle = '#000510';
-                else ctx.fillStyle = '#111';
-                ctx.fillRect(x, 0, w, hitY + 50); // Trim height
-                ctx.strokeStyle = '#333'; ctx.strokeRect(x, 0, w, hitY + 50);
-
-                // Draw Beam (Laser) if opacity > 0
-                if (STATE.beamOpacity[beamIndex] > 0.01) {
-                    const beamH = hitY * 0.2; // 20% of notefield height from receptor upwards
-                    // Gradient: Transparent -> Color (at receptor)
-                    const g = ctx.createLinearGradient(0, hitY, 0, hitY - beamH);
-                    // Set color based on active state or lingering opacity
-                    const alpha = STATE.beamOpacity[beamIndex];
-                    // Use different colors for Scratch vs Keys?
-                    // Scratch: Red/White, Keys: Blue/White
-                    if (isScratch) {
-                        g.addColorStop(0, `rgba(255, 50, 50, ${alpha * 0.6})`);
-                        g.addColorStop(1, `rgba(255, 0, 0, 0)`);
-                    } else {
-                        g.addColorStop(0, `rgba(200, 255, 255, ${alpha * 0.5})`);
-                        g.addColorStop(1, `rgba(0, 255, 255, 0)`);
-                    }
-
-                    ctx.fillStyle = g;
-                    // Draw from hitY upwards
-                    ctx.fillRect(x, hitY - beamH, w, beamH);
-
-                    // Add a bright line at receptor for impact
-                    if (active) {
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
-                        ctx.fillRect(x, hitY - 2, w, 4);
-                    }
-                }
-            };
-
-            drawLane([ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW], 0, wScratch, false, false, true, 0);
-            let curX = wScratch;
-            for (let i = 1; i <= 7; i++) {
-                const isBlue = (i === 2 || i === 4 || i === 6);
-                drawLane(ACTIONS[`P1_${i}`], curX, wKey, !isBlue, isBlue, false, i);
-                curX += wKey;
+            if (STATE.renderer) {
+                STATE.renderer.render(time);
+            } else {
+                // Fallback if no renderer (should not happen)
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
-
-            ctx.fillStyle = '#ff0055';
-            ctx.fillRect(0, hitY, p1Total, 15);
-
-            // NEW: Batched Draw with Render Window
-            // 1. Calculate visible range first
-            // Reference BPM 150 for the HI-SPEED multiplier
-            let baseRefBpm = 150;
-            if (STATE.hiSpeedFix === 'CONSTANT') baseRefBpm = STATE.currentBpm;
-            else if (STATE.hiSpeedFix === 'MAX') baseRefBpm = STATE.loadedSong.maxBpm;
-            else if (STATE.hiSpeedFix === 'MIN') baseRefBpm = STATE.loadedSong.minBpm;
-            else if (STATE.hiSpeedFix === 'AVG') baseRefBpm = STATE.loadedSong.avgFixBpm;
-            else if (STATE.hiSpeedFix === 'START') baseRefBpm = STATE.loadedSong.initialBpm;
-            else if (STATE.hiSpeedFix === 'MAIN') baseRefBpm = STATE.loadedSong.mainBpm;
-
-            const baseSpeed = (STATE.speed * 0.375) * (Math.max(0.001, STATE.currentBpm) / Math.max(0.001, baseRefBpm));
-
-            // Calculate time range visible on screen
-            // Max visual range (hitY + 50 to -50) => height + 100
-            // distance = (noteTime - now) * speed
-            // maxDist = canvas.height
-            // maxTimeDiff = canvas.height / speed
-
-            const maxTimeOffset = (canvas.height + 100) / baseSpeed;
-            const minTime = time - 200; // Just past hit line
-            const maxTime = time + maxTimeOffset;
-
-            // Find start and end indices via binary search (or simplistic linear scan from cursor) since array is sorted
-            // We can re-use logicCursor as a hint for start
-            let startIdx = STATE.logicCursor || 0;
-            // Validate startIdx against length
-            if (startIdx >= STATE.loadedSong.notes.length) startIdx = STATE.loadedSong.notes.length - 1;
-
-            // Backtrack a bit just in case visual lags slightly behind logic
-            while (startIdx > 0 && STATE.loadedSong.notes[startIdx] && STATE.loadedSong.notes[startIdx].time > minTime) {
-                startIdx--;
-            }
-            // Forward track to find actual visual start
-            while (startIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[startIdx].time < minTime) {
-                startIdx++;
-            }
-
-            let endIdx = startIdx;
-            while (endIdx < STATE.loadedSong.notes.length && STATE.loadedSong.notes[endIdx].time < maxTime) {
-                endIdx++;
-            }
-
-            // Note: endIdx is exclusive
-
-            const noteBatches = {
-                scratch: [],
-                white: [],
-                blue: []
-            };
-
-            for (let i = startIdx; i < endIdx; i++) {
-                const n = STATE.loadedSong.notes[i];
-                if (n.hit && !n.isMissed) continue;
-                if (n.isMissed && (time - n.missTime > 1000)) continue;
-
-                let x = -1, w = wKey, isSc = false, isBlue = false;
-                const ch = n.ch;
-
-                // Mappings (could be cached map but this is fast enough)
-                if (CHANNELS.P1.SCRATCH.includes(ch)) { x = 0; w = wScratch; isSc = true; }
-                else if (CHANNELS.P1.KEY1.includes(ch)) { x = wScratch; }
-                else if (CHANNELS.P1.KEY2.includes(ch)) { x = wScratch + wKey; isBlue = true; }
-                else if (CHANNELS.P1.KEY3.includes(ch)) { x = wScratch + wKey * 2; }
-                else if (CHANNELS.P1.KEY4.includes(ch)) { x = wScratch + wKey * 3; isBlue = true; }
-                else if (CHANNELS.P1.KEY5.includes(ch)) { x = wScratch + wKey * 4; }
-                else if (CHANNELS.P1.KEY6.includes(ch)) { x = wScratch + wKey * 5; isBlue = true; }
-                else if (CHANNELS.P1.KEY7.includes(ch)) { x = wScratch + wKey * 6; }
-
-                if (x === -1) continue;
-
-                const dist = (n.time - time) * baseSpeed;
-                let y = hitY - dist;
-
-                // Stop at receptor if falling past
-                if (y > hitY && !n.isMissed) {
-                    y = hitY;
-                }
-
-                if (n.isMissed) {
-                    y = hitY; // Clamp to receptor
-                }
-
-                // Double check bounds (though indices should cover it)
-                if (y < -50 || y > canvas.height + 50) continue;
-
-                if (isSc) noteBatches.scratch.push({ x: x + 1, y, w: w - 2 });
-                else if (isBlue) noteBatches.blue.push({ x: x + 1, y, w: w - 2 });
-                else noteBatches.white.push({ x: x + 1, y, w: w - 2 });
-            }
-
-            // Draw Batches
-            ctx.fillStyle = '#fff';
-            noteBatches.white.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
-
-            ctx.fillStyle = '#0cf';
-            noteBatches.blue.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
-
-            ctx.fillStyle = '#f00';
-            noteBatches.scratch.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
-
-            ctx.restore();
-
-            // Draw Judgement
-            drawJudgement(time);
         }
 
         // ----------------------------------------------------------------------------
@@ -5136,7 +5077,18 @@
                 else if (result === 'BAD') STATE.judgeCounts.bad++;
                 else if (result === 'POOR') STATE.judgeCounts.poor++;
 
+                if (result === 'PGREAT') STATE.judgeCounts.pgreat++;
+                else if (result === 'GREAT') STATE.judgeCounts.great++;
+                else if (result === 'GOOD') STATE.judgeCounts.good++;
+                else if (result === 'BAD') STATE.judgeCounts.bad++;
+                else if (result === 'POOR') STATE.judgeCounts.poor++;
+
                 // Mark HUD dirty (batched update)
+            }
+
+            // Update Max Score for Running Average (ignore empty poors)
+            if (!isEmptyPoor) {
+                STATE.currentMaxScore += 2;
             }
 
             // Gauge Logic
@@ -5276,11 +5228,11 @@
             // Setup Combo
             const comboStr = (!isCbBreak && STATE.judgement.combo > 0) ? STATE.judgement.combo.toString() : '';
             // Decrease spacing by another 20px (was 35, now 55 overlap)
-            const digitOverlap = 55; 
+            const digitOverlap = 55;
             const digitAdvance = (J_DIGIT_W - digitOverlap) * SCALE;
-            
+
             const comboW = comboStr ? comboStr.length * digitAdvance : 0;
-            const gap = 10 * SCALE;
+            const gap = (10 * SCALE) - 50;
             const totalW = (sprite.w * SCALE) + (comboStr ? gap + comboW : 0);
 
             ctx.save();
@@ -5317,7 +5269,7 @@
                 ctx.textAlign = 'center';
                 ctx.font = 'bold 16px "Outfit", sans-serif';
                 ctx.shadowBlur = 4;
-                
+
                 if (diff < 0) {
                     // FAST
                     ctx.fillStyle = '#88f'; // Bluish
@@ -5335,41 +5287,44 @@
         }
 
         function updateGaugeDisplay() {
-    ui.gaugeBar.style.width = `${STATE.gauge}%`;
-    
-    // Decimal formatting: big whole, small decimal
-    const valStr = STATE.gauge.toFixed(1);
-    const [whole, decimal] = valStr.split('.');
-    ui.gaugeVal.innerHTML = `<span class="whole">${whole}</span><span class="decimal">.${decimal}%</span>`;
+            ui.gaugeBar.style.width = `${STATE.gauge}%`;
 
-    // Grade display next to groove %
-    const maxEx = Math.max(1, (STATE.loadedSong ? STATE.loadedSong.notes.length : 0) * 2);
-    const percent = (STATE.score / maxEx) * 100;
-    const grade = calculateRank(percent);
-    ui.gaugeGrade.textContent = grade;
-    ui.gaugeGrade.style.color = getRankColor(grade);
+            // Decimal formatting: big whole, small decimal
+            const valStr = STATE.gauge.toFixed(1);
+            const [whole, decimal] = valStr.split('.');
+            ui.gaugeVal.innerHTML = `<span class="whole">${whole}</span><span class="decimal">.${decimal}%</span>`;
 
-    if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD') {
-        const threshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
-        if (STATE.gauge >= threshold) ui.gaugeBar.classList.add('cleared');
-        else ui.gaugeBar.classList.remove('cleared');
-    }
-}
+            // Grade display next to groove %
+            // Use Running Average for Live Grade
+            const currentMax = Math.max(2, STATE.currentMaxScore); // Avoid divide by zero
+            const percent = (STATE.score / currentMax) * 100;
+            const grade = calculateRank(percent);
+            ui.gaugeGrade.textContent = grade;
+            ui.gaugeGrade.style.color = getRankColor(grade);
+
+            if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD') {
+                const threshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
+                if (STATE.gauge >= threshold) ui.gaugeBar.classList.add('cleared');
+                else ui.gaugeBar.classList.remove('cleared');
+            }
+        }
 
         function updateHud() {
-    ui.score.textContent = STATE.score;
-    ui.maxCombo.textContent = STATE.maxCombo;
-    
-    const maxEx = Math.max(1, (STATE.loadedSong ? STATE.loadedSong.notes.length : 0) * 2);
-    const percent = (STATE.score / maxEx) * 100;
-    ui.rate.textContent = percent.toFixed(2) + '%';
-}
+            ui.score.textContent = STATE.score;
+            ui.maxCombo.textContent = STATE.maxCombo;
+
+            // Use Running Average for Live Rate
+            const currentMax = Math.max(2, STATE.currentMaxScore); // Avoid divide by zero
+            const percent = (STATE.score / currentMax) * 100;
+            ui.rate.textContent = percent.toFixed(2) + '%';
+        }
 
         // ----------------------------------------------------------------------------
         // RESULTS SYSTEM
         // ----------------------------------------------------------------------------
         function showResults(isClear) {
             STATE.isPlaying = false;
+            STATE.isResults = true;
 
             if (isClear) playSystemSound('clear');
             else playSystemSound('fail');
@@ -5384,9 +5339,12 @@
 
             document.getElementById('screen-game').style.display = 'none';
             document.getElementById('screen-results').style.display = 'flex';
+            document.getElementById('screen-results').classList.remove('fade-out'); // Reset fade state
 
             const maxEx = STATE.loadedSong.notes.length * 2;
             const percent = (STATE.score / Math.max(1, maxEx)) * 100;
+
+
 
             // UI Text
             document.getElementById('res-status').textContent = isClear ? 'CLEARED' : 'FAILED';
@@ -5420,9 +5378,24 @@
             document.getElementById('res-lamp-text').style.color = getComputedStyle(lampEl).backgroundColor;
 
             // Update song list UI if needed (proactive) - preserve selection
+            // Update song list UI if needed (proactive) - preserve selection
             const savedIndex = STATE.selectedIndex;
+            const targetRef = STATE.currentFileRef;
+
             renderSongList();
-            STATE.selectedIndex = Math.min(savedIndex, STATE.currentList.length - 1);
+
+            let foundIndex = -1;
+            // Only search for song if not in a course (courses maintain index on their own)
+            if (!STATE.activeCourse) {
+                foundIndex = STATE.currentList.findIndex(item => item.type === 'chart' && item.data.fileRef === targetRef);
+            }
+
+            if (foundIndex !== -1) {
+                STATE.selectedIndex = foundIndex;
+            } else {
+                STATE.selectedIndex = Math.min(savedIndex, STATE.currentList.length - 1);
+            }
+            updateSelection();
 
             // Graphs - Gauge graph uses two-color with clear threshold
             const clearThreshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
@@ -5434,22 +5407,27 @@
             const resultsScreen = document.getElementById('screen-results');
 
             const returnHandler = (e) => {
-                // Ignore keypresses during fade animation
-                if (isFadingResults) return;
-
-                // Check for quick restart: 2/4/6 key held + 1/3/5/7 pressed
-                const blackKeyHeld = STATE.activeActions.has(ACTIONS.P1_2) || 
-                                     STATE.activeActions.has(ACTIONS.P1_4) || 
-                                     STATE.activeActions.has(ACTIONS.P1_6);
+                const blackKeyHeld = STATE.activeActions.has(ACTIONS.P1_2) ||
+                    STATE.activeActions.has(ACTIONS.P1_4) ||
+                    STATE.activeActions.has(ACTIONS.P1_6);
                 const whiteKeyPressed = [ACTIONS.P1_1, ACTIONS.P1_3, ACTIONS.P1_5, ACTIONS.P1_7].some(
                     a => STATE.keyCodeToAction[e.code]?.includes(a)
                 );
 
                 if (blackKeyHeld && whiteKeyPressed && !STATE.activeCourse) {
                     // Quick restart with same random seed
+                    // Allow restart even if fading (it just cuts it short)
+                    window.removeEventListener('keydown', returnHandler);
+
+                    // Trigger restart - fade out first or immediate?
+                    // User wanted fade out animation for results screen exit normally
+                    // But for quick restart, usually it's instant or specific.
+                    // The original code started fade-out for restart too.
+                    // Let's keep it but ensure we don't return early due to isFadingResults check.
+
                     isFadingResults = true;
                     resultsScreen.classList.add('fade-out');
-                    window.removeEventListener('keydown', returnHandler);
+
                     setTimeout(() => {
                         resultsScreen.classList.remove('fade-out');
                         resultsScreen.style.display = 'none';
@@ -5457,6 +5435,9 @@
                     }, 500);
                     return;
                 }
+
+                // Ignore keypresses during fade animation (for normal exit)
+                if (isFadingResults) return;
 
                 // Normal exit with fade animation
                 isFadingResults = true;
@@ -5491,6 +5472,7 @@
             };
 
             function exitToSelect() {
+                STATE.isResults = false;
                 document.getElementById('screen-select').style.display = 'flex';
                 if (!STATE.selectBgmSource) {
                     STATE.selectBgmSource = playSystemSound('select', true);
@@ -5762,7 +5744,8 @@
             }
 
             // Arrow keys for song navigation (song select only)
-            if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen && !STATE.isDecideActive) {
+            // Arrow keys for song navigation (song select only)
+            if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen && !STATE.isDecideActive && !STATE.isResults) {
                 if (e.code === 'ArrowUp') {
                     e.preventDefault();
                     STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
@@ -5908,7 +5891,7 @@
             actions.forEach(action => {
                 STATE.activeActions.add(action);
 
-                if (!STATE.isPlaying && !STATE.isOptionsOpen) {
+                if (!STATE.isPlaying && !STATE.isOptionsOpen && !STATE.isResults) {
                     // SCRATCH NAVIGATION
                     if (action === ACTIONS.P1_SC_CCW) {
                         STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
@@ -5970,7 +5953,7 @@
                 const notes = STATE.loadedSong.notes;
                 const scanStart = Math.max(0, (STATE.logicCursor || 0) - 20);
                 const scanEnd = Math.min(notes.length, (STATE.logicCursor || 0) + 150);
-                
+
                 let noteIdx = -1;
                 for (let i = scanStart; i < scanEnd; i++) {
                     const n = notes[i];
@@ -6042,7 +6025,7 @@
                 // White keys to start game
                 if ([ACTIONS.P1_1, ACTIONS.P1_3, ACTIONS.P1_5, ACTIONS.P1_7,
                 ACTIONS.P2_1, ACTIONS.P2_3, ACTIONS.P2_5, ACTIONS.P2_7].includes(action)) {
-                    if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen) {
+                    if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen && !STATE.isResults) {
                         if (ui.btnStart.disabled === false) triggerDecideScreen(false);
                     }
                 }

@@ -49,7 +49,9 @@ class BMSParser {
 
         const PLAYABLE_CHANNELS = new Set([
             0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19, // P1 Hit
-            0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x58, 0x59  // P1 LN
+            0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x58, 0x59, // P1 LN
+            0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x28, 0x29, // P2 Hit
+            0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x68, 0x69  // P2 LN
         ]);
 
         const notes = [];
@@ -122,7 +124,8 @@ class BMSParser {
                         const stopMs = (stopValue / 192) * 4 * (60000 / Math.max(0.001, currentBpm));
                         currentTime += stopMs;
                     }
-                } else if (chNum === 0x01 || (chNum >= 0x21 && chNum <= 0x49) || (chNum >= 0x61 && chNum <= 0x69)) {
+                } else if (chNum === 0x01) {
+                    // Only channel 01 is BGM, other channels handled separately
                     bgm.push({ time: currentTime, id });
                 } else if (chNum === 0x04 || chNum === 0x06 || chNum === 0x07) {
                     bgaEvents.push({ time: currentTime, id, type: chNum });

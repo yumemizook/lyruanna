@@ -246,18 +246,24 @@ ipcMain.handle('scan-library', async () => {
             const playerMatch = text.match(/#PLAYER\s+(\d+)/i);
             const player = playerMatch ? parseInt(playerMatch[1]) : 1;
 
-            const has2P = text.match(/#\d{3}2[1-9]:/);
-            const has9K = isPMS || text.match(/#\d{3}1[79]:/) || text.match(/#\d{3}1[1-9]:/);
+            const has2PChannels = text.match(/#\d{3}2[1-9]:/); // 21-29
 
             if (isPMS) {
                 keyMode = '9';
-            } else if (player === 3 || has2P) {
-                keyMode = has2P ? '14' : '10';
-            } else {
-                const has7K = text.match(/#\d{3}1[6-9]:/);
-                keyMode = has7K ? '7' : '5';
-            }
+            } else if (player === 3 || has2PChannels) {
+                const hasP1_Ext = text.match(/#\d{3}1[89]:/); // P1 6,7
+                const hasP2_Left = text.match(/#\d{3}2[12]:/); // P2 1,2
+                const hasP2_Right = text.match(/#\d{3}2[89]:/); // P2 6,7
 
+                if (hasP1_Ext || (hasP2_Left && hasP2_Right)) {
+                    keyMode = '14';
+                } else {
+                    keyMode = '10';
+                }
+            } else {
+                const has7KSpecific = text.match(/#\d{3}1[89]:/);
+                keyMode = has7KSpecific ? '7' : '5';
+            }
             const cleanStr = (s) => s ? s.replace(/\r/g, '').trim() : 'Unknown';
 
             // Simple note count estimation for metadata
@@ -585,16 +591,23 @@ ipcMain.handle('rescan-all-folders', async () => {
             const playerMatch = text.match(/#PLAYER\s+(\d+)/i);
             const player = playerMatch ? parseInt(playerMatch[1]) : 1;
 
-            const has2P = text.match(/#\d{3}2[1-9]:/);
-            const has9K = isPMS || text.match(/#\d{3}1[79]:/) || text.match(/#\d{3}1[1-9]:/);
+            const has2PChannels = text.match(/#\d{3}2[1-9]:/);
 
             if (isPMS) {
                 keyMode = '9';
-            } else if (player === 3 || has2P) {
-                keyMode = has2P ? '14' : '10';
+            } else if (player === 3 || has2PChannels) {
+                const hasP1_Ext = text.match(/#\d{3}1[89]:/); // P1 6,7
+                const hasP2_Left = text.match(/#\d{3}2[12]:/); // P2 1,2
+                const hasP2_Right = text.match(/#\d{3}2[89]:/); // P2 6,7
+
+                if (hasP1_Ext || (hasP2_Left && hasP2_Right)) {
+                    keyMode = '14';
+                } else {
+                    keyMode = '10';
+                }
             } else {
-                const has7K = text.match(/#\d{3}1[6-9]:/);
-                keyMode = has7K ? '7' : '5';
+                const has7KSpecific = text.match(/#\d{3}1[89]:/);
+                keyMode = has7KSpecific ? '7' : '5';
             }
 
             const cleanStr = (s) => s ? s.replace(/\r/g, '').trim() : 'Unknown';
