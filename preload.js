@@ -23,5 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getWindowSettings: () => ipcRenderer.invoke('get-window-settings'),
     getStreamUrl: () => ipcRenderer.invoke('get-stream-url'),
     writeFile: (path, data) => ipcRenderer.invoke('write-file', path, data),
-    getAppPath: (type) => ipcRenderer.invoke('get-app-path', type)
+    getAppPath: (type) => ipcRenderer.invoke('get-app-path', type),
+    readUserData: (filename) => ipcRenderer.invoke('read-user-data', filename),
+    writeUserData: (filename, data) => ipcRenderer.invoke('write-user-data', filename, data)
 });

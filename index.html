@@ -1428,18 +1428,47 @@
             border: 2px solid #0ff;
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
             width: 1000px;
-            min-height: 650px;
-            padding: 20px;
+            padding: 20px 5px;
             display: flex;
             flex-direction: column;
             font-family: 'Outfit', sans-serif;
             color: #fff;
+        }
+
+        .iidx-right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 1000px;
             transform: translateY(20px) scale(0.95);
             transition: transform 0.2s ease-out;
         }
 
-        .modal-iidx.open .iidx-options-container {
+        .modal-iidx.open .iidx-right-column {
             transform: translateY(0) scale(1);
+        }
+
+        .iidx-btn-large {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #333;
+            color: #888;
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .iidx-btn-large:hover {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: #0ff;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            text-shadow: 0 0 10px #0ff;
         }
 
         .iidx-options-header {
@@ -1514,9 +1543,10 @@
         .iidx-options-grid {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-            padding: 15px;
+            gap: 4px; /* Tighter gap */
+            padding: 10px 0; /* Minimal side padding */
             min-height: 300px;
+            width: 100%;
         }
 
         .iidx-section {
@@ -2284,6 +2314,94 @@
             background: #0ff;
             box-shadow: 0 0 8px #0ff;
         }
+
+        /* BOOTSTRAP WHEEL STYLES */
+        .option-wheel-box {
+            position: relative;
+            height: 120px; /* enough for 3 items: 40px * 3 */
+            overflow: hidden;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-top: 5px;
+        }
+        
+        /* Gradient Masks for fading out top/bottom */
+        .option-wheel-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 30px;
+            background: linear-gradient(to bottom, #111, transparent);
+            z-index: 2;
+            pointer-events: none;
+        }
+        .option-wheel-box::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0; height: 30px;
+            background: linear-gradient(to top, #111, transparent);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .option-wheel-strip {
+             position: absolute;
+             top: 0; /* Reset offset for dynamic 3-item rendering */
+             left: 0;
+             width: 100%;
+             transition: none; /* No transition for instant DOM swap, or we can animate */
+             /* For simple cyclic without complex animation logic, instant swap is safest. 
+                If we want animation, we'd need a more complex sliding buffer. 
+                Let's start with instant update (no transition) or simple transition if possible.
+                Actually, let's keep transition but we might see a jump if we swap DOM. 
+                With 3 items fixed: 
+                Item 0: Prev
+                Item 1: Curr
+                Item 2: Next
+                We effectively just change the CONTENT of 3 divs and keep transform static?
+                OR we render them and don't slide?
+                Plan: Render 3 items statically at positions 0, 40, 80.
+             */
+        }
+
+        .option-wheel-item {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .option-wheel-item.selected {
+            color: #fff;
+            font-size: 16px;
+            text-shadow: 0 0 10px var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 2px solid var(--accent);
+            border-right: 2px solid var(--accent);
+        }
+
+        /* Remove numbers from piano keys */
+        .iidx-key {
+            color: transparent !important; /* Hide text */
+        }
+        
+        .iidx-key::after {
+            /* Optional: Add a small glowing dot or line instead? */
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+        }
+        .iidx-key-black::after { background: rgba(255,255,255,0.1); }
+
     </style>
 </head>
 
@@ -2360,16 +2478,17 @@
                                         id="stat-rank">--</span></div>
                             </div>
 
-                            <div class="song-best-score" id="song-best-score" style="display:none;">
-                                <div class="best-score-row">
-                                    <span class="best-label">BEST PLAY</span>
-                                    <span class="best-lamp-tag" id="best-lamp">-</span>
-                                    <span class="best-grade-text" id="best-grade">-</span>
+                            <div class="song-best-score" id="song-best-score" style="display:none; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 12px 16px; margin-top: 15px; border-left: 3px solid var(--accent);">
+                                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">BEST SCORE</div>
+                                <div id="best-score-content" style="display: flex; align-items: center; gap: 12px;">
+                                    <span class="lamp" id="best-lamp" style="width: 8px; height: 8px; min-width: 8px;"></span>
+                                    <span id="best-grade" style="font-size: 28px; font-weight: bold; min-width: 50px;">-</span>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <span id="best-ex-score" style="font-size: 18px; font-weight: bold; color: var(--accent);">0</span>
+                                        <span id="best-rate" style="font-size: 12px; color: #888;">0.00%</span>
+                                    </div>
                                 </div>
-                                <div class="best-score-stats">
-                                    <span id="best-ex-score">0</span>
-                                    <span class="best-rate-text">(<span id="best-rate">0.00%</span>)</span>
-                                </div>
+                                <div id="best-score-empty" style="display: none; color: #666; font-style: italic; font-size: 13px;">No best score</div>
                             </div>
 
                             <div class="song-markers" id="song-markers"></div>
@@ -2660,127 +2779,102 @@
                     </div>
                 </div>
             </div>
-            <div class="iidx-options-container">
-                <div class="iidx-options-header">PLAYER OPTIONS</div>
+            <div class="iidx-right-column">
+                <div class="iidx-options-container">
+                    <div class="iidx-options-header">PLAYER OPTIONS</div>
 
-                <!-- Keyboard Guide -->
-                <div class="iidx-keyboard-guide" id="iidx-keyboard-guide">
-                    <div class="iidx-key-row">
-                        <div class="iidx-key iidx-key-black" data-key="2">2</div>
-                        <div class="iidx-key iidx-key-black" data-key="4">4</div>
-                        <div class="iidx-key iidx-key-black" data-key="6">6</div>
-                    </div>
-                    <div class="iidx-key-row">
-                        <div class="iidx-key iidx-key-white" data-key="1">1</div>
-                        <div class="iidx-key iidx-key-white" data-key="3">3</div>
-                        <div class="iidx-key iidx-key-white" data-key="5">5</div>
-                        <div class="iidx-key iidx-key-white" data-key="7">7</div>
-                    </div>
-                    <svg class="iidx-wiring-svg" id="iidx-wiring-svg"></svg>
-                </div>
-
-                <div class="iidx-options-grid">
-                    <!-- COLUMN 1: KEY MODE (KEY 1) -->
-                    <div class="iidx-section" id="sec-mode">
-                        <div class="iidx-section-name">[1] MODE</div>
-                        <div class="iidx-opt-list" id="list-mode">
-                            <div data-val="ALL">ALL</div>
-                            <div data-val="单">SINGLE</div>
-                            <div data-val="5">5KEY</div>
-                            <div data-val="7">7KEY</div>
-                            <div data-val="9">9KEY</div>
-                            <div data-val="双">DOUBLE</div>
-                            <div data-val="10">10KEY</div>
-                            <div data-val="14">14KEY</div>
+                    <!-- Keyboard Guide -->
+                    <div class="iidx-keyboard-guide" id="iidx-keyboard-guide">
+                        <div class="iidx-key-row">
+                            <div class="iidx-key iidx-key-black" data-key="2"></div>
+                            <div class="iidx-key iidx-key-black" data-key="4"></div>
+                            <div class="iidx-key iidx-key-black" data-key="6"></div>
                         </div>
-                    </div>
-
-                    <!-- COLUMN 2: STYLE (KEY 2) -->
-                    <div class="iidx-section" id="sec-style">
-                        <div class="iidx-section-name">[2] STYLE</div>
-                        <div class="iidx-opt-list" id="list-modifier">
-                            <div data-val="OFF">OFF</div>
-                            <div data-val="MIRROR">MIRROR</div>
-                            <div data-val="RANDOM">RANDOM</div>
-                            <div data-val="S-RANDOM">S-RANDOM</div>
-                            <div data-val="H-RANDOM">H-RANDOM</div>
-                            <div data-val="R-RANDOM">R-RANDOM</div>
-                            <div data-val="ALL-SCRATCH">ALL-SCRATCH</div>
+                        <div class="iidx-key-row">
+                            <div class="iidx-key iidx-key-white" data-key="1"></div>
+                            <div class="iidx-key iidx-key-white" data-key="3"></div>
+                            <div class="iidx-key iidx-key-white" data-key="5"></div>
+                            <div class="iidx-key iidx-key-white" data-key="7"></div>
                         </div>
+                        <svg class="iidx-wiring-svg" id="iidx-wiring-svg"></svg>
                     </div>
 
-                    <!-- COLUMN 3: BATTLE (KEY 3) -->
-                    <div class="iidx-section" id="sec-battle">
-                        <div class="iidx-section-name">[3] BATTLE</div>
-                        <div class="iidx-opt-list">
-                            <div data-val="OFF" class="selected">OFF</div>
-                            <div data-val="ON" style="color:#444;">(COMING SOON)</div>
-                        </div>
-                    </div>
-
-                    <!-- COLUMN 4: GAUGE (KEY 4) -->
-                    <div class="iidx-section" id="sec-gauge">
-                        <div class="iidx-section-name">[4] GAUGE</div>
-                        <div class="iidx-opt-list" id="list-gauge">
-                            <div data-val="GROOVE">GROOVE</div>
-                            <div data-val="EASY">EASY</div>
-                            <div data-val="HARD">HARD</div>
-                            <div data-val="EXHARD">EX-HARD</div>
-                            <div data-val="HAZARD">HAZARD</div>
-                            <div data-val="ASSIST">ASSIST EASY</div>
-                        </div>
-                    </div>
-
-                    <!-- COLUMN 5: ASSIST/RANGE (KEY 6, 6+7) -->
-                    <div class="iidx-section" id="sec-assist">
-                        <div class="iidx-section-name">[6] AS / [6+7] RAN</div>
-                        <div class="iidx-opt-group" id="group-assist">
-                            <div class="iidx-opt-subname">ASSIST</div>
-                            <div class="iidx-opt-list" id="list-assist">
-                                <div data-val="OFF">OFF</div>
-                                <div data-val="A-SCR">AUTO-SCRATCH</div>
-                                <div data-val="EX-JUDGE">EXTEND JUDGE</div>
-                                <div data-val="BOTH">A-SCR + EX-JDG</div>
+                    <div class="iidx-options-grid">
+                        <!-- COLUMN 1: KEY MODE (KEY 1) -->
+                        <div class="iidx-section" id="sec-mode" data-opt="keyModeFilter">
+                            <div class="iidx-section-name">MODE</div>
+                            <div class="option-wheel-box" id="wheel-mode">
+                                <div class="option-wheel-strip"></div>
                             </div>
                         </div>
-                        <div class="iidx-opt-group" id="group-range"
-                            style="border-top: 1px solid #333; margin-top:5px; padding-top:5px;">
-                            <div class="iidx-opt-subname">RANGE</div>
-                            <div class="iidx-opt-list" id="list-range">
-                                <div data-val="OFF">OFF</div>
-                                <div data-val="SUDDEN+">SUDDEN+</div>
-                                <div data-val="LIFT">LIFT</div>
-                                <div data-val="LIFT-SUD+">LIFT & SUD+</div>
+
+                        <!-- COLUMN 2: STYLE (KEY 2) -->
+                        <div class="iidx-section" id="sec-style" data-opt="modifier">
+                            <div class="iidx-section-name">STYLE</div>
+                            <div class="option-wheel-box" id="wheel-style">
+                                <div class="option-wheel-strip"></div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- COLUMN 6: HI-SPEED (KEY 5/7, 5+7) -->
-                    <div class="iidx-section" id="sec-hispeed">
-                        <div class="iidx-section-name">[5/7] HS / [5+7] FIX</div>
-                        <div class="iidx-hs-display">
-                            <div class="iidx-hs-val" id="opt-hispeed-val">4.0</div>
-                            <div class="iidx-hs-fix" id="opt-hsfix-val">FIX: NONE</div>
+                        <!-- COLUMN 3: BATTLE (KEY 3) -->
+                        <div class="iidx-section" id="sec-battle">
+                             <div class="iidx-section-name">BATTLE</div>
+                             <div class="option-wheel-box" style="opacity:0.5;">
+                                 <div class="option-wheel-strip">
+                                     <div class="option-wheel-item selected">OFF</div>
+                                     <div class="option-wheel-item">COMING SOON</div>
+                                 </div>
+                             </div>
                         </div>
-                        <div class="iidx-opt-group" id="group-hsfix"
-                            style="border-top: 1px solid #333; margin-top:5px; padding-top:5px;">
-                            <div class="iidx-opt-subname">HS FIX (5+7)</div>
-                            <div class="iidx-opt-list" id="list-hsfix">
-                                <div data-val="NONE">NONE</div>
-                                <div data-val="MIN">MIN BPM</div>
-                                <div data-val="MAX">MAX BPM</div>
-                                <div data-val="AVG">AVG BPM</div>
-                                <div data-val="CONSTANT">CONSTANT</div>
-                                <div data-val="START">START BPM</div>
-                                <div data-val="MAIN">MAIN BPM</div>
+
+                        <!-- COLUMN 4: GAUGE (KEY 4) -->
+                        <div class="iidx-section" id="sec-gauge" data-opt="gaugeType">
+                            <div class="iidx-section-name">GAUGE</div>
+                            <div class="option-wheel-box" id="wheel-gauge">
+                                 <div class="option-wheel-strip"></div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMN 5: ASSIST/RANGE (KEY 6, 6+7) -->
+                        <div class="iidx-section" id="sec-assist">
+                            <div class="iidx-section-name">ASSIST / RANGE</div>
+                            
+                            <div style="margin-bottom: 5px;">
+                                <div class="iidx-opt-subname">ASSIST [KEY 6]</div>
+                                <div class="option-wheel-box" id="wheel-assist" data-opt="assistMode">
+                                     <div class="option-wheel-strip"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="iidx-opt-subname">RANGE [KEY 6+7]</div>
+                                 <div class="option-wheel-box" id="wheel-range" data-opt="rangeMode">
+                                     <div class="option-wheel-strip"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMN 6: HI-SPEED (KEY 5/7, 5+7) -->
+                        <div class="iidx-section" id="sec-hispeed">
+                            <div class="iidx-section-name">HI-SPEED</div>
+                            
+                            <div class="iidx-hs-display" style="margin-bottom:10px;">
+                                <div class="iidx-hs-val" id="opt-hispeed-val">4.0</div>
+                                <div class="iidx-hs-fix" id="opt-hsfix-val">FIX: NONE</div>
+                            </div>
+
+                            <div>
+                                 <div class="iidx-opt-subname">HS FIX [KEY 5+7]</div>
+                                 <div class="option-wheel-box" id="wheel-hsfix" data-opt="hiSpeedFix">
+                                     <div class="option-wheel-strip"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="iidx-options-footer">
-                    <button class="iidx-btn" id="btn-save-options">EXIT [START]</button>
-                </div>
+                
+                <!-- Detached Exit Button -->
+                <button class="iidx-btn-large" id="btn-save-options">EXIT [START]</button>
             </div>
         </div>
 
@@ -2852,38 +2946,202 @@
             MAX: { id: 9, name: 'MAX', class: 'max' }
         };
 
+        // Must be defined early for storage functions
+        const IS_DESKTOP = !!window.electronAPI;
+
+        // ============================================================================
+        // PERSISTENT DATA STORAGE
+        // ============================================================================
+        // New file formats:
+        //   scores.db    - merged lamps + best scores per chart
+        //   replays/*.rep - individual replay files (no more replays.json)
+        //   options.sav  - merged keybinds + player options
+        
+        // In-memory cache for scores (merged lamps + scores)
+        // Format: { [fileRef]: { exScore, rate, rank, lampId } }
+        let _scoresDb = {};
+        
+        // In-memory cache for replays (loaded on demand from .rep files)
+        let _replaysCache = {};
+        
+        // Flag to track if data has been loaded
+        let _dataLoaded = false;
+
+        // Initialize persistent data from files (desktop) or localStorage (web)
+        async function initPersistentData() {
+            if (_dataLoaded) return;
+            
+            if (IS_DESKTOP && window.electronAPI.readUserData) {
+                // Try to load new format first
+                let scoresDb = await window.electronAPI.readUserData('scores.db');
+                
+                if (scoresDb) {
+                    _scoresDb = scoresDb;
+                } else {
+                    // Migration: check for old separate files
+                    const [oldLamps, oldScores] = await Promise.all([
+                        window.electronAPI.readUserData('lamps.json'),
+                        window.electronAPI.readUserData('best_scores.json')
+                    ]);
+                    
+                    // Merge old data into new format
+                    if (oldLamps || oldScores) {
+                        const lamps = oldLamps || {};
+                        const scores = oldScores || {};
+                        
+                        // Combine all keys from both
+                        const allKeys = new Set([...Object.keys(lamps), ...Object.keys(scores)]);
+                        for (const key of allKeys) {
+                            const scoreEntry = scores[key] || {};
+                            const lampId = lamps[key] || 0;
+                            
+                            // Handle legacy number format
+                            if (typeof scoreEntry === 'number') {
+                                _scoresDb[key] = { exScore: scoreEntry, rate: 0, rank: 'F', lampId };
+                            } else {
+                                _scoresDb[key] = {
+                                    exScore: scoreEntry.exScore || 0,
+                                    rate: scoreEntry.rate || 0,
+                                    rank: scoreEntry.rank || 'F',
+                                    lampId: Math.max(scoreEntry.lampId || 0, lampId)
+                                };
+                            }
+                        }
+                        
+                        // Save merged data
+                        window.electronAPI.writeUserData('scores.db', _scoresDb);
+                        console.log('Migrated lamps.json + best_scores.json → scores.db');
+                    }
+                    
+                    // Also try localStorage as fallback
+                    if (Object.keys(_scoresDb).length === 0) {
+                        const localLamps = JSON.parse(localStorage.getItem('lamps') || '{}');
+                        const localScores = JSON.parse(localStorage.getItem('best_scores') || '{}');
+                        const allKeys = new Set([...Object.keys(localLamps), ...Object.keys(localScores)]);
+                        for (const key of allKeys) {
+                            const scoreEntry = localScores[key] || {};
+                            const lampId = localLamps[key] || 0;
+                            if (typeof scoreEntry === 'number') {
+                                _scoresDb[key] = { exScore: scoreEntry, rate: 0, rank: 'F', lampId };
+                            } else {
+                                _scoresDb[key] = {
+                                    exScore: scoreEntry.exScore || 0,
+                                    rate: scoreEntry.rate || 0,
+                                    rank: scoreEntry.rank || 'F',
+                                    lampId: Math.max(scoreEntry.lampId || 0, lampId)
+                                };
+                            }
+                        }
+                        if (Object.keys(_scoresDb).length > 0) {
+                            window.electronAPI.writeUserData('scores.db', _scoresDb);
+                            console.log('Migrated localStorage → scores.db');
+                        }
+                    }
+                }
+                
+                // Replays: migrate from replays.json to individual .rep files
+                const oldReplays = await window.electronAPI.readUserData('replays.json');
+                if (oldReplays && Object.keys(oldReplays).length > 0) {
+                    console.log('Migrating replays.json to individual .rep files...');
+                    const userData = await window.electronAPI.getAppPath('userData');
+                    for (const [fileRef, replayData] of Object.entries(oldReplays)) {
+                        const safeName = fileRef.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                        const repPath = `${userData}/replays/${safeName}.rep`;
+                        await window.electronAPI.writeFile(repPath, JSON.stringify(replayData));
+                        _replaysCache[fileRef] = replayData;
+                    }
+                    console.log(`Migrated ${Object.keys(oldReplays).length} replays to .rep files`);
+                }
+            } else {
+                // Web mode: use localStorage (keep old format for web compatibility)
+                const localLamps = JSON.parse(localStorage.getItem('lamps') || '{}');
+                const localScores = JSON.parse(localStorage.getItem('best_scores') || '{}');
+                const allKeys = new Set([...Object.keys(localLamps), ...Object.keys(localScores)]);
+                for (const key of allKeys) {
+                    const scoreEntry = localScores[key] || {};
+                    const lampId = localLamps[key] || 0;
+                    if (typeof scoreEntry === 'number') {
+                        _scoresDb[key] = { exScore: scoreEntry, rate: 0, rank: 'F', lampId };
+                    } else {
+                        _scoresDb[key] = {
+                            exScore: scoreEntry.exScore || 0,
+                            rate: scoreEntry.rate || 0,
+                            rank: scoreEntry.rank || 'F',
+                            lampId: Math.max(scoreEntry.lampId || 0, lampId)
+                        };
+                    }
+                }
+                _replaysCache = JSON.parse(localStorage.getItem('replays') || '{}');
+            }
+            
+            _dataLoaded = true;
+            console.log('Persistent data loaded');
+        }
+
         function getLamp(fileRef) {
-            const data = localStorage.getItem('lamps');
-            if (!data) return LAMPS.NO_PLAY;
-            const lamps = JSON.parse(data);
-            const lampId = lamps[fileRef];
-            if (lampId === undefined) return LAMPS.NO_PLAY;
+            const entry = _scoresDb[fileRef];
+            if (!entry) return LAMPS.NO_PLAY;
+            const lampId = entry.lampId || 0;
             return Object.values(LAMPS).find(l => l.id === lampId) || LAMPS.NO_PLAY;
         }
 
         function saveLamp(fileRef, newLamp) {
-            const data = localStorage.getItem('lamps');
-            const lamps = data ? JSON.parse(data) : {};
-            const currentLampId = lamps[fileRef] || 0;
+            const entry = _scoresDb[fileRef] || { exScore: 0, rate: 0, rank: 'F', lampId: 0 };
+            const currentLampId = entry.lampId || 0;
             if (newLamp.id > currentLampId) {
-                lamps[fileRef] = newLamp.id;
-                localStorage.setItem('lamps', JSON.stringify(lamps));
+                entry.lampId = newLamp.id;
+                _scoresDb[fileRef] = entry;
+                _saveScoresDb();
             }
         }
 
         function getBestScore(fileRef) {
-            const data = localStorage.getItem('best_scores');
-            if (!data) return 0;
-            const scores = JSON.parse(data);
-            return scores[fileRef] || 0;
+            const entry = _scoresDb[fileRef];
+            return entry || { exScore: 0, rate: 0, rank: 'F', lampId: 0 };
         }
 
-        function saveScore(fileRef, score) {
-            const data = localStorage.getItem('best_scores');
-            const scores = data ? JSON.parse(data) : {};
-            const currentBest = scores[fileRef] || 0;
-            if (score > currentBest) {
-                scores[fileRef] = score;
+        // Rank priority for comparison (higher is better)
+        const RANK_PRIORITY = { 'F': 0, 'E': 1, 'D': 2, 'C': 3, 'B': 4, 'A': 5, 'AA': 6, 'AAA': 7 };
+
+        function saveScore(fileRef, exScore, rate, rank, lampId) {
+            let entry = _scoresDb[fileRef] || { exScore: 0, rate: 0, rank: 'F', lampId: 0 };
+            let changed = false;
+            
+            if (exScore > entry.exScore) {
+                entry.exScore = exScore;
+                changed = true;
+            }
+            if (rate > entry.rate) {
+                entry.rate = rate;
+                changed = true;
+            }
+            if ((RANK_PRIORITY[rank] || 0) > (RANK_PRIORITY[entry.rank] || 0)) {
+                entry.rank = rank;
+                changed = true;
+            }
+            if (lampId > (entry.lampId || 0)) {
+                entry.lampId = lampId;
+                changed = true;
+            }
+            
+            if (changed) {
+                _scoresDb[fileRef] = entry;
+                _saveScoresDb();
+            }
+        }
+        
+        function _saveScoresDb() {
+            if (IS_DESKTOP && window.electronAPI.writeUserData) {
+                window.electronAPI.writeUserData('scores.db', _scoresDb);
+            } else {
+                // Web: save in old format for compatibility
+                const lamps = {};
+                const scores = {};
+                for (const [key, entry] of Object.entries(_scoresDb)) {
+                    if (entry.lampId) lamps[key] = entry.lampId;
+                    scores[key] = { exScore: entry.exScore, rate: entry.rate, rank: entry.rank, lampId: entry.lampId };
+                }
+                localStorage.setItem('lamps', JSON.stringify(lamps));
                 localStorage.setItem('best_scores', JSON.stringify(scores));
             }
         }
@@ -2902,13 +3160,11 @@
                     if (score > existing.score) shouldSave = true;
                 } else if (STATE.replaySaveType === 'BEST_LAMP') {
                     if (lamp.id > existing.lampId) shouldSave = true;
-                    // Tie-breaker: Score
                     else if (lamp.id === existing.lampId && score > existing.score) shouldSave = true;
                 } else if (STATE.replaySaveType === 'FULL_COMBO') {
-                    // Only save if FC
                     if (isFC) {
-                        if (!existing.isFC) shouldSave = true; // First FC
-                        else if (score > existing.score) shouldSave = true; // Better FC
+                        if (!existing.isFC) shouldSave = true;
+                        else if (score > existing.score) shouldSave = true;
                     }
                 }
             }
@@ -2921,20 +3177,19 @@
                     log: log,
                     timestamp: Date.now()
                 };
-                const data = localStorage.getItem('replays') || '{}';
-                const replays = JSON.parse(data);
-                replays[fileRef] = replayData;
-                localStorage.setItem('replays', JSON.stringify(replays));
-
-                // Desktop: Save .rep file
-                if (IS_DESKTOP && window.electronAPI && window.electronAPI.writeFile) {
+                _replaysCache[fileRef] = replayData;
+                
+                if (IS_DESKTOP && window.electronAPI.writeFile) {
+                    // Save only to .rep file (no more replays.json)
                     (async () => {
                         const userData = await window.electronAPI.getAppPath('userData');
                         const safeName = fileRef.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                         const repPath = `${userData}/replays/${safeName}.rep`;
                         await window.electronAPI.writeFile(repPath, JSON.stringify(replayData));
-                        console.log("Replay saved to file:", repPath);
+                        console.log("Replay saved:", repPath);
                     })();
+                } else {
+                    localStorage.setItem('replays', JSON.stringify(_replaysCache));
                 }
 
                 console.log("Replay saved!", replayData);
@@ -2942,16 +3197,13 @@
         }
 
         function getReplay(fileRef) {
-            const data = localStorage.getItem('replays');
-            if (!data) return null;
-            const replays = JSON.parse(data);
-            return replays[fileRef] || null;
+            return _replaysCache[fileRef] || null;
         }
 
         // ----------------------------------------------------------------------------
         // ABSTRACTION LAYER (WEB VS DESKTOP)
         // ----------------------------------------------------------------------------
-        const IS_DESKTOP = !!window.electronAPI;
+        // IS_DESKTOP defined earlier for storage functions
 
         class DataLayer {
             constructor() {
@@ -3053,6 +3305,55 @@
             FAIL: { x: 0, y: 1364, w: J_WORD_W, h: J_ROW_H }
         };
 
+        // --- NEW OPTIONS DATA ---
+        const OPTIONS_KEYS = {
+            'wheel-mode': { 
+                key: 'keyModeFilter', 
+                items: [
+                    {val:'ALL', lbl:'ALL'}, {val:'单', lbl:'SINGLE'}, {val:'5', lbl:'5KEY'}, 
+                    {val:'7', lbl:'7KEY'}, {val:'9', lbl:'9KEY'}, {val:'双', lbl:'DOUBLE'}, 
+                    {val:'10', lbl:'10KEY'}, {val:'14', lbl:'14KEY'}
+                ]
+            },
+            'wheel-style': {
+                key: 'modifier',
+                items: [
+                    {val:'OFF', lbl:'OFF'}, {val:'MIRROR', lbl:'MIRROR'}, {val:'RANDOM', lbl:'RANDOM'},
+                    {val:'S-RANDOM', lbl:'S-RANDOM'}, {val:'H-RANDOM', lbl:'H-RANDOM'}, 
+                    {val:'R-RANDOM', lbl:'R-RANDOM'}, {val:'ALL-SCRATCH', lbl:'ALL-SCRATCH'}
+                ]
+            },
+            'wheel-gauge': {
+                key: 'gaugeType',
+                items: [
+                    {val:'ASSIST', lbl:'ASSIST EASY'}, {val:'EASY', lbl:'EASY'}, {val:'GROOVE', lbl:'GROOVE'}, 
+                    {val:'HARD', lbl:'HARD'}, {val:'EXHARD', lbl:'EX-HARD'}, {val:'HAZARD', lbl:'HAZARD'}
+                ]
+            },
+            'wheel-assist': {
+                key: 'assistMode',
+                items: [
+                    {val:'OFF', lbl:'OFF'}, {val:'A-SCR', lbl:'AUTO-SCRATCH'}, 
+                    {val:'EX-JUDGE', lbl:'EXTEND JUDGE'}, {val:'BOTH', lbl:'A-SCR + EX-JDG'}
+                ]
+            },
+            'wheel-range': {
+                key: 'rangeMode',
+                items: [
+                    {val:'OFF', lbl:'OFF'}, {val:'SUDDEN+', lbl:'SUDDEN+'}, 
+                    {val:'LIFT', lbl:'LIFT'}, {val:'LIFT-SUD+', lbl:'LIFT & SUD+'}
+                ]
+            },
+            'wheel-hsfix': {
+                key: 'hiSpeedFix',
+                items: [
+                    {val:'NONE', lbl:'NONE'}, {val:'MIN', lbl:'MIN BPM'}, {val:'MAX', lbl:'MAX BPM'},
+                    {val:'AVG', lbl:'AVG BPM'}, {val:'CONSTANT', lbl:'CONSTANT'}, 
+                    {val:'START', lbl:'START BPM'}, {val:'MAIN', lbl:'MAIN BPM'}
+                ]
+            }
+        };
+
         const PACEMAKER_TARGETS = ['OFF', 'AAA', 'AA', 'A', 'NEXT', 'MY BEST'];
 
         function rotatePacemakerTarget(delta) {
@@ -3081,7 +3382,8 @@
 
             const totalNotes = STATE.loadedSong.notes.length;
             const maxEx = totalNotes * 2;
-            const bestScore = getBestScore(STATE.currentFileRef);
+            const bestScoreData = getBestScore(STATE.currentFileRef);
+            const bestExScore = bestScoreData.exScore;
 
             // Calculate target fraction
             let targetRatio = 0;
@@ -3091,7 +3393,7 @@
             else if (STATE.pacemakerTarget === 'AA') targetRatio = 7 / 9;
             else if (STATE.pacemakerTarget === 'A') targetRatio = 6 / 9;
             else if (STATE.pacemakerTarget === 'MY BEST') {
-                targetRatio = bestScore / Math.max(1, maxEx);
+                targetRatio = bestExScore / Math.max(1, maxEx);
             }
             else if (STATE.pacemakerTarget === 'NEXT') {
                 const ranks = [
@@ -3114,7 +3416,7 @@
             const noteProgress = notesPassed / Math.max(1, totalNotes);
 
             const targetScoreCurrent = Math.floor(maxEx * targetRatio * noteProgress);
-            const bestScoreCurrent = Math.floor(bestScore * noteProgress);
+            const bestScoreCurrent = Math.floor(bestExScore * noteProgress);
 
             const diffTarget = STATE.score - targetScoreCurrent;
             const diffBest = STATE.score - bestScoreCurrent;
@@ -3126,7 +3428,7 @@
 
             ui.paceBarYou.style.height = ((STATE.score / Math.max(1, maxEx)) * 100) + '%';
             ui.paceBarTarget.style.height = (targetRatio * noteProgress * 100) + '%';
-            ui.paceBarBest.style.height = (bestScore / Math.max(1, maxEx) * 100) + '%';
+            ui.paceBarBest.style.height = (bestExScore / Math.max(1, maxEx) * 100) + '%';
 
             ui.paceDiffTarget.textContent = (diffTarget >= 0 ? '+' : '') + diffTarget;
             ui.paceDiffTarget.className = 'val ' + (diffTarget >= 0 ? 'plus' : 'minus');
@@ -3157,7 +3459,58 @@
             [ACTIONS.START]: 'Digit1', [ACTIONS.SELECT]: 'Digit2'
         };
 
-        // Load keybinds from localStorage or use defaults
+        // ============================================================================
+        // OPTIONS STORAGE (options.sav)
+        // ============================================================================
+        // Unified options file: { keybinds: {...}, options: {...} }
+        
+        // In-memory keybinds cache
+        let _keybindsCache = null;
+
+        // Load keybinds and player options from options.sav (desktop) or localStorage (web)
+        async function loadKeybindsAsync() {
+            if (IS_DESKTOP && window.electronAPI.readUserData) {
+                // Try new unified format first
+                const optionsSav = await window.electronAPI.readUserData('options.sav');
+                
+                if (optionsSav && optionsSav.keybinds) {
+                    _keybindsCache = { ...DEFAULT_KEYBINDS, ...optionsSav.keybinds };
+                } else {
+                    // Migration: check for old keybinds.json
+                    const oldKeybinds = await window.electronAPI.readUserData('keybinds.json');
+                    if (oldKeybinds) {
+                        _keybindsCache = { ...DEFAULT_KEYBINDS, ...oldKeybinds };
+                        console.log('Will migrate keybinds.json → options.sav');
+                    } else if (localStorage.getItem('lyruanna_keybinds')) {
+                        // Migration from localStorage
+                        _keybindsCache = { ...DEFAULT_KEYBINDS, ...JSON.parse(localStorage.getItem('lyruanna_keybinds')) };
+                        console.log('Will migrate localStorage keybinds → options.sav');
+                    } else {
+                        _keybindsCache = { ...DEFAULT_KEYBINDS };
+                    }
+                }
+            } else {
+                const saved = localStorage.getItem('lyruanna_keybinds');
+                if (saved) {
+                    try {
+                        _keybindsCache = { ...DEFAULT_KEYBINDS, ...JSON.parse(saved) };
+                    } catch (e) {
+                        console.warn('Failed to parse saved keybinds, using defaults');
+                        _keybindsCache = { ...DEFAULT_KEYBINDS };
+                    }
+                } else {
+                    _keybindsCache = { ...DEFAULT_KEYBINDS };
+                }
+            }
+            // Update KEYBINDS object in place
+            Object.assign(KEYBINDS, _keybindsCache);
+            // Rebuild key-to-action mapping after loading keybinds
+            if (typeof rebuildInputMap === 'function') {
+                rebuildInputMap();
+            }
+        }
+
+        // Synchronous fallback for initial load
         function loadKeybinds() {
             const saved = localStorage.getItem('lyruanna_keybinds');
             if (saved) {
@@ -3171,30 +3524,92 @@
         }
 
         function saveKeybinds() {
-            localStorage.setItem('lyruanna_keybinds', JSON.stringify(KEYBINDS));
+            _saveOptions();
         }
 
         const KEYBINDS = loadKeybinds();
 
         function savePlayerOptions() {
-            const options = {
-                speed: STATE.speed,
-                gaugeType: STATE.gaugeType,
-                difficultyFilter: STATE.difficultyFilter,
-                keyModeFilter: STATE.keyModeFilter,
-                hiSpeedFix: STATE.hiSpeedFix,
-                sortMode: STATE.sortMode,
-                modifier: STATE.modifier,
-                assistMode: STATE.assistMode,
-                rangeMode: STATE.rangeMode,
-                pacemakerTarget: STATE.pacemakerTarget,
-                fullscreen: STATE.fullscreen,
-                resolution: STATE.resolution,
-                replaySaveType: STATE.replaySaveType
+            _saveOptions();
+        }
+        
+        // Unified save function for options.sav
+        function _saveOptions() {
+            const optionsData = {
+                keybinds: KEYBINDS,
+                options: {
+                    speed: STATE.speed,
+                    gaugeType: STATE.gaugeType,
+                    difficultyFilter: STATE.difficultyFilter,
+                    keyModeFilter: STATE.keyModeFilter,
+                    hiSpeedFix: STATE.hiSpeedFix,
+                    sortMode: STATE.sortMode,
+                    modifier: STATE.modifier,
+                    assistMode: STATE.assistMode,
+                    rangeMode: STATE.rangeMode,
+                    pacemakerTarget: STATE.pacemakerTarget,
+                    fullscreen: STATE.fullscreen,
+                    resolution: STATE.resolution,
+                    replaySaveType: STATE.replaySaveType
+                }
             };
-            localStorage.setItem('lyruanna_player_options', JSON.stringify(options));
+            
+            if (IS_DESKTOP && window.electronAPI.writeUserData) {
+                window.electronAPI.writeUserData('options.sav', optionsData);
+            } else {
+                // Web: keep old format for compatibility
+                localStorage.setItem('lyruanna_keybinds', JSON.stringify(KEYBINDS));
+                localStorage.setItem('lyruanna_player_options', JSON.stringify(optionsData.options));
+            }
         }
 
+        async function loadPlayerOptionsAsync() {
+            let options = null;
+            
+            if (IS_DESKTOP && window.electronAPI.readUserData) {
+                // Try new unified format first
+                const optionsSav = await window.electronAPI.readUserData('options.sav');
+                
+                if (optionsSav && optionsSav.options) {
+                    options = optionsSav.options;
+                } else {
+                    // Migration: check for old player_options.json
+                    const oldOptions = await window.electronAPI.readUserData('player_options.json');
+                    if (oldOptions) {
+                        options = oldOptions;
+                        console.log('Will migrate player_options.json → options.sav');
+                    } else if (localStorage.getItem('lyruanna_player_options')) {
+                        options = JSON.parse(localStorage.getItem('lyruanna_player_options'));
+                        console.log('Will migrate localStorage options → options.sav');
+                    }
+                }
+                
+                // Save unified format if migrated
+                if (options && !optionsSav) {
+                    Object.assign(STATE, options);
+                    _saveOptions();
+                    console.log('Migrated to options.sav');
+                    applyWindowSettings(true);
+                    return; // Already applied
+                }
+            } else {
+                const saved = localStorage.getItem('lyruanna_player_options');
+                if (saved) {
+                    try {
+                        options = JSON.parse(saved);
+                    } catch (e) {
+                        console.warn('Failed to parse saved player options');
+                    }
+                }
+            }
+            
+            if (options) {
+                Object.assign(STATE, options);
+                applyWindowSettings(true);
+            }
+        }
+
+        // Synchronous fallback for initial load
         function loadPlayerOptions() {
             const saved = localStorage.getItem('lyruanna_player_options');
             if (saved) {
@@ -3992,7 +4407,14 @@
                             <span class="song-card-keymode">${c.keyMode || '7'}K</span>
                         </div>
                     `;
-                    div.onclick = () => loadChart(STATE.charts.indexOf(c), div, true);
+                    div.onclick = () => {
+                        // Find the index in the current list and update selection
+                        const listIndex = STATE.currentList.findIndex(item => item.type === 'chart' && item.data === c);
+                        if (listIndex !== -1) {
+                            STATE.selectedIndex = listIndex;
+                            updateSelection();
+                        }
+                    };
                     addToList('chart', c, div);
                 });
                 ui.songCount.textContent = filtered.length;
@@ -4026,27 +4448,35 @@
                 ui.bannerArea.innerHTML = '<span class="banner-placeholder">Category selected</span>';
 
                 // Display Best Score
-                const bestReplay = getReplay(chart.fileRef);
+                const bestScoreData = getBestScore(chart.fileRef);
                 const lamp = getLamp(chart.fileRef);
                 const bestArea = document.getElementById('song-best-score');
+                const bestContent = document.getElementById('best-score-content');
+                const bestEmpty = document.getElementById('best-score-empty');
 
                 if (bestArea) {
-                    if (bestReplay && bestReplay.score > 0) {
-                        bestArea.style.display = 'flex';
+                    bestArea.style.display = 'block';
+                    
+                    if (bestScoreData && bestScoreData.exScore > 0) {
+                        // Show score content, hide empty message
+                        if (bestContent) bestContent.style.display = 'flex';
+                        if (bestEmpty) bestEmpty.style.display = 'none';
+                        
                         const lampEl = document.getElementById('best-lamp');
-                        lampEl.textContent = lamp.name;
-                        lampEl.className = 'best-lamp-tag lamp ' + lamp.class;
+                        lampEl.className = 'lamp ' + lamp.class;
 
                         const totalNotes = chart.noteCount || 100;
-                        const rate = (bestReplay.score / Math.max(1, totalNotes * 2)) * 100;
-                        const grade = calculateRank(rate);
+                        const rate = bestScoreData.rate || ((bestScoreData.exScore / Math.max(1, totalNotes * 2)) * 100);
+                        const grade = bestScoreData.rank || calculateRank(rate);
 
                         document.getElementById('best-grade').textContent = grade;
                         document.getElementById('best-grade').style.color = getRankColor(grade);
-                        document.getElementById('best-ex-score').textContent = bestReplay.score;
+                        document.getElementById('best-ex-score').textContent = bestScoreData.exScore;
                         document.getElementById('best-rate').textContent = rate.toFixed(2) + '%';
                     } else {
-                        bestArea.style.display = 'none';
+                        // Hide score content, show empty message
+                        if (bestContent) bestContent.style.display = 'none';
+                        if (bestEmpty) bestEmpty.style.display = 'block';
                     }
                 }
             } else if (item.type === 'course') {
@@ -4059,6 +4489,10 @@
                 ui.btnStart.disabled = true; // Can implement course play later
                 ui.stagefileArea.style.backgroundImage = '';
                 ui.selectBg.style.backgroundImage = '';
+                
+                // Hide best score for courses
+                const bestArea = document.getElementById('song-best-score');
+                if (bestArea) bestArea.style.display = 'none';
 
                 // Verify Songs
                 let html = '<div style="font-size:14px; text-align:left; padding:10px;">';
@@ -4116,24 +4550,9 @@
             const hsFixEl = document.getElementById('opt-hsfix-val');
             if (hsFixEl) hsFixEl.textContent = `FIX: ${STATE.hiSpeedFix}`;
 
-            // Sync other UI elements...
-            document.querySelectorAll('#list-mode div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.keyModeFilter);
-            });
-            document.querySelectorAll('#list-modifier div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.modifier);
-            });
-            document.querySelectorAll('#list-gauge div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.gaugeType);
-            });
-            document.querySelectorAll('#list-assist div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.assistMode);
-            });
-            document.querySelectorAll('#list-range div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.rangeMode);
-            });
-            document.querySelectorAll('#list-hsfix div').forEach(div => {
-                div.classList.toggle('selected', div.dataset.val === STATE.hiSpeedFix);
+            // Render Wheels
+            Object.keys(OPTIONS_KEYS).forEach(wheelId => {
+                renderWheel(wheelId);
             });
 
             // Target Wheel (Seamless with Snapping)
@@ -4193,6 +4612,112 @@
             }
         }
 
+        function renderWheel(wheelId) {
+            const container = document.getElementById(wheelId);
+            if (!container) return;
+            const strip = container.querySelector('.option-wheel-strip');
+            if (!strip) return;
+
+            const config = OPTIONS_KEYS[wheelId];
+            if (!config) return;
+
+            const currentVal = STATE[config.key];
+            const idx = config.items.findIndex(i => i.val === currentVal);
+            const len = config.items.length;
+
+            // Calculate cyclic indices
+            const prevIdx = (idx - 1 + len) % len;
+            const nextIdx = (idx + 1) % len;
+            
+            // Create visible items: Prev, Curr, Next
+            // We rebuild DOM for simplicity in cyclic logic
+            strip.innerHTML = '';
+            
+            const visibleIndices = [prevIdx, idx, nextIdx];
+            visibleIndices.forEach((i, pos) => {
+                const item = config.items[i];
+                const el = document.createElement('div');
+                el.className = 'option-wheel-item';
+                el.textContent = item.lbl;
+                
+                if (pos === 1) el.classList.add('selected'); // Middle item
+                
+                // Allow clicking adjacent items to scroll
+                if (pos === 0) el.onclick = (e) => { e.stopPropagation(); stepOption(config.key, -1); };
+                if (pos === 2) el.onclick = (e) => { e.stopPropagation(); stepOption(config.key, 1); };
+                
+                strip.appendChild(el);
+            });
+            
+            // Reset transform calculation since we are now statically placing 3 items
+            // But strict placement: Item height 40px. 
+            // 3 items stack: 0-40, 40-80, 80-120.
+            // This fills the 120px container perfectly.
+            strip.style.transform = 'none';
+        }
+
+        function setOption(key, val) {
+            STATE[key] = val;
+            savePlayerOptions();
+            updateOptionsUI();
+            
+            if (key === 'keyModeFilter' || key === 'difficultyFilter') {
+                STATE.optionsChangedFilter = true;
+            }
+        }
+        
+        // Wheel Interaction (Click on top/bottom areas to scroll)
+        // Delegate click for the wheel box to handle prev/next if clicking empty space
+        document.addEventListener('click', (e) => {
+            const box = e.target.closest('.option-wheel-box');
+            if (!box) return;
+            const wheelId = box.id;
+            const config = OPTIONS_KEYS[wheelId];
+            if (!config) return;
+
+            // If clicked directly on the box (not on an item, though items cover most),
+            // or we might want to support clicking transparent areas.
+            // But let's rely on item clicks logic above. 
+            // We can add simple wheel scroll support
+        });
+        
+        document.addEventListener('wheel', (e) => {
+            const box = e.target.closest('.option-wheel-box');
+            if(!box) return;
+            if(!STATE.isOptionsOpen) return;
+            
+            const wheelId = box.id;
+            const config = OPTIONS_KEYS[wheelId];
+            if (!config) return;
+            
+            e.preventDefault();
+            
+            if (e.deltaY > 0) stepOption(config.key, 1); // Down -> Next
+            else if (e.deltaY < 0) stepOption(config.key, -1); // Up -> Prev
+        }, { passive: false });
+
+        function stepOption(key, dir) {
+            // Find which wheel
+            let wheelId = null;
+            let config = null;
+            for(const [id, c] of Object.entries(OPTIONS_KEYS)) {
+                if(c.key === key) { config = c; wheelId = id; break; }
+            }
+            if(!config) return;
+
+            const currentVal = STATE[key];
+            const idx = config.items.findIndex(i => i.val === currentVal);
+            
+            // Cyclic Wrapping
+            let nextIdx = (idx + dir) % config.items.length;
+            if (nextIdx < 0) nextIdx += config.items.length;
+            
+            if (nextIdx !== idx) {
+                setOption(key, config.items[nextIdx].val);
+                playSystemSound('o-change');
+            }
+        }
+
         function closeOptions() {
             if (!STATE.isOptionsOpen) return;
             playSystemSound('o-close');
@@ -4215,7 +4740,10 @@
             const guideRect = guide.getBoundingClientRect();
             const gridRect = grid.getBoundingClientRect();
 
-            // Key-to-Column mapping: 1->col1, 2->col2, 3->BATTLE(3), 4->col4, 5/7->col6, 6->col5
+            // Key-to-Column mapping
+            // Columns IDs are still the same, but now we map keys to wheel functionality
+            // 1->mode, 2->style, 4->gauge, 6->assist, 6+7->range
+            // 5->hispeed, 7->hispeed
             const keyToCol = {
                 1: 'sec-mode',
                 2: 'sec-style',
@@ -4232,18 +4760,28 @@
                 const keyNum = parseInt(key.dataset.key);
                 const colId = keyToCol[keyNum];
                 const colEl = document.getElementById(colId);
-                if (!colEl) return;
+                if (!colEl) return; // Should exist
 
                 const keyRect = key.getBoundingClientRect();
                 const colRect = colEl.getBoundingClientRect();
 
-                // Calculate positions relative to guide container
+                // Calculate positions
                 const x1 = keyRect.left + keyRect.width / 2 - guideRect.left;
-                const y1 = keyRect.bottom - guideRect.top + 5; // Offset below key
+                const y1 = keyRect.bottom - guideRect.top + 5; 
+                
+                // Align to center of column
                 const x2 = colRect.left + colRect.width / 2 - guideRect.left;
-                const y2 = gridRect.top - guideRect.top;
+                
+                // Adjust Y2 to point to the wheel box top, not the section text
+                // Attempt to find the wheel box inside
+                let y2 = gridRect.top - guideRect.top; // default top of grid
+                const wheelBox = colEl.querySelector('.option-wheel-box');
+                if (wheelBox) {
+                    const wbRect = wheelBox.getBoundingClientRect();
+                    y2 = wbRect.top - guideRect.top;
+                }
 
-                // 90-degree turn with staggered midY to avoid overlap
+                // 90-degree turn
                 const midY = y1 + 10 + lineIndex * 6;
                 lineIndex++;
 
@@ -5329,8 +5867,15 @@
             if (isClear) playSystemSound('clear');
             else playSystemSound('fail');
 
-            saveScore(STATE.currentFileRef, STATE.score);
+            // Calculate score data for saving
+            const maxEx = STATE.loadedSong.notes.length * 2;
+            const percent = (STATE.score / Math.max(1, maxEx)) * 100;
+            const rank = calculateRank(percent);
             const lamp = determineClearLamp(isClear);
+
+            // Save score data (only overwrites individual values if higher)
+            saveScore(STATE.currentFileRef, STATE.score, percent, rank, lamp.id);
+            // Also save lamp separately for backward compatibility with lamp display
             saveLamp(STATE.currentFileRef, lamp);
 
             // Save Replay
@@ -5340,9 +5885,6 @@
             document.getElementById('screen-game').style.display = 'none';
             document.getElementById('screen-results').style.display = 'flex';
             document.getElementById('screen-results').classList.remove('fade-out'); // Reset fade state
-
-            const maxEx = STATE.loadedSong.notes.length * 2;
-            const percent = (STATE.score / Math.max(1, maxEx)) * 100;
 
 
 
@@ -6056,7 +6598,10 @@
 
         // INITIALIZATION
         (async () => {
-            loadPlayerOptions();
+            // Load persistent data from files (desktop) or localStorage (web)
+            await initPersistentData();
+            await loadKeybindsAsync();
+            await loadPlayerOptionsAsync();
             await loadSystemSounds();
 
             // Load Judgement Image

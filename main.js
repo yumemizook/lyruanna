@@ -394,6 +394,26 @@ ipcMain.handle('get-app-path', async (event, type) => {
     return app.getPath(type || 'userData');
 });
 
+// Read JSON file from userData
+ipcMain.handle('read-user-data', async (event, filename) => {
+    initPaths();
+    const userData = app.getPath('userData');
+    const filePath = path.join(userData, filename);
+    if (await fs.pathExists(filePath)) {
+        return await fs.readJson(filePath);
+    }
+    return null;
+});
+
+// Write JSON file to userData
+ipcMain.handle('write-user-data', async (event, filename, data) => {
+    initPaths();
+    const userData = app.getPath('userData');
+    const filePath = path.join(userData, filename);
+    await fs.writeJson(filePath, data);
+    return true;
+});
+
 // 4. Resolve Path (for finding audio relative to BMS file)
 ipcMain.handle('resolve-path', async (event, bmsPath, audioFilename) => {
     if (!audioFilename) return null;
