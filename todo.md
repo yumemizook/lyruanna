@@ -1,5 +1,24 @@
-- Results screen:
-    - Make sure the next grade threshold returns a (- score), not a (+ score).
-    - Change the groove gauge graph lines so that the area above 80% (60% for Assist-Easy, or all red if Hard or EX-Hard) is red, and the area below 80% is green.
-    - Allow pressing any 2/4/6 + 1/3/5/7 key combination to quickly restart the chart with the same Random seed (if any Random method is applied).
-    - Add a fading animation for the results screen before returning to the song select screen wen a key is pressed. Make sure that keypresses during the fade-out animation are ignored until the song select screen is fully displayed.
+TODO:
+- Loading screen:
+    - Fix the issue that is causing the title bar to briefly appear during beginning the loading process.
+    - Make sure that NO AUDIO IS PLAYED during loading process, no matter what (currently, tabbing in and out of the game makes the select.wav play)
+    - Add a transition animation when loading is finished to transition to the song select screen.
+- Song select:
+    - Fix the issue causing the Best scores panel to display in the folder selection screen.
+    - Fix the issue that is causing the song info panel to not fetch the correct file's metadata correctly when a song with irregular metada (i.e. extremely high levels) is selected once, then switching to another song with regular metadata.
+    - Add a seamless wheel to the song list, and only display the song title and the difficulty number, then display the color of the clear type in the left border of the song list item.
+- Gameplay:
+    - Make sure that if the chart has no stagefile/banner, it does not use the most recent stagefile/banner available.
+    - Add BGA layering.
+    - Fix the issue which makes the styling of the song selection screen broken when returning to the song selection when the chart is loading.
+    - Make sure that all inputs are ignored during the fade out animation (when the escape key is pressed)
+    - Resize the Sudden+ (and all lane cover options) to be sized to the notefield's width, and allow adjusting the offset of the Sudden+ (and all lane cover options) with the START key + scratch CW/CCW (CW to increase offset, CCW to decrease offset), and allow lane cover toggling on/off by double-pressing the START button.
+    - Add a 'ghost' display which details the current difference to the target score above the judgement and combo.
+    - Make sure that the FAST/SLOW display does not blink with the judgement.
+    - Make sure that the results screen isnt being displayed when the Escape key is pressed during these scenarios: Autoplay is active, or if no notes have been hit yet.
+- Results:
+    - Reformat the results screen: Clear/Failed in the middle at the top, the gauge graph on the top left, and score graph on the top right. Inside the graphs: Gauge/Style/Assist options are displayed on the bottom left of the gauge graph, and Groove% on the bottom right. The score graph should display the rate% on the bottom left, and grade on the bottom right.
+        - The judgement tally should be displayed in one column on the left side of the screen, with spacing between the judgements (PG/GR/GD/BD/PR) and the FAST/SLOW/Combo Break tally. It is displayed below the graphs.
+        - On the right, below the score graph, the Mean and Standard Deviation of the timing of the notes should be displayed, then the difference between target and the player's score (along with the score value of target and rate%) should be displayed. Display the Next Grade at the bottom right of the screen.
+        - Display the PGREAT:GREAT ratio below the Mean and Standard Deviation of the timing of the notes, along with the GREAT:GOOD ratio.
+        

@@ -162,6 +162,37 @@ class Renderer9K {
             ctx.strokeRect(n.x, n.y, n.w, 15);
         });
 
+        // --- Lane Covers (SUDDEN+ / LIFT) ---
+        const rangeMode = state.rangeMode || 'OFF';
+        const suddenPercent = state.suddenPlus || 0;
+        const liftPercent = state.lift || 0;
+
+        if (rangeMode === 'SUDDEN+' || rangeMode === 'LIFT-SUD+') {
+            const suddenHeight = hitY * (suddenPercent / 100);
+            if (suddenHeight > 0) {
+                const grad = ctx.createLinearGradient(0, suddenHeight - 30, 0, suddenHeight);
+                grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, totalW, suddenHeight - 30);
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, suddenHeight - 30, totalW, 30);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(0, suddenHeight - 2, totalW, 2);
+            }
+        }
+
+        if (rangeMode === 'LIFT' || rangeMode === 'LIFT-SUD+') {
+            const liftHeight = (canvas.height - hitY) * (liftPercent / 100);
+            const liftTop = hitY + 15 - liftHeight;
+            if (liftHeight > 0) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, liftTop, totalW, liftHeight + 50);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(0, liftTop, totalW, 2);
+            }
+        }
+
         ctx.restore();
 
         if (window.drawJudgement) window.drawJudgement(time);

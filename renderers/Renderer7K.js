@@ -173,6 +173,45 @@ class Renderer7K {
         ctx.fillStyle = '#f00';
         noteBatches.scratch.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
 
+        // --- Lane Covers (SUDDEN+ / LIFT) ---
+        // Draw lane covers AFTER notes so they hide notes behind them
+        const rangeMode = state.rangeMode || 'OFF';
+        const suddenPercent = state.suddenPlus || 0; // 0-100%
+        const liftPercent = state.lift || 0; // 0-100%
+
+        if (rangeMode === 'SUDDEN+' || rangeMode === 'LIFT-SUD+') {
+            // SUDDEN+: Cover from top of notefield down to suddenPercent% of the way to hitY
+            const suddenHeight = hitY * (suddenPercent / 100);
+            if (suddenHeight > 0) {
+                // Gradient for smooth edge
+                const grad = ctx.createLinearGradient(0, suddenHeight - 30, 0, suddenHeight);
+                grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, p1Total, suddenHeight - 30);
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, suddenHeight - 30, p1Total, 30);
+
+                // White line indicator at bottom edge
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(0, suddenHeight - 2, p1Total, 2);
+            }
+        }
+
+        if (rangeMode === 'LIFT' || rangeMode === 'LIFT-SUD+') {
+            // LIFT: Cover from bottom of notefield up to liftPercent% from hitY
+            const liftHeight = (canvas.height - hitY) * (liftPercent / 100);
+            const liftTop = hitY + 15 - liftHeight; // Start above receptor
+            if (liftHeight > 0) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, liftTop, p1Total, liftHeight + 50);
+
+                // White line indicator at top edge
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(0, liftTop, p1Total, 2);
+            }
+        }
+
         ctx.restore();
 
         // Draw Judgement
