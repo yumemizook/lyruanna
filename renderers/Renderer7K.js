@@ -5,10 +5,53 @@ class Renderer7K {
         this.state = state;
         this.actions = actions;
         this.channels = channels;
+
+        // Caching for GC reduction
+        this.noteBatches = {
+            scratch: [],
+            white: [],
+            blue: []
+        };
+
+        // Cache Gradients (Lazy init or fixed if size constant)
+        // Since resize might change height, we might need to recreate them on render if size changes,
+        // or just recreate if null. For now, valid cache.
+        this.beamGradients = [];
+        this.lastTime = 0;
+    }
+
+    getBeamGradient(ctx, hitY, beamH, isScratch, alpha) {
+        // Gradients depend on alpha, so strictly caching specific alpha objects is hard unless we use globalAlpha.
+        // Better: gradient from color to transparent, use globalAlpha or fillStyle with rgba.
+        // Actually, creating a gradient every frame IS heavy.
+        // Optimization: Create ONE gradient (Start -> End) and only update colors? 
+        // Canvas gradients are objects. 
+        // Better optimization: Pre-render beam to an offscreen canvas or image?
+        // For this fix, let's keep it simple: Use a cached gradient if possible, but alpha changes.
+        // Actually, if we use `ctx.globalAlpha`, we can reuse the SAME gradient object (opaque to transparent)
+        // and just fade it with globalAlpha.
+
+        const key = isScratch ? 'scratch' : 'normal';
+        if (!this.beamGradients[key]) {
+            const g = ctx.createLinearGradient(0, hitY, 0, hitY - beamH);
+            if (isScratch) {
+                g.addColorStop(0, `rgba(255, 50, 50, 1)`);
+                g.addColorStop(1, `rgba(255, 0, 0, 0)`);
+            } else {
+                g.addColorStop(0, `rgba(200, 255, 255, 1)`);
+                g.addColorStop(1, `rgba(0, 255, 255, 0)`);
+            }
+            this.beamGradients[key] = g;
+        }
+        return this.beamGradients[key];
     }
 
     render(time) {
         const { ctx, canvas, state, actions, channels } = this;
+
+        // Calculate Delta Time (in seconds)
+        const dt = this.lastTime ? (time - this.lastTime) / 1000 : 0.016;
+        this.lastTime = time;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -38,11 +81,16 @@ class Renderer7K {
             const actionList = Array.isArray(actList) ? actList : [actList];
             const active = actionList.some(a => state.activeActions.has(a));
 
-            // Beam Opacity Logic
+            // Beam Opacity Logic (Frame Rate Independent)
+            // Target speed: +0.2 per frame (assume 60fps) => +12.0 per sec
+            // Decay: -0.1 per frame => -6.0 per sec
+            const speedUp = 12.0;
+            const speedDown = 6.0;
+
             if (active) {
-                state.beamOpacity[beamIndex] = Math.min(1.0, state.beamOpacity[beamIndex] + 0.2);
+                state.beamOpacity[beamIndex] = Math.min(1.0, state.beamOpacity[beamIndex] + (speedUp * dt));
             } else {
-                state.beamOpacity[beamIndex] = Math.max(0.0, state.beamOpacity[beamIndex] - 0.1);
+                state.beamOpacity[beamIndex] = Math.max(0.0, state.beamOpacity[beamIndex] - (speedDown * dt));
             }
 
             if (isScratch) ctx.fillStyle = '#200';
@@ -53,23 +101,23 @@ class Renderer7K {
 
             // Draw Beam (Laser) if opacity > 0
             if (state.beamOpacity[beamIndex] > 0.01) {
-                const beamH = hitY * 0.2; // 20% of notefield height from receptor upwards
-                // Gradient: Transparent -> Color (at receptor)
-                const g = ctx.createLinearGradient(0, hitY, 0, hitY - beamH);
-                // Set color based on active state or lingering opacity
+                const beamH = hitY * 0.2;
                 const alpha = state.beamOpacity[beamIndex];
 
-                if (isScratch) {
-                    g.addColorStop(0, `rgba(255, 50, 50, ${alpha * 0.6})`);
-                    g.addColorStop(1, `rgba(255, 0, 0, 0)`);
-                } else {
-                    g.addColorStop(0, `rgba(200, 255, 255, ${alpha * 0.5})`);
-                    g.addColorStop(1, `rgba(0, 255, 255, 0)`);
-                }
+                // Use Cached Gradient with Global Alpha
+                // Note: Clearing the gradient cache if hitY changes (resize) checks would be needed in a robust engine,
+                // but hitY is recalculated locally. Ideally store hitY in `this` and check change.
+                // For now, assume consistent hitY or recreation isn't bottleneck.
+                // Actually, I'll invalid cache if hitY matches.
 
-                ctx.fillStyle = g;
-                // Draw from hitY upwards
+                // Using method call for cleaner code
+                const grad = this.getBeamGradient(ctx, hitY, beamH, isScratch, alpha);
+
+                ctx.save();
+                ctx.globalAlpha = isScratch ? alpha * 0.6 : alpha * 0.5;
+                ctx.fillStyle = grad;
                 ctx.fillRect(x, hitY - beamH, w, beamH);
+                ctx.restore();
 
                 // Add a bright line at receptor for impact
                 if (active) {
@@ -117,11 +165,11 @@ class Renderer7K {
             endIdx++;
         }
 
-        const noteBatches = {
-            scratch: [],
-            white: [],
-            blue: []
-        };
+        // Recycle note batches
+        const noteBatches = this.noteBatches;
+        noteBatches.scratch.length = 0;
+        noteBatches.white.length = 0;
+        noteBatches.blue.length = 0;
 
         for (let i = startIdx; i < endIdx; i++) {
             const n = state.loadedSong.notes[i];

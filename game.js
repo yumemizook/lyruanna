@@ -426,6 +426,45 @@ const OPTIONS_KEYS = {
             { val: 'AVG', lbl: 'AVG BPM' }, { val: 'CONSTANT', lbl: 'CONSTANT' },
             { val: 'START', lbl: 'START BPM' }, { val: 'MAIN', lbl: 'MAIN BPM' }
         ]
+    },
+    // Advanced Options (Digit3 hold panel)
+    'wheel-gas': {
+        key: 'gaugeAutoShift',
+        items: [
+            { val: 'NONE', lbl: 'NONE' },
+            { val: 'CONTINUE', lbl: 'CONTINUE' },
+            { val: 'SURVIVAL_TO_GROOVE', lbl: 'SURV→GROOVE' },
+            { val: 'BEST_CLEAR', lbl: 'BEST CLEAR' },
+            { val: 'SELECT_TO_UNDER', lbl: 'SELECT→UNDER' }
+        ]
+    },
+    'wheel-gas-min': {
+        key: 'gasMinGauge',
+        items: [
+            { val: 'ASSIST', lbl: 'ASSIST EASY' },
+            { val: 'EASY', lbl: 'EASY' },
+            { val: 'GROOVE', lbl: 'GROOVE' }
+        ]
+    },
+    'wheel-auto-offset': {
+        key: 'autoOffset',
+        items: [
+            { val: 'OFF', lbl: 'OFF' },
+            { val: 'ON', lbl: 'ON' }
+        ]
+    },
+    'wheel-green-fix': {
+        key: 'greenFix',
+        items: [
+            { val: 'OFF', lbl: 'OFF' },
+            { val: '200', lbl: '200' },
+            { val: '250', lbl: '250' },
+            { val: '275', lbl: '275' },
+            { val: '300', lbl: '300' },
+            { val: '325', lbl: '325' },
+            { val: '350', lbl: '350' },
+            { val: '400', lbl: '400' }
+        ]
     }
 };
 
@@ -626,7 +665,15 @@ function _saveOptions() {
             fullscreen: STATE.fullscreen,
             resolution: STATE.resolution,
             replaySaveType: STATE.replaySaveType,
-            showTally: STATE.showTally
+            showTally: STATE.showTally,
+            // Lane Cover Persistence
+            suddenPlus: STATE.suddenPlus,
+            lift: STATE.lift,
+            // Advanced Options
+            gaugeAutoShift: STATE.gaugeAutoShift,
+            gasMinGauge: STATE.gasMinGauge,
+            judgeOffset: STATE.judgeOffset,
+            autoOffset: STATE.autoOffset
         }
     };
 
@@ -636,6 +683,166 @@ function _saveOptions() {
         // Web: keep old format for compatibility
         localStorage.setItem('lyruanna_keybinds', JSON.stringify(KEYBINDS));
         localStorage.setItem('lyruanna_player_options', JSON.stringify(optionsData.options));
+    }
+}
+
+// ========== ADVANCED OPTIONS PANEL FUNCTIONS ==========
+function showAdvancedPanel() {
+    const modal = document.getElementById('modal-advanced');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+    }
+    // Update Green/White numbers
+    updateGreenWhiteNumbers();
+    // Initialize wheels for advanced options
+    initAdvancedOptionsWheels();
+    playSystemSound('o-open');
+}
+
+function hideAdvancedPanel() {
+    const modal = document.getElementById('modal-advanced');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('open');
+    }
+    savePlayerOptions();
+}
+
+function initAdvancedOptionsWheels() {
+    // Helper to render a wheel with items
+    const renderWheel = (wheelId, items, currentVal) => {
+        const wheel = document.querySelector(`#modal-advanced #${wheelId}`);
+        if (!wheel) return;
+        const strip = wheel.querySelector('.option-wheel-strip');
+        if (!strip) return;
+
+        strip.innerHTML = items.map(item => {
+            const isActive = item.val === currentVal;
+            return `<div class="option-wheel-item${isActive ? ' active' : ''}">${item.lbl}</div>`;
+        }).join('');
+    };
+
+    // GAS wheel
+    const gasConfig = OPTIONS_KEYS['wheel-gas'];
+    if (gasConfig) {
+        renderWheel('wheel-gas', gasConfig.items, STATE[gasConfig.key]);
+    }
+
+    // GAS Min wheel
+    const gasMinConfig = OPTIONS_KEYS['wheel-gas-min'];
+    if (gasMinConfig) {
+        renderWheel('wheel-gas-min', gasMinConfig.items, STATE[gasMinConfig.key]);
+    }
+
+    // Auto Offset wheel
+    const autoOffsetConfig = OPTIONS_KEYS['wheel-auto-offset'];
+    if (autoOffsetConfig) {
+        renderWheel('wheel-auto-offset', autoOffsetConfig.items, STATE[autoOffsetConfig.key]);
+    }
+
+    // Timing offset wheel - numeric display
+    const offsetWheel = document.querySelector('#modal-advanced #wheel-offset');
+    if (offsetWheel) {
+        const strip = offsetWheel.querySelector('.option-wheel-strip');
+        if (strip) {
+            strip.innerHTML = `<div class="option-wheel-item active">${STATE.judgeOffset >= 0 ? '+' : ''}${STATE.judgeOffset}ms</div>`;
+        }
+    }
+}
+
+// ========== LANE COVER HUD (Green/White Numbers) ==========
+function showLaneCoverInfo() {
+    const el = document.getElementById('lane-cover-info');
+    if (!el) return;
+
+    const bpm = STATE.loadedSong?.bpm || 130;
+    const greenNumber = Math.round(60000 / (bpm * STATE.speed));
+    const whiteNumber = Math.round(STATE.suddenPlus * 10);
+
+    const gnEl = document.getElementById('hud-green-number');
+    const wnEl = document.getElementById('hud-white-number');
+    if (gnEl) gnEl.textContent = greenNumber;
+    if (wnEl) wnEl.textContent = whiteNumber;
+
+    el.style.display = 'block';
+}
+
+function hideLaneCoverInfo() {
+    const el = document.getElementById('lane-cover-info');
+    if (el) el.style.display = 'none';
+}
+
+function updateGreenWhiteNumbers() {
+    const bpm = STATE.loadedSong?.bpm || 130;
+    const greenNumber = Math.round(60000 / (bpm * STATE.speed));
+    const whiteNumber = Math.round(STATE.suddenPlus * 10);
+
+    // Update Advanced Panel displays
+    const gnOptEl = document.getElementById('opt-green-number');
+    const wnOptEl = document.getElementById('opt-white-number');
+    if (gnOptEl) gnOptEl.textContent = greenNumber;
+    if (wnOptEl) wnOptEl.textContent = whiteNumber;
+
+    // Update in-game HUD
+    const gnHudEl = document.getElementById('hud-green-number');
+    const wnHudEl = document.getElementById('hud-white-number');
+    if (gnHudEl) gnHudEl.textContent = greenNumber;
+    if (wnHudEl) wnHudEl.textContent = whiteNumber;
+}
+
+// ========== GAUGE AUTO SHIFT (GAS) LOGIC ==========
+function handleGaugeAutoShift() {
+    const mode = STATE.gaugeAutoShift;
+    if (mode === 'NONE') return false;
+
+    const isSurvival = ['HARD', 'EXHARD', 'HAZARD'].includes(STATE.gaugeType);
+
+    if (mode === 'CONTINUE' && isSurvival) {
+        STATE.gasContinueMode = true; // Flag: gauge stays 0%, no clear possible
+        return true;
+    }
+
+    if (mode === 'SURVIVAL_TO_GROOVE' && isSurvival) {
+        STATE.gaugeType = 'GROOVE';
+        STATE.gauge = 20; // Start at 20% Groove gauge
+        return true;
+    }
+
+    if (mode === 'BEST_CLEAR' || mode === 'SELECT_TO_UNDER') {
+        return shiftToNextLowerGauge();
+    }
+
+    return false;
+}
+
+function shiftToNextLowerGauge() {
+    const order = ['HAZARD', 'EXHARD', 'HARD', 'GROOVE', 'EASY', 'ASSIST'];
+    const currentIdx = order.indexOf(STATE.gaugeType);
+    const minIdx = order.indexOf(STATE.gasMinGauge);
+
+    if (currentIdx >= 0 && currentIdx < order.length - 1 && currentIdx < minIdx) {
+        STATE.gaugeType = order[currentIdx + 1];
+        STATE.gauge = getStartingGauge(STATE.gaugeType);
+        return true;
+    }
+    return false;
+}
+
+function getStartingGauge(gaugeType) {
+    // Return starting gauge % for each type
+    switch (gaugeType) {
+        case 'HAZARD':
+        case 'EXHARD':
+        case 'HARD':
+            return 100; // Survival gauges start at 100%
+        case 'GROOVE':
+            return 20;  // Groove gauge starts at 20%
+        case 'EASY':
+        case 'ASSIST':
+            return 20;  // Easy/Assist start at 20%
+        default:
+            return 20;
     }
 }
 
@@ -941,7 +1148,16 @@ const STATE = {
     lift: 0,
     rangeMode: 'SUDDEN+', // OFF, SUDDEN+, LIFT, LIFT-SUD+
     lastRangeMode: 'SUDDEN+',
-    lastStartPress: 0
+    lastStartPress: 0,
+
+    // Advanced Options (Digit3 hold panel)
+    gaugeAutoShift: 'NONE', // NONE, CONTINUE, SURVIVAL_TO_GROOVE, BEST_CLEAR, SELECT_TO_UNDER
+    gasMinGauge: 'ASSIST',  // ASSIST, EASY, GROOVE
+    judgeOffset: 0,         // Timing offset in ms (no cap)
+    autoOffset: 'OFF',      // OFF, ON
+    isAdvancedPanelOpen: false,
+    key3HoldTimer: null,
+    gasContinueMode: false  // Flag for CONTINUE mode (gauge stays 0%)
 };
 
 function rebuildInputMap() {
@@ -981,7 +1197,8 @@ function parseChartAsync(text) {
 
             // Check if this parse is still the current one
             if (parseId !== STATE.currentParseId) {
-                reject(new Error("Parse abandoned - newer request pending"));
+                console.log("Parse abandoned - newer request pending");
+                resolve(null);
                 return;
             }
 
@@ -1415,6 +1632,10 @@ function triggerDecideScreen(isAutoplay) {
         ui.screenDecide.style.display = 'flex';
         ui.screenDecide.classList.remove('fade-out');
 
+        // Hide Profile Display
+        const pDisp = document.getElementById('profile-display');
+        if (pDisp) pDisp.style.display = 'none';
+
         // Decide screen skip handler
         const skipDecide = () => {
             if (!STATE.isDecideActive) return;
@@ -1443,6 +1664,10 @@ function triggerDecideScreen(isAutoplay) {
                     STATE.selectBgmSource = playSystemSound('select', true);
                 }
                 updateWindowTitle(null);
+
+                // Restore Profile Display
+                const pDisp = document.getElementById('profile-display');
+                if (pDisp) pDisp.style.display = 'flex';
             }, 500);
             window.removeEventListener('keydown', decideKeyHandler);
         };
@@ -1781,7 +2006,15 @@ function refreshSongList() {
     const sortModeEl = document.getElementById('sort-mode');
     if (sortModeEl) sortModeEl.textContent = STATE.sortMode;
 
-    if (STATE.selectedIndex >= STATE.currentList.length) STATE.selectedIndex = 0;
+    // Sanitize selectedIndex
+    if (isNaN(STATE.selectedIndex) || typeof STATE.selectedIndex !== 'number') {
+        STATE.selectedIndex = 0;
+    }
+    if (STATE.selectedIndex < 0) STATE.selectedIndex = 0;
+    if (STATE.currentList.length > 0 && STATE.selectedIndex >= STATE.currentList.length) {
+        STATE.selectedIndex = STATE.currentList.length - 1;
+    }
+    if (STATE.currentList.length === 0) STATE.selectedIndex = 0;
 
     renderInfiniteWheel();
     // Use manual call for first load
@@ -2577,9 +2810,12 @@ async function loadChart(idx, el, focusOnly = false) {
 
     try {
         const data = await parseChartAsync(bmsText); // Worker call
+        if (!data) return; // Abandoned
 
         // STALENESS CHECK: If this card is no longer active (user selected another), discard
-        if (el && !el.classList.contains('active')) {
+        // Robust check: verify the loaded chart matches the currently selected item's data
+        const currentItem = STATE.currentList[STATE.selectedIndex];
+        if (!currentItem || currentItem.type !== 'chart' || currentItem.data !== c) {
             // console.log("Discarding stale chart load:", c.title);
             return;
         }
@@ -2591,6 +2827,8 @@ async function loadChart(idx, el, focusOnly = false) {
         STATE.loadedSong = structuredClone(data); // Working copy
         // Also ensures loadedSong has it immediately (though clone should carry it if set above)
         STATE.loadedSong.keyMode = STATE.baseSongData.keyMode;
+        // Copy md5 from library entry for Tachi score submission
+        STATE.loadedSong.md5 = c.md5;
 
         STATE.currentFileRef = c.fileRef;
         STATE.replayFileRef = c.fileRef;
@@ -2885,6 +3123,11 @@ const ctx = canvas.getContext('2d');
 async function enterGame() {
     document.getElementById('screen-select').style.display = 'none';
     document.getElementById('screen-game').style.display = 'block';
+
+    // Hide Profile Display
+    const pDisp = document.getElementById('profile-display');
+    if (pDisp) pDisp.style.display = 'none';
+
     resize();
 
     // Restore fresh chart data from base
@@ -3127,6 +3370,10 @@ function exitGame() {
     document.getElementById('screen-select').style.display = 'flex';
     document.getElementById('screen-game').style.display = 'none';
 
+    // Show Profile Display
+    const pDisp = document.getElementById('profile-display');
+    if (pDisp) pDisp.style.display = 'flex';
+
     // Re-enable gauge transitions
     ui.gaugeBar.classList.remove('no-transition');
 
@@ -3228,7 +3475,10 @@ async function updateBGA(event) {
         ui.bgaImg.style.display = 'none';
         ui.bgaVideo.src = def.url;
         ui.bgaVideo.style.display = 'block';
-        ui.bgaVideo.play().catch(() => { });
+        if (ui.bgaVideo.paused) {
+            ui.bgaVideo.currentTime = 0; // Optional: restart?
+            ui.bgaVideo.play().catch(() => { });
+        }
     } else {
         // Image or Stream
         if ((/\.(avi|mpg|mpeg|wmv|m4v)$/i.test(def.filename) || def.isVideo) && !isLayer) {
@@ -3416,7 +3666,13 @@ function loop() {
     while (STATE.bpmCursor < bpms.length && bpms[STATE.bpmCursor].time <= now) {
         STATE.currentBpm = Math.max(0.001, bpms[STATE.bpmCursor].bpm);
         STATE.bpmCursor++;
-        ui.statBpm.textContent = Math.round(STATE.currentBpm);
+
+        // OPTIMIZED: Only update DOM if BPM changes significantly (int)
+        const newBpmInt = Math.round(STATE.currentBpm);
+        if (STATE.lastDisplayedBpm !== newBpmInt) {
+            ui.statBpm.textContent = newBpmInt;
+            STATE.lastDisplayedBpm = newBpmInt;
+        }
     }
 
     const bgas = STATE.loadedSong.bgaEvents;
@@ -4144,17 +4400,21 @@ function triggerHardFail() {
     playSystemSound('fail');
 
     // Show Fail Screen
+    // Show Fail Screen
     const failScreen = document.getElementById('screen-failed');
     if (failScreen) failScreen.style.display = 'flex';
-
-    // Set gauge to 0 and update display
+    STATE.isFailedScreen = true; // Block inputs
+    STATE.failTimeout = setTimeout(() => {
+        if (failScreen) failScreen.style.display = 'none';
+        showResults(false);
+        STATE.isFailedScreen = false;
+        STATE.failTimeout = null;
+    }, 3000);
     STATE.gauge = 0;
     updateGaugeDisplay();
 
-    setTimeout(() => {
-        if (failScreen) failScreen.style.display = 'none';
-        showResults(false);
-    }, 3000);
+    // Timeout logic moved up into variable assignment
+
 }
 
 function determineClearLamp(isClear) {
@@ -4404,7 +4664,39 @@ window.addEventListener('keydown', e => {
                 showResults(false, 'ABORT'); // Pass ABORT status
             }
         }, 500);
-        return;
+    }
+
+    // QUICK RESTART (Black + White keys during Failed Screen)
+    if (STATE.isFailedScreen) {
+        // Block other inputs
+        if (!STATE.keyCodeToAction[e.code]) return;
+
+        // Check for Quick Restart Combo: Any Black + Any White
+        const blackKeys = [ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_6];
+        const whiteKeys = [ACTIONS.P1_1, ACTIONS.P1_3, ACTIONS.P1_5, ACTIONS.P1_7];
+
+        // Track held keys manually or reuse activeActions?
+        // activeActions might be cleared on fail? No, usually not.
+        // Let's use current key + activeActions
+
+        const action = STATE.keyCodeToAction[e.code][0]; // Assuming primary
+        if (!action) return;
+
+        STATE.activeActions.add(action); // Ensure current press is counted
+
+        const hasBlack = blackKeys.some(k => STATE.activeActions.has(k));
+        const hasWhite = whiteKeys.some(k => STATE.activeActions.has(k));
+
+        if (hasBlack && hasWhite) {
+            console.log("Quick Restart Triggered!");
+            if (STATE.failTimeout) clearTimeout(STATE.failTimeout);
+            document.getElementById('screen-failed').style.display = 'none';
+            STATE.isFailedScreen = false;
+            stopAllAudio(); // Ensure fail sound stops
+            enterGame();
+            return;
+        }
+        return; // Block other inputs
     }
 
     // Block all inputs during fade out animation
@@ -4421,7 +4713,7 @@ window.addEventListener('keydown', e => {
 
     // Arrow keys for song navigation (song select only)
     // Arrow keys for song navigation (song select only)
-    if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen && !STATE.isDecideActive && !STATE.isResults && !STATE.isFadingOut) {
+    if (!STATE.isPlaying && !STATE.isStarting && !STATE.isOptionsOpen && !STATE.isDecideActive && !STATE.isResults && !STATE.isFadingOut && !STATE.isFailedScreen) {
         if (e.code === 'ArrowUp') {
             e.preventDefault();
             STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
@@ -4465,6 +4757,19 @@ window.addEventListener('keydown', e => {
     }
 
     const actions = STATE.keyCodeToAction[e.code];
+
+    // Digit3 hold handling for advanced panel (works on song select screen)
+    if (e.code === 'Digit3') {
+        // Only on song select (not playing, not in results, not in decide screen)
+        const canShowAdvanced = !STATE.isPlaying && !STATE.isResults && !STATE.isDecideActive && !STATE.isStarting;
+        if (canShowAdvanced && !STATE.key3HoldTimer && !e.repeat) {
+            STATE.key3HoldTimer = setTimeout(() => {
+                STATE.isAdvancedPanelOpen = true;
+                showAdvancedPanel();
+            }, 200);
+        }
+    }
+
     if (!actions) return;
 
     // Block input in Autoplay
@@ -4507,8 +4812,10 @@ window.addEventListener('keydown', e => {
                 let idx = styles.indexOf(STATE.modifier);
                 STATE.modifier = styles[(idx + 1) % styles.length];
             }
-            // Key 3: Battle Placeholder
-            if (action === ACTIONS.P1_3) { /* placeholder */ }
+            // Key 3: Handled by Digit3 hold above, no action-based cycling needed
+            if (action === ACTIONS.P1_3 && STATE.isAdvancedPanelOpen) {
+                // Advanced panel is open - scroll through options with scratch
+            }
             // Key 4: Gauge Cycle
             if (action === ACTIONS.P1_4) {
                 stepOption('gaugeType', 1);
@@ -4586,6 +4893,9 @@ window.addEventListener('keydown', e => {
                     playSystemSound('o-change');
                 }
                 STATE.lastStartPress = now;
+
+                // Show Green/White Number HUD when START is held
+                showLaneCoverInfo();
             }
 
             // OFFSET (Hold Start + Scratch)
@@ -4594,14 +4904,10 @@ window.addEventListener('keydown', e => {
                     const delta = (action === ACTIONS.P1_SC_CW) ? 1 : -1;
                     if (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') {
                         STATE.suddenPlus = Math.max(0, Math.min(100, (STATE.suddenPlus || 0) + delta));
+                        // Update HUD in real-time when adjusting
+                        updateGreenWhiteNumbers();
                     }
-                    // If we want to adjust LIFT separately, user didn't specify combo.
-                    // Assuming Start+Scratch adjusts active top cover (Sudden+).
-                    // For LIFT adjustment, usually requires separate bind or mode toggle.
-                    // For now, implementing SUDDEN+ adjustment as priority.
                     savePlayerOptions();
-                    // Don't return here so it can process normally if needed? 
-                    // No, usually such shortcuts consume the input.
                     STATE.activeActions.delete(action); // Consume
                 }
             }
@@ -4620,15 +4926,19 @@ window.addEventListener('keydown', e => {
         if (!STATE.isPlaying && !STATE.isOptionsOpen && !STATE.isResults && !STATE.isDecideActive && !STATE.isStarting && !STATE.isFadingOut) {
             // SCRATCH NAVIGATION
             if (action === ACTIONS.P1_SC_CCW) {
-                STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
-                playSystemSound('scratch');
-                updateSelection();
+                if (STATE.currentList.length > 0) {
+                    STATE.selectedIndex = (STATE.selectedIndex - 1 + STATE.currentList.length) % STATE.currentList.length;
+                    playSystemSound('scratch');
+                    updateSelection();
+                }
                 return;
             }
             if (action === ACTIONS.P1_SC_CW) {
-                STATE.selectedIndex = (STATE.selectedIndex + 1) % STATE.currentList.length;
-                playSystemSound('scratch');
-                updateSelection();
+                if (STATE.currentList.length > 0) {
+                    STATE.selectedIndex = (STATE.selectedIndex + 1) % STATE.currentList.length;
+                    playSystemSound('scratch');
+                    updateSelection();
+                }
                 return;
             }
 
@@ -4775,6 +5085,18 @@ window.addEventListener('keyup', e => {
         });
     }
 
+    // Digit3 keyup: Clear hold timer and hide advanced panel (before actions check)
+    if (e.code === 'Digit3') {
+        if (STATE.key3HoldTimer) {
+            clearTimeout(STATE.key3HoldTimer);
+            STATE.key3HoldTimer = null;
+        }
+        if (STATE.isAdvancedPanelOpen) {
+            hideAdvancedPanel();
+            STATE.isAdvancedPanelOpen = false;
+        }
+    }
+
     if (!actions) return;
 
     actions.forEach(action => {
@@ -4791,6 +5113,9 @@ window.addEventListener('keyup', e => {
 
             // Reset the flag
             STATE.startOpenedOptions = false;
+
+            // Hide Green/White Number HUD
+            hideLaneCoverInfo();
         }
 
         // White keys to start game
@@ -4896,6 +5221,11 @@ window.addEventListener('resize', resize);
 // ============================================================================
 // TACHI PROFILE UI
 // ============================================================================
+
+let _tachiUserId = null; // Cache for player details
+let _tachiUserProfile = null;
+let _tachiUserStats = null;
+
 async function updateProfileDisplay() {
     const pContainer = document.getElementById('profile-display');
     const pAvatar = document.getElementById('profile-avatar');
@@ -4911,6 +5241,7 @@ async function updateProfileDisplay() {
         pRating.className = 'offline';
         if (pIcon) pIcon.innerHTML = '';
         pContainer.classList.add('hidden'); // Optional: hide if offline
+        _tachiUserId = null;
         return;
     }
 
@@ -4923,6 +5254,9 @@ async function updateProfileDisplay() {
             const rating = TachiIR.getSieglinde(statsRes.gameStats);
             const rankObj = TachiIR.getSieglindeRank(statsRes.rankingData);
             const userId = statsRes.userId;
+
+            _tachiUserId = userId; // Cache it
+            _tachiUserStats = { rating, rankObj };
 
             // Format Rating and Icon
             let ratingText = '';
@@ -4954,7 +5288,8 @@ async function updateProfileDisplay() {
             const profileRes = await TachiIR.fetchTachiUserProfile(userId);
             if (profileRes.success) {
                 const user = profileRes.user;
-                console.log('[Tachi] User Profile:', user);
+                _tachiUserProfile = user;
+                // console.log('[Tachi] User Profile:', user);
 
                 pName.textContent = user.username;
 
@@ -4975,6 +5310,7 @@ async function updateProfileDisplay() {
             pRating.textContent = 'OFFLINE';
             pRating.className = 'offline';
             if (pIcon) pIcon.innerHTML = '';
+            _tachiUserId = null;
         }
     } catch (e) {
         console.error('Profile update failed:', e);
@@ -4982,4 +5318,231 @@ async function updateProfileDisplay() {
         pRating.className = 'offline';
         if (pIcon) pIcon.innerHTML = '';
     }
+}
+
+// ============================================================================
+// PLAYER DETAILS PANEL
+// ============================================================================
+
+const pdModal = document.getElementById('modal-player-details');
+const pdCloseBtn = document.getElementById('btn-close-player-details');
+
+if (pdCloseBtn) {
+    pdCloseBtn.addEventListener('click', () => {
+        pdModal.classList.remove('open');
+    });
+}
+
+// Close on click outside
+if (pdModal) {
+    pdModal.addEventListener('click', (e) => {
+        if (e.target === pdModal) pdModal.classList.remove('open');
+    });
+}
+
+// Open on profile click
+const profileDisplay = document.getElementById('profile-display');
+if (profileDisplay) {
+    profileDisplay.addEventListener('click', () => {
+        if (_tachiUserId) {
+            showPlayerDetails();
+        } else {
+            console.log('Cannot open player details: User ID not loaded');
+        }
+    });
+}
+
+let _pdCurrentTab = 'recent';
+const pdTabRecent = document.getElementById('pd-tab-recent');
+const pdTabBest = document.getElementById('pd-tab-best');
+
+if (pdTabRecent && pdTabBest) {
+    pdTabRecent.addEventListener('click', () => switchPdTab('recent'));
+    pdTabBest.addEventListener('click', () => switchPdTab('best'));
+}
+
+function switchPdTab(tab) {
+    _pdCurrentTab = tab;
+    if (tab === 'recent') {
+        pdTabRecent.classList.add('active');
+        pdTabBest.classList.remove('active');
+    } else {
+        pdTabRecent.classList.remove('active');
+        pdTabBest.classList.add('active');
+    }
+    loadPlayerScores(tab);
+}
+
+
+async function showPlayerDetails() {
+    pdModal.classList.add('open');
+
+    // Populate Header Cache (should be fresh from updateProfileDisplay)
+    const pAvatar = document.getElementById('pd-avatar');
+    const pUser = document.getElementById('pd-username');
+    const pRatingVal = document.getElementById('pd-rating-val');
+    const pRatingIcon = document.getElementById('pd-rating-icon');
+    const pRankVal = document.getElementById('pd-rank-val');
+    const pRankTotal = document.getElementById('pd-rank-total');
+
+    // Use cached values or fallbacks
+    pUser.textContent = _tachiUserProfile ? _tachiUserProfile.username : 'Unknown';
+    pAvatar.src = document.getElementById('profile-avatar').src; // Reuse loaded image
+
+    if (_tachiUserStats && _tachiUserStats.rating !== null) {
+        let r = _tachiUserStats.rating;
+        let rText = '';
+        if (r >= 13.0) {
+            pRatingIcon.innerHTML = `<i class="ph-fill ph-star" style="color:#ffcc00; font-size:16px;"></i>`;
+            rText = (r - 12.0).toFixed(2);
+        } else {
+            pRatingIcon.innerHTML = `<i class="ph-bold ph-star" style="color:#ffcc00; font-size:16px;"></i>`;
+            rText = r.toFixed(2);
+        }
+        pRatingVal.textContent = rText;
+    } else {
+        pRatingVal.textContent = '--';
+    }
+
+    if (_tachiUserStats && _tachiUserStats.rankObj) {
+        pRankVal.textContent = '#' + _tachiUserStats.rankObj.ranking;
+        pRankTotal.textContent = '/ ' + _tachiUserStats.rankObj.outOf;
+    } else {
+        pRankVal.textContent = '#--';
+        pRankTotal.textContent = '';
+    }
+
+    // Default to Recent
+    switchPdTab('recent');
+}
+
+async function loadPlayerScores(type) {
+    const list = document.getElementById('pd-scores-list');
+    const loading = document.getElementById('pd-loading');
+    const error = document.getElementById('pd-error');
+
+    list.innerHTML = '';
+    loading.style.display = 'block';
+    error.style.display = 'none';
+
+    let res;
+    if (type === 'recent') {
+        res = await TachiIR.fetchTachiRecentScores(_tachiUserId, '7K', 50);
+    } else {
+        res = await TachiIR.fetchTachiBestScores(_tachiUserId, '7K', 50);
+    }
+
+    loading.style.display = 'none';
+
+    if (res.success) {
+        // Pass the whole body for resolution
+        renderPlayerScores(res.body);
+    } else {
+        error.textContent = 'Failed to load scores: ' + (res.error || 'Unknown error');
+        error.style.display = 'block';
+    }
+}
+
+function renderPlayerScores(body) {
+    const list = document.getElementById('pd-scores-list');
+
+    // Body contains { scores or pbs, songs, charts }
+    const items = body.scores || body.pbs || [];
+    const songs = body.songs || [];
+    // const charts = body.charts || [];
+
+    if (!items || items.length === 0) {
+        list.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#666;">No scores found.</td></tr>';
+        return;
+    }
+
+    // Helper to find song title
+    const getSongTitle = (item) => {
+        if (item.song) return item.song.title;
+        // Resolve from songs array using item.songID
+        const s = songs.find(s => s.id === item.songID);
+        return s ? s.title : 'Unknown Song';
+    };
+
+    // Tachi Lamp Colors
+    const LAMP_COLORS = {
+        'FAILED': '#aaaaaa',
+        'ASSIST CLEAR': '#aa44ff',
+        'EASY CLEAR': '#44ff44',
+        'CLEAR': '#00aaff',
+        'HARD CLEAR': '#ff3333',
+        'EX HARD CLEAR': '#ff8800',
+        'FULL COMBO': '#ffcc00',
+        'PERFECT': '#ffffff'
+    };
+
+    items.forEach(s => {
+        const songTitle = getSongTitle(s);
+
+        // Tachi v1 BMS scores have data nested in scoreData
+        const scoreData = s.scoreData || {};
+        const lamp = scoreData.lamp || 'FAILED';
+        const score = scoreData.score || 0;
+        const grade = scoreData.grade || 'F';
+
+        let rating = 0;
+        if (s.calculatedData && s.calculatedData.sieglinde) {
+            rating = s.calculatedData.sieglinde;
+        } else if (s.weight) {
+            rating = s.weight;
+        }
+
+        // Use timeAchieved if available, fallback to timePlayed
+        const timestamp = s.timeAchieved || s.timePlayed;
+        const dateStr = timestamp ? new Date(timestamp).toLocaleDateString() : '-';
+
+        const tr = document.createElement('tr');
+
+        // Lamp Dot
+        const tdLamp = document.createElement('td');
+        const lampDot = document.createElement('span');
+        lampDot.className = 'pd-lamp';
+        lampDot.style.backgroundColor = LAMP_COLORS[lamp] || '#333';
+        lampDot.title = lamp;
+        tdLamp.appendChild(lampDot);
+        tr.appendChild(tdLamp);
+
+        // Title
+        const tdTitle = document.createElement('td');
+        const divTitle = document.createElement('div');
+        divTitle.className = 'pd-title';
+        divTitle.textContent = songTitle;
+        tdTitle.appendChild(divTitle);
+        tr.appendChild(tdTitle);
+
+        // Score
+        const tdScore = document.createElement('td');
+        tdScore.className = 'pd-score';
+        tdScore.textContent = score.toLocaleString();
+        tr.appendChild(tdScore);
+
+        // Grade
+        const tdGrade = document.createElement('td');
+        tdGrade.className = 'pd-grade';
+        tdGrade.textContent = grade;
+        // Colorize grade
+        if (grade === 'AAA') tdGrade.style.color = '#ffcc00';
+        else if (grade === 'AA') tdGrade.style.color = '#ccc';
+        else tdGrade.style.color = '#888';
+        tr.appendChild(tdGrade);
+
+        // Rating
+        const tdRating = document.createElement('td');
+        tdRating.className = 'pd-rating';
+        tdRating.textContent = rating ? rating.toFixed(2) : '-';
+        tr.appendChild(tdRating);
+
+        // Time
+        const tdTime = document.createElement('td');
+        tdTime.className = 'pd-time';
+        tdTime.textContent = dateStr;
+        tr.appendChild(tdTime);
+
+        list.appendChild(tr);
+    });
 }

@@ -291,6 +291,67 @@ async function fetchTachiUserPfp(userId) {
     return await window.electronAPI.getTachiUserPfp(apiKey, userId);
 }
 
+/**
+ * Fetch recent scores for a user
+ * @param {number|string} userId 
+ * @param {string} playtype 
+ * @param {number} limit 
+ */
+async function fetchTachiRecentScores(userId, playtype = '7K', limit = 50) {
+    if (!isTachiEnabled()) return { success: false, error: 'No API Key' };
+
+    // Tachi v1 BMS playtypes are '7K' and '14K'
+    const pt = playtype;
+
+    try {
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/games/bms/${pt}/scores/recent`;
+
+        const res = await fetch(url, { headers: getTachiHeaders() });
+        const data = await res.json();
+
+        if (data.success) {
+            // Return full body for metadata resolution (songs, charts, etc.)
+            return { success: true, body: data.body };
+        } else {
+            return { success: false, error: data.description };
+        }
+    } catch (e) {
+        console.error('[Tachi] Error fetching recent scores:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Fetch best scores (PBs)
+ * @param {number|string} userId 
+ * @param {string} playtype 
+ * @param {number} limit 
+ */
+async function fetchTachiBestScores(userId, playtype = '7K', limit = 50) {
+    if (!isTachiEnabled()) return { success: false, error: 'No API Key' };
+
+    // Tachi v1 BMS playtypes are '7K' and '14K'
+    const pt = playtype;
+
+    try {
+        // Correct Endpoint for Top 100 PBs sorted by rating
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/games/bms/${pt}/pbs/best`;
+
+        const res = await fetch(url, { headers: getTachiHeaders() });
+        const data = await res.json();
+
+        if (data.success) {
+            // Return full body for metadata resolution
+            return { success: true, body: data.body };
+        } else {
+            return { success: false, error: data.description };
+        }
+    } catch (e) {
+        console.error('[Tachi] Error fetching best scores:', e);
+        return { success: false, error: e.message };
+    }
+}
+
 // Export for use in game.js
 if (typeof window !== 'undefined') {
     window.TachiIR = {
@@ -307,6 +368,8 @@ if (typeof window !== 'undefined') {
         pauseSubmission,
         resumeSubmission,
         getSubmissionResumeTime,
+        fetchTachiRecentScores,
+        fetchTachiBestScores,
         LAMP_MAP
     };
 }

@@ -177,6 +177,17 @@
             </div>
             <div class="lane-cover-top" id="lane-cover-top" style="height:0;"></div>
             <div class="lane-cover-bottom" id="lane-cover-bottom" style="height:0;"></div>
+            <!-- Green/White Number HUD (visible when holding START in-game) -->
+            <div id="lane-cover-info" class="lane-cover-info" style="display:none;">
+                <div class="cover-info-row">
+                    <span class="cover-label">GN</span>
+                    <span class="cover-val green" id="hud-green-number">300</span>
+                </div>
+                <div class="cover-info-row">
+                    <span class="cover-label">WN</span>
+                    <span class="cover-val white" id="hud-white-number">200</span>
+                </div>
+            </div>
             <canvas id="game-canvas"></canvas>
             <!-- Progress Bar -->
             <div id="song-progress-bar" class="song-progress-bar">
@@ -500,17 +511,6 @@
                             </div>
                         </div>
 
-                        <!-- COLUMN 3: BATTLE (KEY 3) -->
-                        <div class="iidx-section" id="sec-battle">
-                             <div class="iidx-section-name">BATTLE</div>
-                             <div class="option-wheel-box" style="opacity:0.5;">
-                                 <div class="option-wheel-strip">
-                                     <div class="option-wheel-item selected">OFF</div>
-                                     <div class="option-wheel-item">COMING SOON</div>
-                                 </div>
-                             </div>
-                        </div>
-
                         <!-- COLUMN 4: GAUGE (KEY 4) -->
                         <div class="iidx-section" id="sec-gauge" data-opt="gaugeType">
                             <div class="iidx-section-name">GAUGE</div>
@@ -562,6 +562,60 @@
             </div>
         </div>
 
+        <!-- ADVANCED OPTIONS MODAL (HOLD Digit3) - Standalone overlay -->
+        <div id="modal-advanced" class="modal modal-iidx" style="display:none;">
+            <div class="advanced-panel">
+                <div class="advanced-header">ADVANCED OPTIONS</div>
+                <div class="advanced-grid">
+                    <!-- Left Column: Gauge & Timing -->
+                    <div class="advanced-col">
+                        <div class="adv-option-group">
+                            <div class="adv-label">GAUGE AUTO SHIFT</div>
+                            <div class="option-wheel-box compact" id="wheel-gas" data-opt="gaugeAutoShift">
+                                <div class="option-wheel-strip"></div>
+                            </div>
+                        </div>
+                        <div class="adv-option-group">
+                            <div class="adv-label">LOWEST GAUGE</div>
+                            <div class="option-wheel-box compact" id="wheel-gas-min" data-opt="gasMinGauge">
+                                <div class="option-wheel-strip"></div>
+                            </div>
+                        </div>
+                        <div class="adv-option-group">
+                            <div class="adv-label">TIMING OFFSET</div>
+                            <div class="option-wheel-box compact" id="wheel-offset" data-opt="judgeOffset">
+                                <div class="option-wheel-strip"></div>
+                            </div>
+                        </div>
+                        <div class="adv-option-group">
+                            <div class="adv-label">AUTO ADJUST</div>
+                            <div class="option-wheel-box compact" id="wheel-auto-offset" data-opt="autoOffset">
+                                <div class="option-wheel-strip"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Right Column: Green/White Numbers -->
+                    <div class="advanced-col">
+                        <div class="adv-number-display">
+                            <div class="adv-label">GREEN NUMBER</div>
+                            <div class="adv-number green" id="opt-green-number">300</div>
+                        </div>
+                        <div class="adv-option-group">
+                            <div class="adv-label">GREEN FIX</div>
+                            <div class="option-wheel-box compact" id="wheel-green-fix" data-opt="greenFix">
+                                <div class="option-wheel-strip"></div>
+                            </div>
+                        </div>
+                        <div class="adv-number-display">
+                            <div class="adv-label">WHITE NUMBER</div>
+                            <div class="adv-number white" id="opt-white-number">200</div>
+                        </div>
+                        <div class="adv-hint">WHITE = SUDDEN+ × 10</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- LIBRARY FOLDERS MODAL -->
         <div id="modal-folders" class="modal">
             <div class="modal-box">
@@ -588,6 +642,61 @@
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" id="btn-close-folders">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLAYER DETAILS MODAL -->
+        <div id="modal-player-details" class="modal">
+            <div class="modal-box large-modal">
+                <div class="player-details-header">
+                    <div class="pd-header-left">
+                        <div class="pd-avatar-container">
+                            <img id="pd-avatar" src="">
+                        </div>
+                        <div class="pd-user-info">
+                            <div class="pd-username" id="pd-username">--</div>
+                            <div class="pd-rating-row">
+                                <span id="pd-rating-icon"></span>
+                                <span class="pd-rating-val" id="pd-rating-val">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pd-header-right">
+                        <div class="pd-rank-label">CLASS RANK</div>
+                        <div class="pd-rank-val" id="pd-rank-val">#--</div>
+                        <div class="pd-rank-total" id="pd-rank-total">/ --</div>
+                    </div>
+                </div>
+
+                <div class="player-details-body">
+                    <div class="pd-tabs">
+                        <button class="pd-tab active" id="pd-tab-recent">RECENT</button>
+                        <button class="pd-tab" id="pd-tab-best">BEST</button>
+                    </div>
+                    <div class="pd-scores-container">
+                        <table class="pd-scores-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"></th> <!-- Lamp -->
+                                    <th style="text-align:left;">TITLE</th>
+                                    <th>SCORE</th>
+                                    <th>GRADE</th>
+                                    <th>RATING</th>
+                                    <th style="text-align:right;">TIME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pd-scores-list">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                        <div id="pd-loading" style="display:none; text-align:center; padding:20px; color:#888;">Loading...</div>
+                        <div id="pd-error" style="display:none; text-align:center; padding:20px; color:#f55;"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn" id="btn-close-player-details">Close</button>
                 </div>
             </div>
         </div>
