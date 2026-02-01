@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lyruanna</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,6 +13,7 @@
 
     <!-- CUSTOM TITLEBAR (Desktop Only) -->
     <div class="titlebar" id="titlebar" style="display:none;">
+        <img src="icon/icon.png" class="titlebar-icon">
         <span class="titlebar-title">LYRUANNA - BMS Player</span>
         <div class="titlebar-controls">
             <button class="titlebar-btn close" id="btn-close" title="Close">
@@ -23,6 +25,20 @@
     </div>
 
     <div id="app">
+        <!-- TACHI PROFILE DISPLAY -->
+        <div id="profile-display">
+            <div class="profile-avatar-container">
+                <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E">
+            </div>
+            <div class="profile-info">
+                <div class="profile-name" id="profile-name">Guest</div>
+                <div class="profile-stats">
+                    <span id="profile-rating-icon"></span>
+                    <span id="profile-rating">OFFLINE</span>
+                </div>
+            </div>
+        </div>
+
         <!-- LOADING SCREEN -->
         <div id="screen-loading">
             <div class="loading-content">
@@ -49,9 +65,9 @@
             <!-- Left: Song Detail Panel -->
             <div class="song-detail-panel">
                 <div class="top-buttons">
-                    <button class="icon-btn" id="btn-settings" title="Settings">⚙️</button>
-                    <button class="icon-btn" id="btn-options" title="Player Options">🎮</button>
-                    <button class="icon-btn" id="btn-scan-lib" title="Library Folders">📁</button>
+                    <button class="icon-btn" id="btn-settings" title="Settings"><i class="ph ph-gear" style="color:var(--accent)"></i></button>
+                    <button class="icon-btn" id="btn-options" title="Player Options"><i class="ph ph-game-controller" style="color:var(--accent)"></i></button>
+                    <button class="icon-btn" id="btn-scan-lib" title="Library Folders"><i class="ph ph-folder" style="color:var(--accent)"></i></button>
                     <input type="file" id="file-picker" webkitdirectory directory multiple style="display:none">
                 </div>
 
@@ -137,8 +153,27 @@
         <div id="screen-game">
             <div class="game-bg" id="game-bg"></div>
             <div class="game-bga" id="game-bga">
+                <!-- Chroma Key Filter for handling Black Transparent BGAs -->
+                <svg style="width:0; height:0; position:absolute; visibility:hidden;">
+                    <defs>
+                        <filter id="chromakey">
+                            <feColorMatrix type="matrix" values="1 0 0 0 0
+                                                                 0 1 0 0 0
+                                                                 0 0 1 0 0
+                                                                 50 50 50 0 -1" /> 
+                                                                 <!-- Alpha = 50*R + 50*G + 50*B - 1. 
+                                                                      Ensures (0,0,0) -> -1 (Transp). 
+                                                                      Very dark colors > 0 (Opaque). -->
+                        </filter>
+                    </defs>
+                </svg>
                 <img id="bga-img" style="display:none;">
                 <video id="bga-video" style="display:none;" muted></video>
+                <img id="bga-layer" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; filter: url(#chromakey);">
+            </div>
+            <!-- Ghost Score Display (Centered, just value) -->
+            <div id="ghost-display" style="position:absolute; top: 60%; left: 200px; transform: translate(-50%, -50%); text-align: center; display: none; z-index: 10; pointer-events: none;">
+                <div id="ghost-val-target" style="font-size: 32px; font-weight: bold; text-shadow: 0 0 4px rgba(0,0,0,0.8);">+0</div>
             </div>
             <div class="lane-cover-top" id="lane-cover-top" style="height:0;"></div>
             <div class="lane-cover-bottom" id="lane-cover-bottom" style="height:0;"></div>
@@ -242,83 +277,96 @@
 
         <!-- RESULTS SCREEN -->
         <div id="screen-results">
-            <div class="results-header">
-                <div class="results-title-area">
-                    <h1 id="res-status">CLEARED</h1>
-                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-                        <span id="res-lamp" class="lamp"></span>
-                        <span id="res-lamp-text"
-                            style="font-weight: bold; font-size: 18px; text-transform: uppercase;">--</span>
-                    </div>
-                    <div id="res-song-title" style="font-size: 20px; color: #888; margin-top: 10px;">Song Title</div>
-                </div>
-                <div class="results-rank-area">
-                    <div class="rank-letter" id="res-rank">AAA</div>
-                    <div class="rank-next" id="res-rank-next">NEXT RANK: +0</div>
-                </div>
-            </div>
-
-            <div class="results-main">
-                <div class="results-left">
-                    <div class="results-card">
-                        <div class="card-title">JUDGEMENT</div>
-                        <div class="results-tally-grid">
-                            <div class="res-tally-row res-pg"><span class="res-tally-label">PGREAT</span><span
-                                    class="res-tally-val" id="res-pg">0</span></div>
-                            <div class="res-tally-row res-gr"><span class="res-tally-label">GREAT</span><span
-                                    class="res-tally-val" id="res-gr">0</span></div>
-                            <div class="res-tally-row res-gd"><span class="res-tally-label">GOOD</span><span
-                                    class="res-tally-val" id="res-gd">0</span></div>
-                            <div class="res-tally-row res-bd"><span class="res-tally-label">BAD</span><span
-                                    class="res-tally-val" id="res-bd">0</span></div>
-                            <div class="res-tally-row res-pr"><span class="res-tally-label">POOR</span><span
-                                    class="res-tally-val" id="res-pr">0</span></div>
-                            <div style="border-left: 1px solid #333; margin-left: 15px; padding-left: 15px;">
-                                <div class="res-tally-row"><span class="res-tally-label"
-                                        style="color:#55c">FAST</span><span class="res-tally-val" id="res-fast">0</span>
-                                </div>
-                                <div class="res-tally-row"><span class="res-tally-label"
-                                        style="color:#c55">SLOW</span><span class="res-tally-val" id="res-slow">0</span>
-                                </div>
-                                <div class="res-tally-row"><span class="res-tally-label" style="color:#888">MAX
-                                        COMBO</span><span class="res-tally-val" id="res-max-combo">0</span></div>
-                            </div>
+            <div class="results-layout">
+                <!-- Top Row: Graphs & Status -->
+                <div class="results-top-row">
+                    <div class="results-graph-box left">
+                        <div class="graph-label">GAUGE HISTORY</div>
+                        <div class="canvas-wrapper">
+                            <canvas id="graph-gauge" class="results-canvas"></canvas>
+                            <div class="graph-overlay bottom-left" id="res-gauge-opts">Running Options</div>
+                            <div class="graph-overlay bottom-right" id="res-gauge-val">100%</div>
                         </div>
                     </div>
-                    <div class="results-card">
-                        <div class="card-title">SCORE</div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div>
-                                <div style="font-size: 14px; color: #888;">EX SCORE</div>
-                                <div style="font-size: 36px; font-weight: bold; color: var(--accent);"
-                                    id="res-ex-score">0</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 14px; color: #888;">PERCENTAGE</div>
-                                <div style="font-size: 24px;" id="res-percent">0.00%</div>
-                            </div>
+
+                    <div class="results-bms-status">
+                        <div class="res-mini-info" id="res-song-title">Song Title</div>
+                        <div class="res-mini-info" id="res-artist">Artist</div>
+                        <h1 id="res-status" class="res-status-text">CLEARED</h1>
+                        <div class="res-lamp-container">
+                            <span id="res-lamp" class="lamp-dot"></span>
+                            <span id="res-lamp-text">FULL COMBO</span>
+                        </div>
+                    </div>
+
+                    <div class="results-graph-box right">
+                        <div class="graph-label">SCORE PROGRESS</div>
+                        <div class="canvas-wrapper">
+                            <canvas id="graph-score" class="results-canvas"></canvas>
+                            <div class="graph-overlay bottom-left" id="res-score-rate">95.43%</div>
+                            <div class="graph-overlay bottom-right" id="res-score-grade">AAA</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="results-right">
-                    <div class="results-card">
-                        <div class="card-title">GROOVE GAUGE</div>
-                        <div class="graph-container">
-                            <canvas id="graph-gauge" class="results-graph"></canvas>
+                <!-- Bottom Row: Tally & Stats -->
+                <div class="results-stats-row">
+                    <!-- Left Column: Judgement Tally -->
+                    <div class="results-col left-tally">
+                        <div class="col-header">JUDGEMENT</div>
+                        <div class="tally-grid">
+                            <div class="tally-item pg"><span class="label">PGREAT</span><span class="value" id="res-pg">0</span></div>
+                            <div class="tally-item gr"><span class="label">GREAT</span><span class="value" id="res-gr">0</span></div>
+                            <div class="tally-item gd"><span class="label">GOOD</span><span class="value" id="res-gd">0</span></div>
+                            <div class="tally-item bd"><span class="label">BAD</span><span class="value" id="res-bd">0</span></div>
+                            <div class="tally-item pr"><span class="label">POOR</span><span class="value" id="res-pr">0</span></div>
+                            <div class="tally-sep"></div>
+                            <div class="tally-item fast"><span class="label">FAST</span><span class="value" id="res-fast">0</span></div>
+                            <div class="tally-item slow"><span class="label">SLOW</span><span class="value" id="res-slow">0</span></div>
+                            <div class="tally-sep"></div>
+                            <div class="tally-item ex"><span class="label">EX SCORE</span><span class="value" id="res-ex-score">0</span></div>
+                            <div class="tally-item cb"><span class="label">MAX COMBO</span><span class="value" id="res-max-combo">0</span></div>
+                            <div class="tally-item cb-count"><span class="label">C.BREAK</span><span class="value" id="res-combo-breaks">0</span></div>
                         </div>
                     </div>
-                    <div class="results-card">
-                        <div class="card-title">SCORE PROGRESS</div>
-                        <div class="graph-container">
-                            <canvas id="graph-score" class="results-graph"></canvas>
+
+                    <!-- Right Column: Extended Stats -->
+                    <div class="results-col right-stats">
+                        <div class="col-header">STATISTICS</div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="label">MEAN ERROR</span>
+                                <span class="value" id="res-mean">0.00ms</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="label">STD DEV</span>
+                                <span class="value" id="res-std-dev">0.00ms</span>
+                            </div>
+                            <div class="stat-sep"></div>
+                            <div class="stat-item">
+                                <span class="label">PG / GR Ratio</span>
+                                <span class="value" id="res-ratio-pg">0:0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="label">GR / GD Ratio</span>
+                                <span class="value" id="res-ratio-gr">0:0</span>
+                            </div>
+                            <div class="stat-sep"></div>
+                            <div class="stat-item highlight">
+                                <span class="label">TARGET DIFF</span>
+                                <span class="value" id="res-target-diff">+0</span>
+                            </div>
+                            <div class="stat-item next-rank">
+                                <span class="label">NEXT GRADE</span>
+                                <span class="value" id="res-rank-next">MAX</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="results-footer">
-                PRESS ANY KEY TO RETURN
+                <div class="results-footer-msg">
+                    PRESS START or KEYS to EXIT
+                </div>
             </div>
         </div>
 
@@ -379,6 +427,24 @@
                         <button class="btn" id="btn-import-course" style="width:100%;">Import Course File
                             (.lr2crs)...</button>
                     </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Internet Ranking (Tachi)</div>
+                    <div class="option-row">
+                        <span class="option-label">API Key</span>
+                        <input type="password" id="opt-tachi-api-key" placeholder="Enter your Tachi API Key" style="flex:1; background:#1a1a1a; border:1px solid #333; color:#fff; padding:8px 10px; border-radius:4px; font-family:inherit;">
+                    </div>
+                    <div class="option-row" style="gap:10px;">
+                        <button class="btn" id="btn-tachi-get-key" style="flex:1;">Get API Key</button>
+                        <button class="btn" id="btn-tachi-test" style="flex:1;">Test Connection</button>
+                    </div>
+                    <div class="option-row" style="gap:10px; margin-top:5px;">
+                        <button class="btn" id="btn-tachi-pause" style="flex:1; font-size:11px;">Disable (+5m)</button>
+                        <button class="btn" id="btn-tachi-resume" style="flex:1; font-size:11px;">Enable Now</button>
+                    </div>
+                    <div id="tachi-submission-status" style="font-size:11px; color:#aaa; margin-top:2px; text-align:right;">Submissions enabled</div>
+                    <div id="tachi-status" style="font-size:12px; color:#888; margin-top:5px;">Not connected</div>
                 </div>
 
                 <div class="modal-footer">
@@ -540,6 +606,7 @@
     <script src="renderers/Renderer9K.js"></script>
     <script src="renderers/Renderer14K.js"></script>
     <script src="renderers/Renderer10K.js"></script>
+    <script src="tachi.js"></script>
     <script src="game.js"></script>
 </body>
 

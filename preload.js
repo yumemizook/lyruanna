@@ -25,5 +25,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     writeFile: (path, data) => ipcRenderer.invoke('write-file', path, data),
     getAppPath: (type) => ipcRenderer.invoke('get-app-path', type),
     readUserData: (filename) => ipcRenderer.invoke('read-user-data', filename),
-    writeUserData: (filename, data) => ipcRenderer.invoke('write-user-data', filename, data)
+    writeUserData: (filename, data) => ipcRenderer.invoke('write-user-data', filename, data),
+    // Tachi IR Integration
+    submitTachiScore: (payload, apiKey) => ipcRenderer.invoke('tachi-submit-score', payload, apiKey),
+    getTachiPlayerStats: (apiKey, playtype) => ipcRenderer.invoke('tachi-get-player-stats', apiKey, playtype),
+    getTachiUserProfile: (apiKey, userId) => ipcRenderer.invoke('tachi-get-user-profile', apiKey, userId),
+    getTachiUserPfp: (apiKey, userId) => ipcRenderer.invoke('tachi-get-user-pfp', apiKey, userId),
+    openTachiAuth: () => ipcRenderer.invoke('open-tachi-auth')
 });

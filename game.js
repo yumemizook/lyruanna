@@ -725,6 +725,109 @@ function renderSettings() {
     document.getElementById('opt-show-tally').checked = STATE.showTally;
     document.getElementById('opt-replay-type').value = STATE.replaySaveType || 'BEST_EX';
 
+    // Tachi Settings
+    const tachiKeyInput = document.getElementById('opt-tachi-api-key');
+    const tachiStatus = document.getElementById('tachi-status');
+    const tachiSubmissionStatus = document.getElementById('tachi-submission-status');
+    const tachiTestBtn = document.getElementById('btn-tachi-test');
+    const tachiGetKeyBtn = document.getElementById('btn-tachi-get-key');
+    const tachiPauseBtn = document.getElementById('btn-tachi-pause');
+    const tachiResumeBtn = document.getElementById('btn-tachi-resume');
+
+    // Helper to update submission status text
+    const updateSubmissionStatus = () => {
+        if (!tachiSubmissionStatus || typeof TachiIR === 'undefined') return;
+        const resumeTime = TachiIR.getSubmissionResumeTime();
+        if (resumeTime > Date.now()) {
+            const minLeft = Math.ceil((resumeTime - Date.now()) / 60000);
+            tachiSubmissionStatus.textContent = `Disabled for ${minLeft} min`;
+            tachiSubmissionStatus.style.color = '#ff0';
+        } else {
+            tachiSubmissionStatus.textContent = 'Submissions enabled';
+            tachiSubmissionStatus.style.color = '#0f0';
+        }
+    };
+
+    if (tachiGetKeyBtn && !tachiGetKeyBtn._tachiHandler) {
+        tachiGetKeyBtn._tachiHandler = true;
+        tachiGetKeyBtn.onclick = () => {
+            if (window.electronAPI && window.electronAPI.openTachiAuth) {
+                window.electronAPI.openTachiAuth();
+            }
+        };
+    }
+
+    if (tachiPauseBtn && !tachiPauseBtn._tachiHandler) {
+        tachiPauseBtn._tachiHandler = true;
+        tachiPauseBtn.onclick = () => {
+            if (typeof TachiIR !== 'undefined') {
+                TachiIR.pauseSubmission(5);
+                updateSubmissionStatus();
+            }
+        };
+    }
+
+    if (tachiResumeBtn && !tachiResumeBtn._tachiHandler) {
+        tachiResumeBtn._tachiHandler = true;
+        tachiResumeBtn.onclick = () => {
+            if (typeof TachiIR !== 'undefined') {
+                TachiIR.resumeSubmission();
+                updateSubmissionStatus();
+            }
+        };
+    }
+
+    if (tachiKeyInput && typeof TachiIR !== 'undefined') {
+        tachiKeyInput.value = TachiIR.getTachiApiKey() || '';
+        tachiStatus.textContent = TachiIR.isTachiEnabled() ? 'API Key configured' : 'Not connected';
+        tachiStatus.style.color = TachiIR.isTachiEnabled() ? '#0f0' : '#888';
+        updateSubmissionStatus();
+    }
+
+    if (tachiTestBtn && !tachiTestBtn._tachiHandler) {
+        tachiTestBtn._tachiHandler = true;
+        tachiTestBtn.onclick = async () => {
+            if (typeof TachiIR === 'undefined') return;
+
+            // Save the key first
+            const key = tachiKeyInput.value.trim();
+            TachiIR.setTachiApiKey(key);
+
+            if (!key) {
+                tachiStatus.textContent = 'Please enter an API key';
+                tachiStatus.style.color = '#f44';
+                return;
+            }
+
+            tachiStatus.textContent = 'Testing connection...';
+            tachiStatus.style.color = '#ff0';
+
+            try {
+                const result = await TachiIR.fetchTachiPlayerStats('7K');
+                if (result.success) {
+                    const rating = TachiIR.getSieglinde(result.gameStats);
+                    const rank = TachiIR.getSieglindeRank(result.rankingData);
+                    let statusText = 'Connected!';
+                    if (rating !== null) statusText += ` Sieglinde: ${rating.toFixed(2)}`;
+                    if (rank) statusText += ` (#${rank.ranking}/${rank.outOf})`;
+                    tachiStatus.textContent = statusText;
+                    tachiStatus.style.color = '#0f0';
+
+                    // Update main profile display
+                    if (typeof updateProfileDisplay === 'function') {
+                        updateProfileDisplay();
+                    }
+                } else {
+                    tachiStatus.textContent = 'Error: ' + (result.error || 'Unknown error');
+                    tachiStatus.style.color = '#f44';
+                }
+            } catch (err) {
+                tachiStatus.textContent = 'Connection failed: ' + err.message;
+                tachiStatus.style.color = '#f44';
+            }
+        };
+    }
+
     // Keybindings can be added here if needed
 }
 
@@ -831,7 +934,14 @@ const STATE = {
     currentList: [], // Array of { type: 'folder'|'chart'|'back', data: any, el: HTMLElement }
     loadingComplete: false, // Flag to prevent audio during loading
     isFadingOut: false, // Flag to block inputs during fade out animation
-    currentParseId: 0 // Counter to track and abort stale parsing requests
+    currentParseId: 0, // Counter to track and abort stale parsing requests
+
+    // Lane Cover State
+    suddenPlus: 20, // 20% default
+    lift: 0,
+    rangeMode: 'SUDDEN+', // OFF, SUDDEN+, LIFT, LIFT-SUD+
+    lastRangeMode: 'SUDDEN+',
+    lastStartPress: 0
 };
 
 function rebuildInputMap() {
@@ -940,6 +1050,7 @@ const ui = {
     gameBga: document.getElementById('game-bga'),
     bgaImg: document.getElementById('bga-img'),
     bgaVideo: document.getElementById('bga-video'),
+    bgaLayer: document.getElementById('bga-layer'),
     laneCoverTop: document.getElementById('lane-cover-top'),
     laneCoverBottom: document.getElementById('lane-cover-bottom'),
 
@@ -956,7 +1067,12 @@ const ui = {
     paceTargetName: document.getElementById('pace-target-name'),
     paceDiffTarget: document.getElementById('pace-diff-target'),
     paceDiffBest: document.getElementById('pace-diff-best'),
+    paceDiffBest: document.getElementById('pace-diff-best'),
     paceGhostLabel: document.getElementById('pace-ghost-label'),
+
+    // Centered Ghost Display
+    paceGhostDisplay: document.getElementById('ghost-display'),
+    paceGhostVal: document.getElementById('ghost-val-target'),
 
     // Decide Screen
     screenDecide: document.getElementById('screen-decide'),
@@ -1024,26 +1140,7 @@ if (IS_DESKTOP) {
         }
     });
 
-    // Trigger startup scan
-    ui.screenLoading.style.display = 'flex';
-    window.electronAPI.rescanAllFolders().then(data => {
-        loadLibraryFromDesktop(data);
-        STATE.loadingComplete = true; // Mark loading as complete
 
-        // Show titlebar now that loading is complete
-        document.getElementById('titlebar').style.display = 'flex';
-
-        // Add transition class for smooth fade
-        ui.screenLoading.classList.add('fade-out');
-        setTimeout(() => {
-            ui.screenLoading.style.display = 'none';
-            ui.screenLoading.classList.remove('fade-out');
-            // Start BGM if not already playing
-            if (!STATE.selectBgmSource) {
-                STATE.selectBgmSource = playSystemSound('select', true);
-            }
-        }, 500);
-    });
 }
 
 // Drag & Drop Course Import
@@ -1416,7 +1513,7 @@ function loadLibraryFromDesktop(data) {
     renderSongList();
 }
 
-function renderSongList() {
+function renderSongList_OLD() {
     ui.songList.innerHTML = '';
     STATE.currentList = [];
 
@@ -1561,7 +1658,7 @@ function renderSongList() {
     updateSelection();
 }
 
-function updateSelection() {
+function updateSelection_OLD() {
     STATE.currentList.forEach((item, idx) => {
         item.el.classList.toggle('focused', idx === STATE.selectedIndex);
         if (idx === STATE.selectedIndex) {
@@ -1569,6 +1666,507 @@ function updateSelection() {
             updateInfoCard(item);
         }
     });
+}
+
+
+// ========================================================================
+// NEW INFINITE WHEEL LOGIC
+// ========================================================================
+
+function refreshSongList() {
+    STATE.currentList = [];
+    const container = document.getElementById('song-list');
+    if (!container) return;
+
+    const getCategoryName = (c) => {
+        if (IS_DESKTOP) {
+            const f = c.fileRef.replace(/\\/g, '/');
+            const r = (c.rootDir || '').replace(/\\/g, '/').replace(/\/$/, '');
+            const parentDir = f.substring(0, f.lastIndexOf('/'));
+            const grandDir = parentDir.substring(0, parentDir.lastIndexOf('/'));
+            if (!r || grandDir.toLowerCase().length <= r.toLowerCase().length) {
+                const rootParts = r.split('/').filter(p => p);
+                return rootParts[rootParts.length - 1] || 'Library';
+            }
+            return grandDir.substring(grandDir.lastIndexOf('/') + 1);
+        } else {
+            const parts = c.fileRef.webkitRelativePath ? c.fileRef.webkitRelativePath.split('/') : [];
+            return parts.length >= 3 ? parts[parts.length - 3] : 'Library';
+        }
+    };
+
+    // 1. Root Directory View
+    if (STATE.currentFolder === null) {
+        // CLASS FOLDER
+        STATE.currentList.push({
+            type: 'folder',
+            data: 'CLASS',
+            title: 'CLASS',
+            artist: 'COURSES',
+            level: '<i class="ph ph-folder-open" style="font-size:1.1em; vertical-align:middle; color:var(--accent)"></i>',
+            lamp: { class: '' }
+        });
+
+        const folderSet = new Set();
+        STATE.charts.forEach(c => folderSet.add(getCategoryName(c)));
+
+        Array.from(folderSet).sort().forEach(folder => {
+            STATE.currentList.push({
+                type: 'folder',
+                data: folder,
+                title: folder,
+                artist: 'FOLDER',
+                level: '<i class="ph ph-folder-open" style="font-size:1.1em; vertical-align:middle; color:var(--accent)"></i>',
+                lamp: { class: '' }
+            });
+        });
+        ui.songCount.textContent = STATE.currentList.length;
+    }
+    // 2. Class View
+    else if (STATE.currentFolder === 'CLASS') {
+        // Back Button
+        STATE.currentList.push({ type: 'back', title: '.. (BACK)', level: '<i class="ph ph-arrow-u-up-left" style="font-size:1.1em; vertical-align:middle; color:var(--accent)"></i>', lamp: { class: '' } });
+
+        STATE.courses.forEach(course => {
+            STATE.currentList.push({
+                type: 'course',
+                data: course,
+                title: course.title,
+                artist: `${course.hashes.length} STAGES`,
+                level: '<i class="ph ph-stack" style="font-size:1.1em; vertical-align:middle; color:var(--accent)"></i>',
+                lamp: { class: '' }
+            });
+        });
+        ui.songCount.textContent = STATE.courses.length;
+    }
+    // 3. Category (Songs) View
+    else {
+        // Back Button
+        STATE.currentList.push({ type: 'back', title: '.. (BACK)', level: '<i class="ph ph-arrow-u-up-left" style="font-size:1.1em; vertical-align:middle; color:var(--accent)"></i>', lamp: { class: '' } });
+
+        const diffTierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+        const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter) + 1;
+
+        let filtered = STATE.charts.filter(c => {
+            if (getCategoryName(c) !== STATE.currentFolder) return false;
+            if (STATE.difficultyFilter !== 'ALL' && c.difficulty !== diffIdx) return false;
+            if (STATE.keyModeFilter !== 'ALL') {
+                if (STATE.keyModeFilter === '单' && (c.keyMode === '10' || c.keyMode === '14')) return false;
+                if (STATE.keyModeFilter === '双' && (c.keyMode !== '10' && c.keyMode !== '14')) return false;
+                if (['5', '7', '9', '10', '14'].includes(STATE.keyModeFilter) && c.keyMode !== STATE.keyModeFilter) return false;
+            }
+            return true;
+        });
+
+        const sortModes = {
+            TITLE: (a, b) => a.title.localeCompare(b.title),
+            LEVEL: (a, b) => (b.level || 0) - (a.level || 0),
+            LAMP: (a, b) => {
+                const order = { 'max': 9, 'perfect': 8, 'fc': 7, 'ex-hard': 6, 'hard': 5, 'clear': 4, 'easy': 3, 'assist': 2, 'failed': 1, 'no-play': 0 };
+                return (order[getLamp(b.fileRef).class] || 0) - (order[getLamp(a.fileRef).class] || 0);
+            }
+        };
+        if (sortModes[STATE.sortMode]) filtered.sort(sortModes[STATE.sortMode]);
+
+        filtered.forEach(c => {
+            STATE.currentList.push({ type: 'chart', data: c, title: c.title, level: c.level, lamp: getLamp(c.fileRef) });
+        });
+        ui.songCount.textContent = filtered.length;
+    }
+
+    // Update filter displays
+    document.getElementById('diff-filter').textContent = STATE.difficultyFilter;
+    const kmFilterEl = document.getElementById('km-filter');
+    if (kmFilterEl) kmFilterEl.textContent = STATE.keyModeFilter === '单' ? 'SINGLE' : (STATE.keyModeFilter === '双' ? 'DOUBLE' : STATE.keyModeFilter);
+    const sortModeEl = document.getElementById('sort-mode');
+    if (sortModeEl) sortModeEl.textContent = STATE.sortMode;
+
+    if (STATE.selectedIndex >= STATE.currentList.length) STATE.selectedIndex = 0;
+
+    renderInfiniteWheel();
+    // Use manual call for first load
+    if (STATE.currentList.length > 0) {
+        if (STATE.currentList[STATE.selectedIndex]) {
+            updateInfoCard(STATE.currentList[STATE.selectedIndex]);
+        }
+    }
+}
+
+function renderSongList() {
+    refreshSongList();
+}
+
+
+function renderInfiniteWheel() {
+    const list = STATE.currentList;
+    const container = document.getElementById('song-list');
+    if (!list || list.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">No songs found</div>';
+        return;
+    }
+
+    // Ensure height for calculations
+    const containerH = container.clientHeight || 600;
+    const itemH = 40; // Match CSS
+    const centerY = containerH / 2 - (itemH / 2);
+
+    // Calculate range to cover full height + buffer
+    const range = Math.ceil(containerH / itemH / 2) + 1;
+    const visibleIds = new Set();
+
+    // Fix element identity instability on wrap:
+    // Only append wrap-count to ID if duplicates could hypothetically exist in window.
+    // Window size ~15 items. If list is > 18 items, item 0 appears only once.
+    // So for list > 18, we can use stable ID 'wheel-item-idx' indefinitely.
+    // This allows the element to glide across the wrap boundary smoothly.
+    const useWrapKey = list.length <= (range * 2 + 2);
+
+    for (let i = -range; i <= range; i++) {
+        // Wrap index logic
+        let idx = (STATE.selectedIndex + i) % list.length;
+        if (idx < 0) idx += list.length;
+
+        const item = list[idx];
+
+        // UNIQUE Key for animation
+        let domId;
+        if (useWrapKey) {
+            const wrapCount = Math.floor((STATE.selectedIndex + i) / list.length);
+            domId = `wheel-item-${idx}-w${wrapCount}`;
+        } else {
+            domId = `wheel-item-${idx}`;
+        }
+        visibleIds.add(domId);
+
+        let div = document.getElementById(domId);
+        if (!div) {
+            div = document.createElement('div');
+            div.id = domId;
+            div.className = 'song-wheel-item';
+            div.innerHTML = `
+                <div class="wheel-title"></div>
+                <div class="wheel-level"></div>
+            `;
+
+            // Interaction
+            div.onclick = () => {
+                if (idx !== STATE.selectedIndex) {
+                    STATE.selectedIndex = idx;
+                    playSystemSound('scratch');
+                    renderInfiniteWheel();
+                    if (list[idx]) updateInfoCard(list[idx]);
+                } else {
+                    if (item.type === 'folder') {
+                        STATE.currentFolder = item.data; STATE.selectedIndex = 0;
+                        playSystemSound('f-open'); refreshSongList();
+                    } else if (item.type === 'back') {
+                        STATE.currentFolder = null; STATE.selectedIndex = 0;
+                        playSystemSound('f-close'); refreshSongList();
+                    } else if (item.type === 'course') {
+                        STATE.activeCourse = item.data; STATE.courseIndex = 0;
+                        const song = STATE.charts.find(c => c.md5 === item.data.hashes[0]);
+                        if (song) loadChart(STATE.charts.indexOf(song), div, true);
+                    }
+                }
+            };
+            container.appendChild(div);
+        }
+
+        // Update Content
+        if (div.children.length === 2) {
+            const tEl = div.querySelector('.wheel-title');
+            if (tEl && tEl.textContent !== item.title) tEl.textContent = item.title;
+
+            const lEl = div.querySelector('.wheel-level');
+            let displayLevel = item.level !== undefined ? item.level : '';
+            // Icons are now pre-set in item.level as HTML strings
+
+            if (lEl && lEl.innerHTML !== '' + displayLevel) {
+                lEl.innerHTML = displayLevel; // Use innerHTML for icons
+
+                const diffColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+                if (item.type === 'chart') {
+                    const levelColor = (item.data.difficulty > 0 && item.data.difficulty <= 5) ? diffColors[item.data.difficulty - 1] : '#aaa';
+                    lEl.style.color = levelColor;
+                } else {
+                    lEl.style.color = ''; // Reset, handle via inline style
+                }
+            }
+        }
+
+        // Active State
+        if (i === 0) div.classList.add('active');
+        else div.classList.remove('active');
+
+        // Border Color
+        const lampClass = item.lamp ? item.lamp.class : '';
+        let borderColor = '#444';
+        if (lampClass === 'failed') borderColor = '#c00';
+        if (lampClass === 'assist') borderColor = '#a0a';
+        if (lampClass === 'easy') borderColor = '#0a0';
+        if (lampClass === 'clear') borderColor = '#5ff';
+        if (lampClass === 'hard') borderColor = '#f00';
+        if (lampClass === 'ex-hard') borderColor = '#fa0';
+        if (lampClass === 'fc') borderColor = '#0ff';
+        if (lampClass === 'perfect') borderColor = '#fff';
+        if (lampClass === 'max') borderColor = '#fff';
+        if (item.type === 'folder' || item.type === 'back' || item.type === 'course') borderColor = '#aaa';
+
+        if (div.style.borderLeftColor !== borderColor) div.style.borderLeftColor = borderColor;
+
+        // Position & Opacity
+        const yOffset = i * itemH;
+        const absI = Math.abs(i);
+        // Constant size requested (scale=1)
+        const opacity = Math.max(0, 1.0 - (absI * 0.1));
+        const zIndex = 100 - absI;
+
+        div.style.transform = `translateY(${centerY + yOffset}px)`;
+        div.style.opacity = opacity;
+        div.style.zIndex = zIndex;
+    }
+
+    // Cleanup
+    Array.from(container.children).forEach(child => {
+        if (!visibleIds.has(child.id)) {
+            container.removeChild(child);
+        }
+    });
+}
+
+function renderInfiniteWheel_OLD2() {
+    const list = STATE.currentList;
+    const container = document.getElementById('song-list');
+    if (!list || list.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">No songs found</div>';
+        return;
+    }
+
+    // Ensure height for calculations
+    const containerH = container.clientHeight || 600;
+    const itemH = 40; // Match CSS
+    const centerY = containerH / 2 - (itemH / 2);
+
+    // Calculate range to cover full height + buffer
+    const range = Math.ceil(containerH / itemH / 2) + 1;
+    const visibleIds = new Set();
+
+    for (let i = -range; i <= range; i++) {
+        // Wrap index logic
+        let idx = (STATE.selectedIndex + i) % list.length;
+        if (idx < 0) idx += list.length;
+
+        const item = list[idx];
+
+        // UNIQUE Key for animation
+        // For large lists, idx is unique enough. 
+        // For small lists (wrap > 1), we distinguish by 'wrap count'.
+        // wrapCount is stable for a relative window position.
+        const wrapCount = Math.floor((STATE.selectedIndex + i) / list.length);
+        const domId = `wheel-item-${idx}-w${wrapCount}`;
+        visibleIds.add(domId);
+
+        let div = document.getElementById(domId);
+        if (!div) {
+            div = document.createElement('div');
+            div.id = domId;
+            div.className = 'song-wheel-item';
+            div.innerHTML = `
+                <div class="wheel-title"></div>
+                <div class="wheel-level"></div>
+            `;
+
+            // Interaction
+            div.onclick = () => {
+                if (idx !== STATE.selectedIndex) {
+                    STATE.selectedIndex = idx;
+                    playSystemSound('scratch');
+                    renderInfiniteWheel();
+                    if (list[idx]) updateInfoCard(list[idx]);
+                } else {
+                    if (item.type === 'folder') {
+                        STATE.currentFolder = item.data; STATE.selectedIndex = 0;
+                        playSystemSound('f-open'); refreshSongList();
+                    } else if (item.type === 'back') {
+                        STATE.currentFolder = null; STATE.selectedIndex = 0;
+                        playSystemSound('f-close'); refreshSongList();
+                    } else if (item.type === 'course') {
+                        STATE.activeCourse = item.data; STATE.courseIndex = 0;
+                        const song = STATE.charts.find(c => c.md5 === item.data.hashes[0]);
+                        if (song) loadChart(STATE.charts.indexOf(song), div, true);
+                    }
+                }
+            };
+            container.appendChild(div);
+        }
+
+        // Update Content
+        if (div.children.length === 2) {
+            const tEl = div.querySelector('.wheel-title');
+            if (tEl && tEl.textContent !== item.title) tEl.textContent = item.title;
+
+            const lEl = div.querySelector('.wheel-level');
+            let displayLevel = item.level !== undefined ? item.level : '';
+            if (item.type === 'folder') displayLevel = '📂';
+            if (item.type === 'back') displayLevel = '↩️';
+            if (item.type === 'course') displayLevel = '★';
+
+            if (lEl && lEl.textContent !== '' + displayLevel) {
+                lEl.textContent = displayLevel;
+
+                const diffColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+                const levelColor = (item.type === 'chart' && item.data.difficulty > 0 && item.data.difficulty <= 5) ? diffColors[item.data.difficulty - 1] : '#aaa';
+                lEl.style.color = levelColor;
+            }
+        }
+
+        // Active State
+        if (i === 0) div.classList.add('active');
+        else div.classList.remove('active');
+
+        // Border Color
+        const lampClass = item.lamp ? item.lamp.class : '';
+        let borderColor = '#444';
+        if (lampClass === 'failed') borderColor = '#c00';
+        if (lampClass === 'assist') borderColor = '#a0a';
+        if (lampClass === 'easy') borderColor = '#0a0';
+        if (lampClass === 'clear') borderColor = '#5ff';
+        if (lampClass === 'hard') borderColor = '#f00';
+        if (lampClass === 'ex-hard') borderColor = '#fa0';
+        if (lampClass === 'fc') borderColor = '#0ff';
+        if (lampClass === 'perfect') borderColor = '#fff';
+        if (lampClass === 'max') borderColor = '#fff';
+        if (item.type === 'folder' || item.type === 'back' || item.type === 'course') borderColor = '#aaa';
+
+        if (div.style.borderLeftColor !== borderColor) div.style.borderLeftColor = borderColor;
+
+        // Position & Opacity
+        const yOffset = i * itemH;
+        const absI = Math.abs(i);
+        // Constant size requested (scale=1)
+        const opacity = Math.max(0, 1.0 - (absI * 0.1));
+        const zIndex = 100 - absI;
+
+        div.style.transform = `translateY(${centerY + yOffset}px)`;
+        div.style.opacity = opacity;
+        div.style.zIndex = zIndex;
+    }
+
+    // Cleanup
+    Array.from(container.children).forEach(child => {
+        if (!visibleIds.has(child.id)) {
+            container.removeChild(child);
+        }
+    });
+
+}
+
+function renderInfiniteWheel_OLD() {
+    const list = STATE.currentList;
+    const container = document.getElementById('song-list');
+    if (!list || list.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">No songs found</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    const containerH = container.clientHeight || 600;
+    const itemH = 50;
+    const centerY = containerH / 2 - (40 / 2);
+
+    // Render window: +/- 7 items
+    const range = 7;
+
+    for (let i = -range; i <= range; i++) {
+        // Wrap index
+        const idx = (STATE.selectedIndex + i + list.length * 100) % list.length;
+        const item = list[idx];
+
+        const div = document.createElement('div');
+        div.className = 'song-wheel-item';
+        if (i === 0) div.classList.add('active');
+
+        // Colors for level and lamp
+        const diffColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+        const levelColor = (item.type === 'chart' && item.data.difficulty > 0 && item.data.difficulty <= 5) ? diffColors[item.data.difficulty - 1] : '#aaa';
+
+        // Update border color based on lamp
+        const lampClass = item.lamp ? item.lamp.class : '';
+        let borderColor = '#444';
+        if (lampClass === 'failed') borderColor = '#c00';
+        if (lampClass === 'assist') borderColor = '#a0a';
+        if (lampClass === 'easy') borderColor = '#0a0';
+        if (lampClass === 'clear') borderColor = '#5ff';
+        if (lampClass === 'hard') borderColor = '#f00';
+        if (lampClass === 'ex-hard') borderColor = '#fa0';
+        if (lampClass === 'fc') borderColor = '#0ff';
+        if (lampClass === 'perfect') borderColor = '#fff';
+        if (lampClass === 'max') borderColor = '#fff';
+        if (item.type === 'folder' || item.type === 'back' || item.type === 'course') borderColor = '#aaa';
+
+        div.style.borderLeftColor = borderColor;
+
+        // Content
+        let displayLevel = item.level !== undefined ? item.level : '';
+        if (item.type === 'folder') displayLevel = '📂';
+        if (item.type === 'back') displayLevel = '↩️';
+        if (item.type === 'course') displayLevel = '★';
+
+        div.innerHTML = `
+            <div class="wheel-title">${item.title}</div>
+            <div class="wheel-level" style="color: ${levelColor}">${displayLevel}</div>
+        `;
+
+        // Positioning
+        const yOffset = i * itemH;
+        const absI = Math.abs(i);
+        const scale = 1.0 - (absI * 0.05);
+        const opacity = 1.0 - (absI * 0.15);
+        const zIndex = 10 - absI;
+
+        div.style.transform = `translateY(${centerY + yOffset}px) scale(${scale})`;
+        div.style.opacity = opacity;
+        div.style.zIndex = zIndex;
+
+        // Click to select/enter
+        // Use closure to capture loop vars
+        ((index, itm, dist) => {
+            div.onclick = () => {
+                if (dist !== 0) {
+                    STATE.selectedIndex = index;
+                    playSystemSound('scratch');
+                    renderInfiniteWheel();
+                    updateInfoCard(itm);
+                } else {
+                    if (itm.type === 'folder') {
+                        STATE.currentFolder = itm.data;
+                        STATE.selectedIndex = 0;
+                        playSystemSound('f-open');
+                        refreshSongList();
+                    } else if (itm.type === 'back') {
+                        STATE.currentFolder = null;
+                        STATE.selectedIndex = 0;
+                        playSystemSound('f-close');
+                        refreshSongList();
+                    } else if (itm.type === 'course') {
+                        STATE.activeCourse = itm.data; STATE.courseIndex = 0;
+                        const song = STATE.charts.find(c => c.md5 === itm.data.hashes[0]);
+                        if (song) loadChart(STATE.charts.indexOf(song), div, true);
+                    }
+                }
+            };
+        })(idx, item, i);
+
+        container.appendChild(div);
+    }
+}
+
+function updateSelection() {
+    renderInfiniteWheel();
+    // Do NOT auto-scroll or anything, simple refresh is enough for wheel
+    if (STATE.currentList && STATE.currentList[STATE.selectedIndex]) {
+        updateInfoCard(STATE.currentList[STATE.selectedIndex]);
+    }
 }
 
 async function updateInfoCard(item) {
@@ -1656,9 +2254,9 @@ async function updateInfoCard(item) {
         html += '</div>';
         ui.bannerArea.innerHTML = html;
     } else if (item.type === 'folder') {
-        ui.titleMain.textContent = item.data.name;
+        ui.titleMain.textContent = item.title;
         ui.subtitle.textContent = 'CATEGORY';
-        ui.artistGenre.textContent = `${item.data.count} ITEMS`;
+        ui.artistGenre.textContent = item.artist || 'FOLDER';
         ui.diffDisplay.style.display = 'none';
         ui.songStats.style.display = 'none';
         ui.songMarkers.innerHTML = '';
@@ -2016,6 +2614,8 @@ async function loadChart(idx, el, focusOnly = false) {
         ui.diffStars.className = 'diff-stars'; // Reset class
         ui.diffStars.innerHTML = ''; // Reset content
 
+        const starIcon = '<i class="ph-fill ph-star" style="color:var(--accent); font-size:10px; margin-right:1px;"></i>';
+
         if (c.keyMode === '9' || (c.keyMode === '10' && c.level > 12) || (c.keyMode === '14' && c.level > 12)) {
             // 9-Key / PMS Logic
             // "10 bars of 5" -> 50 stars max.
@@ -2024,14 +2624,13 @@ async function loadChart(idx, el, focusOnly = false) {
 
             let starStr = '';
             for (let i = 0; i < starsToShow; i++) {
-                if (i > 0 && i % 5 === 0) starStr += '<span style="display:inline-block; width:8px;"></span>';
-                starStr += '★';
+                if (i > 0 && i % 5 === 0) starStr += '<span style="display:inline-block; width:4px;"></span>';
+                starStr += starIcon;
             }
             ui.diffStars.innerHTML = starStr;
             ui.diffStars.style.whiteSpace = 'nowrap'; // Ensure single line
-            // ui.diffStars.style.fontSize = '10px'; // Keep smaller size for fitting 50 stars
             ui.diffStars.style.fontSize = '10px';
-            ui.diffStars.style.lineHeight = '';
+            ui.diffStars.style.lineHeight = '1';
 
             if (numLevel > 50) {
                 ui.diffStars.classList.add('rainbow-text');
@@ -2040,8 +2639,10 @@ async function loadChart(idx, el, focusOnly = false) {
             // 5-Key Logic (Max 9)
             const maxStars = 9;
             const starsToShow = Math.max(0, Math.min(numLevel, maxStars));
-            ui.diffStars.textContent = '★'.repeat(starsToShow);
-            ui.diffStars.style.lineHeight = '';
+            // Use bold star for 5K to distinguish
+            const star5k = '<i class="ph-bold ph-star" style="color:var(--accent); font-size:12px; margin-right:1px;"></i>';
+            ui.diffStars.innerHTML = star5k.repeat(starsToShow);
+            ui.diffStars.style.lineHeight = '1';
             ui.diffStars.style.fontSize = '';
 
             if (numLevel > 9) {
@@ -2051,8 +2652,8 @@ async function loadChart(idx, el, focusOnly = false) {
             // Standard Logic
             const maxStars = 12;
             const starsToShow = Math.max(0, Math.min(numLevel, maxStars));
-            ui.diffStars.textContent = '★'.repeat(starsToShow);
-            ui.diffStars.style.lineHeight = '';
+            ui.diffStars.innerHTML = starIcon.repeat(starsToShow);
+            ui.diffStars.style.lineHeight = '1';
             ui.diffStars.style.fontSize = ''; // Reset
 
             if (numLevel > 12) {
@@ -2374,7 +2975,9 @@ async function enterGame() {
     STATE.bgaCursor = 0;
     STATE.bpmCursor = 0;
     STATE.bpmCursor = 0;
+    STATE.bpmCursor = 0;
     STATE.logicCursor = 0; // [NEW] Logic optimization cursor
+    STATE.pacemakerCursor = 0; // [NEW] Ghost score cursor
     STATE.inputLog = []; // Reset replay log
     STATE.currentMaxScore = 0; // [NEW] Running average denominator
 
@@ -2471,8 +3074,11 @@ async function enterGame() {
     if (STATE.rangeMode === 'LIFT') lift = 20; // Default LIFT
     if (STATE.rangeMode === 'LIFT-SUD+') { sudden = 20; lift = 20; }
 
-    ui.laneCoverTop.style.height = sudden + '%';
-    ui.laneCoverBottom.style.height = lift + '%';
+    // Set lane covers / Range
+    // NOTE: Renderer handles drawing logic sized to notefield.
+    // DIVs are disabled to avoid full-width overlap.
+    // ui.laneCoverTop.style.height = sudden + '%';
+    // ui.laneCoverBottom.style.height = lift + '%';
 
     // Set game background from stagefile
     if (STATE.stagefileUrl) {
@@ -2601,60 +3207,56 @@ function playSystemSound(id, loop = false) {
     return null;
 }
 
-async function updateBGA(id) {
-    const def = STATE.bgaDefinitions[id];
+async function updateBGA(event) {
+    // If event is just ID (legacy call or fallback), wrap it
+    if (typeof event === 'number' || typeof event === 'string') {
+        event = { id: event, ch: 0x04 };
+    }
+
+    if (!event || !event.id) return;
+    const def = STATE.bgaDefinitions[event.id];
     if (!def) return;
 
-    if (def.isVideo && !STATE.bgaDefinitions[id].useStream && /\.(mp4|webm)$/i.test(def.url)) {
-        // Modern formats: Use native video element (better performance if supported)
-        // BUT: if we want to guarantee everything works, we could force stream.
-        // For now, let's keep MP4 native as an optimization, others use stream.
+    // Detect if this is a Layer event (Channel 0x07) or Base (0x04)
+    const isLayer = (event.ch === 0x07 || event.ch === 7);
+
+    // Choose target element
+    const targetImg = isLayer ? ui.bgaLayer : ui.bgaImg;
+
+    // Video only supported on base layer for now
+    if (def.isVideo && !STATE.bgaDefinitions[event.id].useStream && /\.(mp4|webm)$/i.test(def.url) && !isLayer) {
         ui.bgaImg.style.display = 'none';
         ui.bgaVideo.src = def.url;
         ui.bgaVideo.style.display = 'block';
         ui.bgaVideo.play().catch(() => { });
     } else {
-        // Legacy formats (AVI, MPG) or forced stream or Image
-        // If it's a video file but we determined it needs streaming (or it's legacy extension)
-        if (/\.(avi|mpg|mpeg|wmv|m4v)$/i.test(def.filename) || def.isVideo) {
-            // Use Image Element with MJPEG Stream
-            console.log("Streaming BGA via FFmpeg:", def.filename);
-            if (!STATE.streamBaseUrl) {
+        // Image or Stream
+        if ((/\.(avi|mpg|mpeg|wmv|m4v)$/i.test(def.filename) || def.isVideo) && !isLayer) {
+            // Stream logic (only for base layer)
+            if (!STATE.streamBaseUrl && window.electronAPI) {
                 STATE.streamBaseUrl = await window.electronAPI.getStreamUrl();
             }
 
             if (STATE.streamBaseUrl) {
-                // Construct Stream URL
-                // Extract path from file:// URL if present, or use raw path?
-                // resolve-image returned file:// URL. We need valid OS path for ffmpeg.
-                // We can't easily reverse file:// to path in browser securely without helper.
-                // BUT: We stored 'url' which is file://...
-                // We also have def.filename, but that's relative.
-                // We need the absolute path.
-                // Let's rely on resolve-image returning the path in a new field?
-                // OR: Just parse the file:// URL.
-
                 let videoPath = def.url.replace('file://', '');
-                // On Windows, /C:/... -> C:/...
                 if (videoPath.startsWith('/') && videoPath[2] === ':') videoPath = videoPath.substring(1);
-                // Decode URI chars
                 videoPath = decodeURIComponent(videoPath);
-
                 const streamUrl = `${STATE.streamBaseUrl}?path=${encodeURIComponent(videoPath)}`;
 
                 ui.bgaVideo.pause();
                 ui.bgaVideo.style.display = 'none';
                 ui.bgaImg.src = streamUrl;
                 ui.bgaImg.style.display = 'block';
-            } else {
-                console.warn("Stream server not ready");
             }
         } else {
             // Standard Image
-            ui.bgaVideo.pause();
-            ui.bgaVideo.style.display = 'none';
-            ui.bgaImg.src = def.url;
-            ui.bgaImg.style.display = 'block';
+            if (!isLayer) {
+                ui.bgaVideo.pause();
+                ui.bgaVideo.style.display = 'none';
+            }
+
+            targetImg.src = def.url;
+            targetImg.style.display = 'block';
         }
     }
 }
@@ -2691,6 +3293,109 @@ async function loadSystemSounds() {
     }
 }
 
+function updatePacemaker(now) {
+    if (!STATE.loadedSong || !STATE.loadedSong.notes) return;
+
+    // Calculate Target Score
+    let targetScore = 0;
+    const maxEx = STATE.loadedSong.notes.length * 2;
+    const pacemakerTarget = STATE.pacemakerTarget || 'AAA'; // Default AAA
+
+    if (pacemakerTarget === 'MY BEST') {
+        const fileRef = STATE.loadedSong.fileRef || STATE.currentFileRef;
+        const entry = _scoresDb[fileRef];
+        if (entry) targetScore = entry.exScore || 0;
+    } else if (pacemakerTarget === 'NEXT') {
+        // Dynamic next rank
+        const percent = (STATE.score / Math.max(1, maxEx)) * 100;
+        const next = getNextRankInfo(percent, maxEx);
+        targetScore = next ? (STATE.score + next.diff) : maxEx;
+    } else {
+        // Fixed Ranks
+        const rates = {
+            'AAA': 8 / 9, 'AA': 7 / 9, 'A': 6 / 9, 'B': 5 / 9, 'C': 4 / 9,
+            'D': 3 / 9, 'E': 2 / 9, 'F': 0
+        };
+        const ratio = rates[pacemakerTarget] || (8 / 9);
+        targetScore = Math.ceil(maxEx * ratio);
+    }
+
+    // Calculate Ghost (Projected) Difference
+    // Use pacemakerCursor to track how many notes should have been hit by 'now'
+    const notes = STATE.loadedSong.notes;
+    while (STATE.pacemakerCursor < notes.length && notes[STATE.pacemakerCursor].time <= now) {
+        STATE.pacemakerCursor++;
+    }
+
+    const notesPassed = STATE.pacemakerCursor;
+    // Derive effective ratio (works for Fixed, Next, Best)
+    const ratio = targetScore / Math.max(1, maxEx);
+    // Ideal score at this point = (notesPassed * 2) * ratio
+    // Rounded down to match integer score nature
+    const maxScoreSoFar = notesPassed * 2;
+    const expectedTargetNow = Math.floor(maxScoreSoFar * ratio);
+
+    // Cap strictly at Total Target Score to prevent overshoot at end due to float precision
+    const finalExpected = Math.min(targetScore, expectedTargetNow);
+
+    const diff = STATE.score - finalExpected;
+
+    // Update Target display value (Running Average)
+    ui.paceTargetName.textContent = pacemakerTarget;
+    ui.paceScoreTarget.textContent = expectedTargetNow;
+    ui.paceScoreYou.textContent = STATE.score;
+
+    const diffStr = (diff >= 0 ? '+' : '') + diff;
+    const diffColor = diff >= 0 ? '#0f0' : '#f00';
+
+    // Update Graph Diff
+    ui.paceDiffTarget.textContent = diffStr;
+    ui.paceDiffTarget.style.color = diffColor;
+    ui.paceGhostLabel.textContent = `vs ${pacemakerTarget}`;
+
+    // Update Centered Ghost Display
+    ui.paceGhostVal.textContent = diffStr;
+    ui.paceGhostVal.style.color = diffColor;
+
+    // Update Pace Bars (Visual Height)
+    // 100% height = Max Score? Or scaled rel to target?
+    // Usually scaled to Max Score
+    const youH = Math.min(100, (STATE.score / Math.max(1, maxEx)) * 100);
+    const targetH = Math.min(100, (targetScore / Math.max(1, maxEx)) * 100);
+
+    ui.paceBarYou.style.height = `${youH}%`;
+    ui.paceBarTarget.style.height = `${targetH}%`;
+
+    // Show 'Best' comparison as well
+    const fileRef = STATE.loadedSong.fileRef || STATE.currentFileRef;
+    const bestEntry = _scoresDb[fileRef];
+    if (bestEntry) {
+        const bestScore = bestEntry.exScore || 0;
+        // Calculate running best based on note progress (consistent with Target)
+        const bestRatio = bestScore / Math.max(1, maxEx);
+        const bestRunning = Math.floor(maxScoreSoFar * bestRatio);
+
+        const bestDiff = STATE.score - bestRunning;
+        ui.paceDiffBest.textContent = (bestDiff >= 0 ? '+' : '') + bestDiff;
+        ui.paceDiffBest.style.color = bestDiff >= 0 ? '#0f0' : '#f00';
+
+        ui.paceBarBest.style.height = `${(bestScore / Math.max(1, maxEx)) * 100}%`;
+    } else {
+        ui.paceDiffBest.textContent = '---';
+        ui.paceBarBest.style.height = '0%';
+    }
+
+    // Show/Hide Pacemaker
+    // Show/Hide Pacemaker & Ghost Display
+    if (STATE.pacemakerTarget === 'OFF') {
+        ui.pacemaker.style.display = 'none';
+        ui.paceGhostDisplay.style.display = 'none';
+    } else {
+        ui.pacemaker.style.display = 'flex';
+        ui.paceGhostDisplay.style.display = 'block';
+    }
+}
+
 function loop() {
     if (!STATE.isPlaying) return;
     const now = (audioCtx.currentTime - STATE.startTime) * 1000;
@@ -2716,7 +3421,7 @@ function loop() {
 
     const bgas = STATE.loadedSong.bgaEvents;
     while (STATE.bgaCursor < bgas.length && bgas[STATE.bgaCursor].time <= now) {
-        updateBGA(bgas[STATE.bgaCursor].id);
+        updateBGA(bgas[STATE.bgaCursor]);
         STATE.bgaCursor++;
     }
 
@@ -2808,6 +3513,11 @@ function render(time) {
 // JUDGEMENT SYSTEM
 // ----------------------------------------------------------------------------
 function handleJudgment(result, diffMs, isEmptyPoor = false) {
+    // Record input for stats/replay
+    if (!STATE.autoplay) {
+        STATE.inputLog.push({ diff: diffMs, judge: result });
+    }
+
     // Scoring
     let scoreAdd = 0;
     if (result === 'PGREAT') scoreAdd = 2;
@@ -3127,6 +3837,50 @@ function showResults(isClear, statusText) {
     const isFC = (STATE.comboBreaks === 0 && STATE.judgeCounts.bad === 0 && STATE.judgeCounts.poor === 0);
     saveReplay(STATE.currentFileRef, STATE.inputLog, STATE.score, lamp, isFC);
 
+    // Submit to Tachi IR (if enabled and not autoplay)
+    if (!STATE.autoplay && typeof TachiIR !== 'undefined' && TachiIR.isTachiEnabled()) {
+        // Determine playtype from key mode
+        const keyMode = STATE.loadedSong.keyMode || '7';
+        let playtype = '7K';
+        if (keyMode === '14' || keyMode === '10') playtype = '14K';
+        // Note: 5K and other modes may not be supported by Tachi BMS
+
+        // Map lamp to Tachi format (using our LAMPS IDs)
+        // LAMPS: NO_PLAY=0, FAILED=1, ASSIST=2, EASY=3, CLEAR=4, HARD=5, EXHARD=6, FC=7, PERFECT=8, MAX=9
+        // Tachi: FAILED, ASSIST CLEAR, EASY CLEAR, CLEAR, HARD CLEAR, EX HARD CLEAR, FULL COMBO
+        const tachiLampMap = {
+            0: 'FAILED', 1: 'FAILED', 2: 'ASSIST CLEAR', 3: 'EASY CLEAR',
+            4: 'CLEAR', 5: 'HARD CLEAR', 6: 'EX HARD CLEAR',
+            7: 'FULL COMBO', 8: 'FULL COMBO', 9: 'FULL COMBO'
+        };
+
+        const scoreData = {
+            chartMd5: STATE.loadedSong.md5 || STATE.currentFileRef,
+            playtype: playtype,
+            score: STATE.score,
+            lampId: lamp.id,
+            judgements: {
+                pgreat: STATE.judgeCounts.pgreat,
+                great: STATE.judgeCounts.great,
+                good: STATE.judgeCounts.good,
+                bad: STATE.judgeCounts.bad,
+                poor: STATE.judgeCounts.poor
+            },
+            maxCombo: STATE.maxCombo,
+            comboBreaks: STATE.comboBreaks
+        };
+
+        TachiIR.submitTachiScore(scoreData).then(result => {
+            if (result.success) {
+                console.log('[Tachi] Score submitted successfully');
+            } else {
+                console.warn('[Tachi] Score submission failed:', result.error);
+            }
+        }).catch(err => {
+            console.error('[Tachi] Submission error:', err);
+        });
+    }
+
     document.getElementById('screen-game').style.display = 'none';
     document.getElementById('screen-results').style.display = 'flex';
     document.getElementById('screen-results').classList.remove('fade-out'); // Reset fade state
@@ -3143,9 +3897,6 @@ function showResults(isClear, statusText) {
     }
     document.getElementById('res-song-title').textContent = STATE.loadedSong.headers['TITLE'] || 'Unknown';
 
-    document.getElementById('res-rank').textContent = calculateRank(percent);
-    document.getElementById('res-rank').style.color = getRankColor(calculateRank(percent));
-
     const nextRank = getNextRankInfo(percent, maxEx);
     document.getElementById('res-rank-next').textContent = nextRank ? `NEXT RANK: ${nextRank.name} (-${nextRank.diff})` : 'MAX RANK ACHIEVED';
 
@@ -3158,10 +3909,62 @@ function showResults(isClear, statusText) {
     document.getElementById('res-fast').textContent = STATE.fastSlow.fast;
     document.getElementById('res-slow').textContent = STATE.fastSlow.slow;
     document.getElementById('res-max-combo').textContent = STATE.maxCombo;
+    document.getElementById('res-combo-breaks').textContent = STATE.comboBreaks;
 
     // Score
     document.getElementById('res-ex-score').textContent = STATE.score;
-    document.getElementById('res-percent').textContent = percent.toFixed(2) + '%';
+    // res-percent moved to overlay
+    document.getElementById('res-artist').textContent = STATE.loadedSong.headers['ARTIST'] || '';
+
+    // Advanced Stats Calculation
+    let meanError = 0;
+    let stdDev = 0;
+    // Filter out undefined diffs (e.g. from POORs that might not have diff if timed out?) 
+    // Actually handleJudgment pushes diff (which might be undefined for timeout POORs?)
+    // handleJudgment calls showJudge, which uses diff. 
+    // Miss detection passes diff > win.BD.
+    const diffs = STATE.inputLog.map(x => x.diff).filter(d => typeof d === 'number');
+    if (diffs.length > 0) {
+        const sum = diffs.reduce((a, b) => a + b, 0);
+        meanError = sum / diffs.length;
+        const variance = diffs.reduce((a, b) => a + Math.pow(b - meanError, 2), 0) / diffs.length;
+        stdDev = Math.sqrt(variance);
+    }
+
+    document.getElementById('res-mean').textContent = (meanError >= 0 ? '+' : '') + meanError.toFixed(2) + 'ms';
+    document.getElementById('res-std-dev').textContent = stdDev.toFixed(2) + 'ms';
+
+    // Ratios
+    const cPG = STATE.judgeCounts.pgreat;
+    const cGR = STATE.judgeCounts.great;
+    const cGD = STATE.judgeCounts.good;
+
+    // Format: "X:Y" or "Inf"
+    const ratioPG = cGR > 0 ? (cPG / cGR).toFixed(2) : (cPG > 0 ? 'Inf' : '0.00');
+    const ratioGR = cGD > 0 ? (cGR / cGD).toFixed(2) : (cGR > 0 ? 'Inf' : '0.00');
+
+    document.getElementById('res-ratio-pg').textContent = ratioPG;
+    document.getElementById('res-ratio-gr').textContent = ratioGR;
+
+    // Target Diff (vs Pacemaker Target)
+    let targetScore = 0;
+    const pmTarget = STATE.pacemakerTarget || 'AAA';
+    if (pmTarget === 'MY BEST') {
+        const fileRef = STATE.loadedSong.fileRef || STATE.currentFileRef;
+        targetScore = (_scoresDb[fileRef] || {}).exScore || 0;
+    } else if (pmTarget === 'NEXT') {
+        // Should match nextRank logic but calculated against total
+        // If nextRank exists, target is result + diff. If not (MAX), target is Max.
+        const nr = getNextRankInfo(percent, maxEx);
+        targetScore = nr ? (STATE.score + nr.diff) : maxEx;
+    } else {
+        const rates = { 'AAA': 8 / 9, 'AA': 7 / 9, 'A': 6 / 9, 'B': 5 / 9, 'C': 4 / 9, 'D': 3 / 9, 'E': 2 / 9, 'F': 0 };
+        targetScore = Math.ceil(maxEx * (rates[pmTarget] || (8 / 9)));
+    }
+
+    const targetDiff = STATE.score - targetScore;
+    document.getElementById('res-target-diff').textContent = (targetDiff >= 0 ? '+' : '') + targetDiff;
+    document.getElementById('res-target-diff').style.color = targetDiff >= 0 ? '#0f0' : '#f00';
 
     // Lamps
     const lampEl = document.getElementById('res-lamp');
@@ -3193,6 +3996,21 @@ function showResults(isClear, statusText) {
     const clearThreshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
     drawGaugeGraph('graph-gauge', STATE.history.gauge, [2, 100], clearThreshold, STATE.gaugeType);
     drawGraph('graph-score', STATE.history.score, [0, maxEx], '#55aaff');
+
+    // Populate Graph Overlays
+    // Gauge Graph: Bottom Left = Options, Bottom Right = Final Gauge
+    const mods = [];
+    if (STATE.modifier !== 'NONE') mods.push(STATE.modifier);
+    mods.push(STATE.gaugeType);
+    if (STATE.assistMode !== 'NONE') mods.push(STATE.assistMode);
+
+    document.getElementById('res-gauge-opts').innerHTML = mods.join('<br>');
+    document.getElementById('res-gauge-val').textContent = Math.floor(STATE.gauge) + '%';
+
+    // Score Graph: Bottom Left = Rate%, Bottom Right = Grade
+    document.getElementById('res-score-rate').textContent = percent.toFixed(2) + '%';
+    document.getElementById('res-score-grade').textContent = calculateRank(percent);
+    document.getElementById('res-score-grade').style.color = getRankColor(calculateRank(percent));
 
     // Global listener to exit results
     let isFadingResults = false;
@@ -3378,11 +4196,16 @@ function drawGraph(canvasId, data, range, color) {
     ctx.clearRect(0, 0, w, h);
 
     // Draw grid
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
         const y = (h / 4) * i;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    // Vertical grid
+    for (let i = 1; i < 5; i++) {
+        const x = (w / 5) * i;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     }
 
     if (data.length < 2) return;
@@ -3390,11 +4213,31 @@ function drawGraph(canvasId, data, range, color) {
     const [min, max] = range;
     const stepX = w / (data.length - 1);
 
+    // Subtle area fill first
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+        const val = (data[i] - min) / (max - min);
+        const x = i * stepX;
+        const y = h - (val * h);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    let colorStart = color.startsWith('#') ? color + '44' : color.replace('rgb', 'rgba').replace(')', ', 0.3)');
+    let colorEnd = color.startsWith('#') ? color + '00' : color.replace('rgb', 'rgba').replace(')', ', 0)');
+    grad.addColorStop(0, colorStart);
+    grad.addColorStop(1, colorEnd);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line on top
     ctx.beginPath();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
-
+    ctx.lineCap = 'round';
     for (let i = 0; i < data.length; i++) {
         const val = (data[i] - min) / (max - min);
         const x = i * stepX;
@@ -3402,28 +4245,6 @@ function drawGraph(canvasId, data, range, color) {
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
-
-    // Fill area
-    ctx.lineTo(w, h);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-
-    let colorStart = color;
-    let colorEnd = 'rgba(0,0,0,0)';
-
-    if (color.startsWith('#')) {
-        colorStart = color + '66'; // 40% alpha
-        colorEnd = color + '00';   // 0% alpha
-    } else if (color.startsWith('rgb')) {
-        colorStart = color.replace('rgb', 'rgba').replace(')', ', 0.4)');
-        colorEnd = color.replace('rgb', 'rgba').replace(')', ', 0)');
-    }
-
-    grad.addColorStop(0, colorStart);
-    grad.addColorStop(1, colorEnd);
-    ctx.fillStyle = grad;
-    ctx.fill();
 }
 
 // Two-color gauge graph: green below threshold, red above
@@ -3436,11 +4257,16 @@ function drawGaugeGraph(canvasId, data, range, threshold, gaugeType) {
     ctx.clearRect(0, 0, w, h);
 
     // Draw grid
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
         const y = (h / 4) * i;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    // Vertical grid
+    for (let i = 1; i < 5; i++) {
+        const x = (w / 5) * i;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     }
 
     const [min, max] = range;
@@ -3738,8 +4564,48 @@ window.addEventListener('keydown', e => {
                 savePlayerOptions();
             }
         });
+
         updateOptionsUI();
         return;
+    }
+
+    // LANE COVER ADJUSTMENTS (Double-Start & Start+Scratch)
+    if (STATE.isPlaying) {
+        actions.forEach(action => {
+            // TOGGLE (Double Start)
+            if (action === ACTIONS.START) {
+                const now = Date.now();
+                if (now - (STATE.lastStartPress || 0) < 300) {
+                    if (STATE.rangeMode !== 'OFF') {
+                        STATE.lastRangeMode = STATE.rangeMode;
+                        STATE.rangeMode = 'OFF';
+                    } else {
+                        STATE.rangeMode = STATE.lastRangeMode || 'SUDDEN+';
+                    }
+                    savePlayerOptions();
+                    playSystemSound('o-change');
+                }
+                STATE.lastStartPress = now;
+            }
+
+            // OFFSET (Hold Start + Scratch)
+            if (STATE.activeActions.has(ACTIONS.START)) {
+                if (action === ACTIONS.P1_SC_CW || action === ACTIONS.P1_SC_CCW) {
+                    const delta = (action === ACTIONS.P1_SC_CW) ? 1 : -1;
+                    if (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') {
+                        STATE.suddenPlus = Math.max(0, Math.min(100, (STATE.suddenPlus || 0) + delta));
+                    }
+                    // If we want to adjust LIFT separately, user didn't specify combo.
+                    // Assuming Start+Scratch adjusts active top cover (Sudden+).
+                    // For LIFT adjustment, usually requires separate bind or mode toggle.
+                    // For now, implementing SUDDEN+ adjustment as priority.
+                    savePlayerOptions();
+                    // Don't return here so it can process normally if needed? 
+                    // No, usually such shortcuts consume the input.
+                    STATE.activeActions.delete(action); // Consume
+                }
+            }
+        });
     }
 
     if (ui.modalSettings.classList.contains('open')) {
@@ -3773,9 +4639,31 @@ window.addEventListener('keydown', e => {
 
             if (isOpenKey) {
                 if (item.type === 'back') {
-                    STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); renderSongList();
-                } else if (item.type === 'folder' || item.type === 'course') {
-                    item.el.click();
+                    STATE.currentFolder = null; STATE.selectedIndex = 0; playSystemSound('f-close'); refreshSongList();
+                } else if (item.type === 'folder') {
+                    STATE.currentFolder = item.data; STATE.selectedIndex = 0; playSystemSound('f-open'); refreshSongList();
+                } else if (item.type === 'course') {
+                    STATE.activeCourse = item.data; STATE.courseIndex = 0;
+                    const song = STATE.charts.find(c => c.md5 === item.data.hashes[0]);
+                    // Auto-load not needed for wheel as updateInfoCard handles it, 
+                    // but we might want to trigger deciding screen or just enter folder?
+                    // Usually courses act like folders of stages.
+                    // For now, let's just mimic the click behavior which was: 
+                    // STATE.activeCourse = course; loadChart... 
+                    if (song) {
+                        // Just ensure we are in course mode state if needed
+                        // The click handler loaded the chart. updateInfoCard does that too.
+                        // So maybe we just trigger start if already selected?
+                        // Actually, course selection usually just focuses it. 
+                        // To Enter a course (Play), we typically use START.
+                        // But here we are handling "Open Folder" keys for 1/3/5/7.
+                        // If it's a course, we probably don't 'open' it like a folder unless it's a course folder.
+                        // Current implementation treats courses as items in CLASS folder.
+                        // Let's just focus it (which is done) or maybe trigger decide if it's already focused?
+                        // The original code was: item.el.click() -> loadChart.
+                        // Since we are already on it, loadChart is called by updateSelection.
+                        // So this probably does nothing additional unless we want to START.
+                    }
                 } else if (item.type === 'chart') {
                     if (ui.btnStart.disabled === false) triggerDecideScreen(false);
                 }
@@ -3977,9 +4865,121 @@ window.addEventListener('resize', resize);
     resize();
 
     if (IS_DESKTOP) {
-        // Auto-rescan library on startup
+        // Auto-rescan library on startup (Sequential after options load)
         console.log("Startup: Rescanning library...");
-        await rescanAllFolders();
+        ui.screenLoading.style.display = 'flex';
+
+        // Update Tachi Profile Display
+        if (typeof updateProfileDisplay === 'function') {
+            updateProfileDisplay();
+        }
+
+        const data = await window.electronAPI.rescanAllFolders();
+        loadLibraryFromDesktop(data);
+        STATE.loadingComplete = true;
+
+        if (!STATE.fullscreen) {
+            document.getElementById('titlebar').style.display = 'flex';
+        }
+
+        ui.screenLoading.classList.add('fade-out');
+        setTimeout(() => {
+            ui.screenLoading.style.display = 'none';
+            ui.screenLoading.classList.remove('fade-out');
+            if (!STATE.selectBgmSource) {
+                STATE.selectBgmSource = playSystemSound('select', true);
+            }
+        }, 500);
     }
 })();
 
+// ============================================================================
+// TACHI PROFILE UI
+// ============================================================================
+async function updateProfileDisplay() {
+    const pContainer = document.getElementById('profile-display');
+    const pAvatar = document.getElementById('profile-avatar');
+    const pName = document.getElementById('profile-name');
+    const pRating = document.getElementById('profile-rating');
+    const pIcon = document.getElementById('profile-rating-icon');
+
+    if (!pContainer || typeof TachiIR === 'undefined') return;
+
+    if (!TachiIR.isTachiEnabled()) {
+        pName.textContent = 'Guest';
+        pRating.textContent = 'OFFLINE';
+        pRating.className = 'offline';
+        if (pIcon) pIcon.innerHTML = '';
+        pContainer.classList.add('hidden'); // Optional: hide if offline
+        return;
+    }
+
+    try {
+        pContainer.classList.remove('hidden');
+        // 1. Get stats (Rating, Rank, UserID)
+        const statsRes = await TachiIR.fetchTachiPlayerStats('7K');
+
+        if (statsRes.success) {
+            const rating = TachiIR.getSieglinde(statsRes.gameStats);
+            const rankObj = TachiIR.getSieglindeRank(statsRes.rankingData);
+            const userId = statsRes.userId;
+
+            // Format Rating and Icon
+            let ratingText = '';
+            if (rating !== null) {
+                // Set Icon (Normal vs Insane) & Calculate Display Rating
+                if (pIcon) {
+                    if (rating >= 13.0) {
+                        // Insane (Filled Star, Rating - 12)
+                        pIcon.innerHTML = `<i class="ph-fill ph-star" style="color:#ffcc00; font-size:14px; margin-right:2px; vertical-align:-1px;"></i>`;
+                        ratingText += (rating - 12.0).toFixed(2);
+                    } else {
+                        // Normal (Bold Star, Full Rating)
+                        pIcon.innerHTML = `<i class="ph-bold ph-star" style="color:#ffcc00; font-size:14px; margin-right:2px; vertical-align:-1px;"></i>`;
+                        ratingText += rating.toFixed(2);
+                    }
+                } else {
+                    ratingText += rating.toFixed(2);
+                }
+            } else {
+                if (pIcon) pIcon.innerHTML = '';
+            }
+
+            if (rankObj) ratingText += ` (#${rankObj.ranking})`;
+
+            pRating.textContent = ratingText || 'No Rating';
+            pRating.className = 'online';
+
+            // 2. Get Profile (Name, PFP)
+            const profileRes = await TachiIR.fetchTachiUserProfile(userId);
+            if (profileRes.success) {
+                const user = profileRes.user;
+                console.log('[Tachi] User Profile:', user);
+
+                pName.textContent = user.username;
+
+                // Fetch PFP securely via IPC (handles blobs/headers)
+                const pfpRes = await TachiIR.fetchTachiUserPfp(userId);
+
+                const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+
+                if (pfpRes.success && pfpRes.dataUrl) {
+                    pAvatar.src = pfpRes.dataUrl;
+                } else {
+                    console.warn('[Tachi] Failed to load avatar:', pfpRes.error);
+                    pAvatar.src = defaultAvatar;
+                }
+            }
+        } else {
+            pName.textContent = 'Error';
+            pRating.textContent = 'OFFLINE';
+            pRating.className = 'offline';
+            if (pIcon) pIcon.innerHTML = '';
+        }
+    } catch (e) {
+        console.error('Profile update failed:', e);
+        pRating.textContent = 'V. ERR';
+        pRating.className = 'offline';
+        if (pIcon) pIcon.innerHTML = '';
+    }
+}

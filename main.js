@@ -150,6 +150,7 @@ function createWindow() {
         backgroundColor: '#121212',
         frame: false,
         resizable: false,
+        icon: path.join(__dirname, 'icon/icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -711,6 +712,198 @@ ipcMain.handle('open-course-dialog', async () => {
     });
     if (result.canceled) return [];
     return result.filePaths;
+});
+
+// ============================================================================
+// TACHI IR INTEGRATION
+// ============================================================================
+const axios = require('axios');
+const TACHI_BASE_URL = 'https://boku.tachi.ac';
+const TACHI_API_VERSION = 'v1';
+
+// Cached user ID for Tachi
+let _tachiCachedUserId = null;
+
+// Submit score to Tachi via ir/direct-manual
+ipcMain.handle('tachi-submit-score', async (event, payload, apiKey) => {
+    if (!apiKey) {
+        return { success: false, error: 'No API key provided' };
+    }
+
+    try {
+        const response = await axios.post(
+            `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/ir/direct-manual/import`,
+            payload,
+            {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                    'X-User-Intent': 'true'
+                }
+            }
+        );
+
+        const data = response.data;
+        console.log('[Tachi] Submit response:', data);
+
+        if (data.success) {
+            return { success: true, data: data.body };
+        } else {
+            return { success: false, error: data.description || 'Unknown error' };
+        }
+    } catch (e) {
+        console.error('[Tachi] Submit error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+// Get player stats from Tachi
+ipcMain.handle('tachi-get-player-stats', async (event, apiKey, playtype = '7K') => {
+    if (!apiKey) {
+        return { success: false, error: 'No API key provided' };
+    }
+
+    try {
+        // Step 1: Get user ID from /status (use cache if available)
+        let userId = _tachiCachedUserId;
+
+        if (!userId) {
+            const statusRes = await axios.get(`${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/status`, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            const statusData = statusRes.data;
+            console.log('[Tachi] Status response:', statusData);
+
+            if (!statusData.success || !statusData.body.whoami) {
+                return { success: false, error: 'Could not identify user. Check your API key.' };
+            }
+            userId = statusData.body.whoami;
+            _tachiCachedUserId = userId;
+        }
+
+        // Step 2: Fetch game stats
+        const statsRes = await axios.get(`${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/games/bms/${playtype}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+        const statsData = statsRes.data;
+        console.log('[Tachi] Stats response:', statsData);
+
+        if (!statsData.success) {
+            return { success: false, error: statsData.description || 'Failed to fetch stats' };
+        }
+
+        return {
+            success: true,
+            userId: userId,
+            gameStats: statsData.body.gameStats,
+            rankingData: statsData.body.rankingData
+        };
+    } catch (e) {
+        console.error('[Tachi] Stats fetch error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+// Get user profile (username, pfp)
+ipcMain.handle('tachi-get-user-profile', async (event, apiKey, userId) => {
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    try {
+        const response = await axios.get(`${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}`, {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        const data = response.data;
+
+        if (data.success) {
+            return { success: true, user: data.body };
+        } else {
+            return { success: false, error: data.description || 'Unknown error' };
+        }
+    } catch (e) {
+        console.error('[Tachi] Profile fetch error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+// Get user PFP as Data URI (handling redirects and binary data)
+ipcMain.handle('tachi-get-user-pfp', async (event, apiKey, userId) => {
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    try {
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/pfp`;
+        const fetchHeaders = {};
+        if (apiKey) fetchHeaders['Authorization'] = `Bearer ${apiKey}`;
+
+        // Fetch image data as buffer
+        const response = await axios.get(url, {
+            headers: fetchHeaders,
+            responseType: 'arraybuffer'
+        });
+
+        // Get content type (e.g., image/jpeg, image/png)
+        const contentType = response.headers['content-type'] || 'image/png';
+
+        // Convert to Base64 Data URI
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        const dataUrl = `data:${contentType};base64,${base64}`;
+
+        return { success: true, dataUrl };
+
+    } catch (e) {
+        console.error('[Tachi] PFP fetch error:', e);
+        return { success: false, error: e.message };
+    }
+});
+
+// ============================================================================
+// TACHI AUTH POPUP WINDOW
+// ============================================================================
+// Client File Flow URL - opens a window for user to generate their API key
+// Note: You need to register a Tachi API Client and replace the clientId below
+const TACHI_CLIENT_ID = 'CI3ae80802ccac6e1d4cafa80ba74f80bdea4d8f0c'; // Lyruanna client ID
+
+let tachiAuthWindow = null;
+
+ipcMain.handle('open-tachi-auth', async () => {
+    // Close existing window if open
+    if (tachiAuthWindow && !tachiAuthWindow.isDestroyed()) {
+        tachiAuthWindow.focus();
+        return { success: true, message: 'Window already open' };
+    }
+
+    const authUrl = `${TACHI_BASE_URL}/client-file-flow/${TACHI_CLIENT_ID}`;
+
+    tachiAuthWindow = new BrowserWindow({
+        width: 800,
+        height: 700,
+        title: 'Tachi - Get API Key',
+        parent: mainWindow,
+        modal: false,
+        resizable: true,
+        minimizable: true,
+        maximizable: true,
+        autoHideMenuBar: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+
+    tachiAuthWindow.loadURL(authUrl);
+
+    tachiAuthWindow.on('closed', () => {
+        tachiAuthWindow = null;
+    });
+
+    return { success: true };
 });
 
 app.whenReady().then(createWindow);
