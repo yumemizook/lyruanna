@@ -143,6 +143,25 @@ function createWindow() {
     const logicalWidth = Math.round(width / scaleFactor);
     const logicalHeight = Math.round(height / scaleFactor);
 
+    let splash;
+
+    // Create Splash Window
+    splash = new BrowserWindow({
+        width: 600,
+        height: 400,
+        backgroundColor: '#121212',
+        frame: false,
+        alwaysOnTop: true,
+        icon: path.join(__dirname, 'icon/icon.png'),
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+
+    splash.loadFile('splash.html');
+    splash.center();
+
     mainWindow = new BrowserWindow({
         width: logicalWidth,
         height: logicalHeight,
@@ -150,6 +169,7 @@ function createWindow() {
         backgroundColor: '#121212',
         frame: false,
         resizable: false,
+        show: false, // Don't show immediately
         icon: path.join(__dirname, 'icon/icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -159,6 +179,12 @@ function createWindow() {
     });
 
     mainWindow.loadFile('index.html');
+
+    // Wait for main window to be ready before showing it and destroying splash
+    mainWindow.once('ready-to-show', () => {
+        splash.destroy();
+        mainWindow.show();
+    });
 }
 
 // --- IPC HANDLERS ---

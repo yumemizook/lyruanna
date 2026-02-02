@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lyruanna Splash</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;600&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: url('icon/zf3ow8kca1z71.jpg') center center / cover no-repeat;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            color: #ffffff;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 0;
+        }
+
+        .splash-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            animation: fadeIn 0.5s ease-out;
+            z-index: 1;
+            position: relative;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .icon {
+            width: 120px;
+            height: 120px;
+        }
+
+        .title {
+            font-size: 42px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, #a78bfa, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+        }
+
+        .loading {
+            font-size: 14px;
+            font-weight: 300;
+            color: #ccc;
+            letter-spacing: 2px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="splash-container">
+        <img class="icon" src="icon/icon.png" alt="Lyruanna Icon">
+        <div class="title">Lyruanna</div>
+        <div class="loading">Loading...</div>
+    </div>
+</body>
+
+</html>

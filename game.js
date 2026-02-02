@@ -3,6 +3,82 @@
  * ENGINE CORE
  * ============================================================================
  */
+
+// ============================================================================
+// GLOBAL RUNTIME ERROR HANDLER
+// ============================================================================
+let _fatalErrorOccurred = false;
+
+function showFatalError(errorMsg) {
+    if (_fatalErrorOccurred) return; // Prevent multiple overlays
+    _fatalErrorOccurred = true;
+
+    console.error('[FATAL ERROR]', errorMsg);
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'fatal-error-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+        font-family: 'Segoe UI', sans-serif;
+        color: #fff;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        text-align: center;
+        max-width: 600px;
+        padding: 40px;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 48px; color: #ff4444; margin-bottom: 20px;">⚠️</div>
+        <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px; color: #ff6666;">Critical Error Occurred</div>
+        <div style="font-size: 14px; color: #888; margin-bottom: 30px; word-break: break-word; max-height: 150px; overflow-y: auto; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; text-align: left; font-family: monospace;">${errorMsg}</div>
+        <div style="font-size: 16px; color: #aaa;">Press <span style="color: #fff; font-weight: bold;">Escape</span> to exit and contact the developer</div>
+    `;
+
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+
+    // Listen for Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            if (window.electronAPI && window.electronAPI.closeWindow) {
+                window.electronAPI.closeWindow();
+            } else {
+                window.close();
+            }
+        }
+    };
+    window.addEventListener('keydown', handleEscape);
+}
+
+// Global error handlers
+window.onerror = function (message, source, lineno, colno, error) {
+    const errorMsg = `${message}\n\nSource: ${source}\nLine: ${lineno}, Column: ${colno}\n\n${error?.stack || ''}`;
+    showFatalError(errorMsg);
+    return true; // Prevent default browser error handling
+};
+
+window.onunhandledrejection = function (event) {
+    const errorMsg = `Unhandled Promise Rejection:\n\n${event.reason?.stack || event.reason || 'Unknown error'}`;
+    showFatalError(errorMsg);
+};
+
+// ============================================================================
+// AUDIO CONTEXT & INITIALIZATION
+// ============================================================================
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // ----------------------------------------------------------------------------
@@ -4731,6 +4807,17 @@ window.addEventListener('keydown', e => {
         // Escape to go up folder or exit game at root
         if (e.code === 'Escape') {
             e.preventDefault();
+
+            // FATAL ERROR: Bypass hold-to-exit, exit immediately
+            if (_fatalErrorOccurred) {
+                if (IS_DESKTOP && window.electronAPI && window.electronAPI.closeWindow) {
+                    window.electronAPI.closeWindow();
+                } else {
+                    window.close();
+                }
+                return;
+            }
+
             if (STATE.currentFolder !== null) {
                 STATE.currentFolder = null;
                 STATE.selectedIndex = 0;
