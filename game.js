@@ -81,6 +81,21 @@ window.onunhandledrejection = function (event) {
 // ============================================================================
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+// Create Gain Nodes
+const masterGain = audioCtx.createGain();
+const bgmGain = audioCtx.createGain();
+const keyGain = audioCtx.createGain();
+
+// Connect Graph: Source -> [Key/BGM Gain] -> Master Gain -> Destination
+masterGain.connect(audioCtx.destination);
+bgmGain.connect(masterGain);
+keyGain.connect(masterGain);
+
+// Initialize Volumes (Default 0.5 i.e. 50%)
+masterGain.gain.value = 0.5;
+bgmGain.gain.value = 0.5;
+keyGain.gain.value = 0.5;
+
 // ----------------------------------------------------------------------------
 // CONSTANTS & HELPERS
 // ----------------------------------------------------------------------------
@@ -544,7 +559,11 @@ const OPTIONS_KEYS = {
     }
 };
 
-const PACEMAKER_TARGETS = ['OFF', 'AAA', 'AA', 'A', 'NEXT', 'MY BEST'];
+const PACEMAKER_TARGETS = [
+    'OFF', 'MAX', 'MAX-', 'AAA+', 'AAA', 'AAA-',
+    'AA+', 'AA', 'AA-', 'A+', 'A', 'A-', 'NEXT', 'MY BEST',
+    'IR TOP', 'IR AVG', 'IR NEXT', 'RIVAL 1', 'RIVAL 2', 'RIVAL 3'
+];
 
 function rotatePacemakerTarget(delta) {
     const setSize = PACEMAKER_TARGETS.length;
@@ -563,6 +582,272 @@ function rotatePacemakerTarget(delta) {
     updateOptionsUI();
 }
 
+/**
+ * Fetch IR data for current chart (leaderboard, rivals)
+ * Call on chart selection
+ */
+async function fetchIRChartData(chartMd5, chartId, playtype = '7K') {
+    STATE.irChartData = null;
+    STATE.rivalPBs = [null, null, null];
+
+    if (!window.TachiIR || !window.TachiIR.isTachiEnabled()) return;
+
+    try {
+        // Fetch chart leaderboard if we have chartId
+        if (chartId) {
+            const lbResult = await window.TachiIR.fetchChartLeaderboard(chartId, playtype);
+            if (lbResult.success && lbResult.pbs && lbResult.pbs.length > 0) {
+                const scores = lbResult.pbs.map(pb => pb.score).sort((a, b) => b - a);
+                STATE.irChartData = {
+                    top: scores[0] || 0,
+                    avg: Math.floor(scores.reduce((a, b) => a + b, 0) / scores.length),
+                    next: scores.find(s => s > (STATE.score || 0)) || scores[0] || 0,
+                    leaderboard: lbResult.pbs
+                };
+            }
+        }
+
+        // Fetch rival PBs
+        if (STATE.rivalUserIds && STATE.rivalUserIds.length > 0) {
+            const rivalResult = await window.TachiIR.fetchRivalsPBs(STATE.rivalUserIds, chartMd5, playtype);
+            if (rivalResult.success) {
+                STATE.rivalPBs = rivalResult.rivals.map(r => r.pb ? { score: r.pb.score } : null);
+            }
+        }
+    } catch (e) {
+        console.error('[IR] Error fetching chart data:', e);
+    }
+}
+
+/**
+ * Initialize rival input fields from saved options and add save handlers
+ */
+function initRivalInputs() {
+    const inputs = [
+        document.getElementById('adv-rival-1'),
+        document.getElementById('adv-rival-2'),
+        document.getElementById('adv-rival-3')
+    ];
+
+    // Load current values
+    if (STATE.rivalUserIds) {
+        inputs.forEach((inp, i) => {
+            if (inp && STATE.rivalUserIds[i]) {
+                inp.value = STATE.rivalUserIds[i];
+            }
+        });
+    }
+
+    // Save on change
+    inputs.forEach((inp, i) => {
+        if (inp) {
+            inp.addEventListener('change', () => {
+                if (!STATE.rivalUserIds) STATE.rivalUserIds = [];
+                STATE.rivalUserIds[i] = inp.value.trim();
+                _saveOptions();
+            });
+        }
+    });
+}
+
+/**
+ * Initialize Advanced Options Panel interactivity
+ */
+function initAdvancedOptions() {
+    // 1. Misc Options Toggles
+    const setupToggle = (id, prop, values = [true, false]) => {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(id + '-val');
+        if (el && valEl) {
+            el.addEventListener('click', () => {
+                STATE[prop] = !STATE[prop];
+                valEl.textContent = STATE[prop] ? 'ON' : 'OFF';
+                valEl.style.color = STATE[prop] ? 'var(--accent)' : '#0ff';
+                _saveOptions();
+            });
+            // Init view
+            if (typeof STATE[prop] === 'undefined') STATE[prop] = false;
+            valEl.textContent = STATE[prop] ? 'ON' : 'OFF';
+            valEl.style.color = STATE[prop] ? 'var(--accent)' : '#0ff';
+        }
+    };
+
+    setupToggle('adv-lane-cover', 'laneCover');
+    setupToggle('adv-lift-cover', 'liftCover');
+    setupToggle('adv-hidden', 'hidden');
+
+    // 2. Sound Options Sliders
+    const setupSlider = (id, prop) => {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(id + '-val');
+        if (el && valEl) {
+            el.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                STATE[prop] = val;
+                valEl.textContent = val;
+
+                // Apply volume immediately
+                const gainVal = val / 100;
+                if (prop === 'masterVolume') {
+                    if (window.masterGain) window.masterGain.gain.value = gainVal; // Global ref fallback
+                    else masterGain.gain.value = gainVal;
+                } else if (prop === 'keyVolume') {
+                    keyGain.gain.value = gainVal;
+                } else if (prop === 'bgmVolume') {
+                    bgmGain.gain.value = gainVal;
+                }
+            });
+            el.addEventListener('change', _saveOptions); // Save on release
+
+            // Init view
+            if (typeof STATE[prop] === 'undefined') STATE[prop] = 50;
+            el.value = STATE[prop];
+            valEl.textContent = STATE[prop];
+
+            // Init Gain Node from Saved State
+            const initGain = STATE[prop] / 100;
+            if (prop === 'masterVolume') masterGain.gain.value = initGain;
+            else if (prop === 'keyVolume') keyGain.gain.value = initGain;
+            else if (prop === 'bgmVolume') bgmGain.gain.value = initGain;
+        }
+    };
+
+    setupSlider('adv-master-vol', 'masterVolume');
+    setupSlider('adv-key-vol', 'keyVolume');
+    setupSlider('adv-bgy-vol', 'bgmVolume');
+
+    // 3. Right Menu Buttons (GAS, BGA, Auto Judge)
+    const setupButtons = (boxId, prop, refreshUiFunc) => {
+        const box = document.getElementById(boxId);
+        if (!box) return;
+        box.querySelectorAll('.adv-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = btn.dataset.val;
+                if (val) {
+                    STATE[prop] = val === 'ON' ? true : (val === 'OFF' ? false : val);
+                    // Handle special cases
+                    if (prop === 'bgaDisplay') {
+                        if (val === 'ON') STATE[prop] = 'ON'; // Keep string for BGA
+                        else if (val === 'AUTO') STATE[prop] = 'AUTO';
+                        else STATE[prop] = 'OFF';
+                    } else if (prop === 'autoJudgeAdjust') {
+                        STATE[prop] = val === 'ON';
+                    }
+                    _saveOptions();
+                    if (refreshUiFunc) refreshUiFunc();
+                }
+            });
+        });
+    };
+
+    setupButtons('adv-box-gas', 'gaugeAutoShift', updateOptionsUI);
+    setupButtons('adv-box-bga', 'bgaDisplay', updateOptionsUI);
+    setupButtons('adv-box-auto-judge', 'autoJudgeAdjust', updateOptionsUI);
+
+    // GAS Limit Cycler
+    const gasLimitEl = document.getElementById('adv-gas-limit');
+    if (gasLimitEl) {
+        gasLimitEl.addEventListener('click', () => {
+            const modes = ['ASSIST', 'EASY', 'GROOVE'];
+            const currentIdx = modes.indexOf(STATE.gasMinGauge || 'ASSIST');
+            const nextIdx = (currentIdx + 1) % modes.length;
+            STATE.gasMinGauge = modes[nextIdx];
+
+            // Force immediate visual update
+            const labels = { 'ASSIST': 'ASSIST EASY', 'EASY': 'EASY', 'GROOVE': 'GROOVE' };
+            const colors = { 'ASSIST': '#da70d6', 'EASY': '#00ff00', 'GROOVE': '#ffff00' }; // Orchid, Green, Yellow
+            const gasValEl = document.getElementById('adv-gas-limit-val');
+            if (gasValEl) {
+                gasValEl.textContent = labels[STATE.gasMinGauge] || STATE.gasMinGauge;
+                gasValEl.style.color = colors[STATE.gasMinGauge] || '#fff';
+            }
+
+            _saveOptions();
+            updateOptionsUI();
+        });
+    }
+
+    // Timing Reset
+    const timingBtn = document.getElementById('adv-timing-label');
+    if (timingBtn) {
+        timingBtn.addEventListener('click', () => {
+            STATE.judgeOffset = 0;
+            _saveOptions();
+            updateOptionsUI();
+        });
+    }
+}
+
+/**
+ * Updates the Advanced Options UI specifically
+ */
+function updateAdvancedOptionsUI() {
+    // 1. GAS Limit
+    const gasLimitValEl = document.getElementById('adv-gas-limit-val');
+    if (gasLimitValEl) {
+        const labels = { 'ASSIST': 'ASSIST EASY', 'EASY': 'EASY', 'GROOVE': 'GROOVE' };
+        const colors = { 'ASSIST': '#da70d6', 'EASY': '#00ff00', 'GROOVE': '#ffff00' };
+        const val = STATE.gasMinGauge || 'ASSIST';
+        gasLimitValEl.textContent = labels[val] || val;
+        gasLimitValEl.style.color = colors[val] || '#fff';
+    }
+
+    // 2. Misc Toggles Visuals
+    const updateToggle = (id, val) => {
+        const el = document.getElementById(id + '-val');
+        if (el) {
+            el.textContent = val ? 'ON' : 'OFF';
+            el.style.color = val ? 'var(--accent)' : '#0ff';
+        }
+    };
+    updateToggle('adv-lane-cover', STATE.laneCover);
+    updateToggle('adv-lift-cover', STATE.liftCover);
+    updateToggle('adv-hidden', STATE.hidden);
+
+    // 3. Sound Sliders
+    const updateSlider = (id, val) => {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(id + '-val');
+        if (el && document.activeElement !== el) el.value = val;
+        if (valEl) valEl.textContent = val;
+    };
+    updateSlider('adv-master-vol', STATE.masterVolume || 50);
+    updateSlider('adv-key-vol', STATE.keyVolume || 50);
+    updateSlider('adv-bgy-vol', STATE.bgmVolume || 50);
+
+    // 4. Option Box Buttons (Active State)
+    const updateBox = (boxId, prop) => {
+        const box = document.getElementById(boxId);
+        if (!box) return;
+        const val = STATE[prop];
+        box.querySelectorAll('.adv-btn').forEach(btn => {
+            let active = false;
+            if (prop === 'autoJudgeAdjust') active = (btn.dataset.val === 'ON' && val === true) || (btn.dataset.val === 'OFF' && val === false);
+            else if (btn.dataset.val === val) active = true;
+
+            if (active) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    };
+
+    updateBox('adv-box-gas', 'gaugeAutoShift');
+    updateBox('adv-box-bga', 'bgaDisplay');
+    updateBox('adv-box-auto-judge', 'autoJudgeAdjust');
+
+    // 5. Notes Display Time
+    const gnValEl = document.getElementById('adv-green-val');
+    const durValEl = document.getElementById('adv-duration-val');
+    if (gnValEl) gnValEl.textContent = (STATE.greenNumber || 300).toFixed(0);
+    if (durValEl) durValEl.textContent = (STATE.greenNumber || 300).toFixed(0);
+
+    // 6. Timing
+    const timingValEl = document.getElementById('adv-timing-val');
+    if (timingValEl) {
+        const t = STATE.judgeOffset || 0;
+        timingValEl.textContent = (t > 0 ? '+' : '') + t;
+    }
+}
+
 function updatePacemaker(now) {
     if (STATE.pacemakerTarget === 'OFF' || !STATE.loadedSong) {
         ui.pacemaker.style.display = 'none';
@@ -579,17 +864,39 @@ function updatePacemaker(now) {
     let targetRatio = 0;
     let currentLabel = STATE.pacemakerTarget;
 
-    if (STATE.pacemakerTarget === 'AAA') targetRatio = 8 / 9;
-    else if (STATE.pacemakerTarget === 'AA') targetRatio = 7 / 9;
-    else if (STATE.pacemakerTarget === 'A') targetRatio = 6 / 9;
-    else if (STATE.pacemakerTarget === 'MY BEST') {
+    // 27th-based sub-rank ratios for pacemaker targets
+    const PACEMAKER_RATIOS = {
+        'MAX': 27 / 27,   // 100%
+        'MAX-': 26 / 27,  // ~96.30%
+        'AAA+': 25 / 27,  // ~92.59%
+        'AAA': 24 / 27,   // ~88.89%
+        'AAA-': 23 / 27,  // ~85.19%
+        'AA+': 22 / 27,   // ~81.48%
+        'AA': 21 / 27,    // ~77.78%
+        'AA-': 20 / 27,   // ~74.07%
+        'A+': 19 / 27,    // ~70.37%
+        'A': 18 / 27,     // ~66.67%
+        'A-': 17 / 27     // ~62.96%
+    };
+
+    if (PACEMAKER_RATIOS[STATE.pacemakerTarget] !== undefined) {
+        targetRatio = PACEMAKER_RATIOS[STATE.pacemakerTarget];
+    } else if (STATE.pacemakerTarget === 'MY BEST') {
         targetRatio = bestExScore / Math.max(1, maxEx);
-    }
-    else if (STATE.pacemakerTarget === 'NEXT') {
+    } else if (STATE.pacemakerTarget === 'NEXT') {
+        // Use 27th-based ranks for NEXT calculation
         const ranks = [
-            { name: 'AAA', ratio: 8 / 9 },
-            { name: 'AA', ratio: 7 / 9 },
-            { name: 'A', ratio: 6 / 9 },
+            { name: 'MAX', ratio: 27 / 27 },
+            { name: 'MAX-', ratio: 26 / 27 },
+            { name: 'AAA+', ratio: 25 / 27 },
+            { name: 'AAA', ratio: 24 / 27 },
+            { name: 'AAA-', ratio: 23 / 27 },
+            { name: 'AA+', ratio: 22 / 27 },
+            { name: 'AA', ratio: 21 / 27 },
+            { name: 'AA-', ratio: 20 / 27 },
+            { name: 'A+', ratio: 19 / 27 },
+            { name: 'A', ratio: 18 / 27 },
+            { name: 'A-', ratio: 17 / 27 },
             { name: 'B', ratio: 5 / 9 },
             { name: 'C', ratio: 4 / 9 },
             { name: 'D', ratio: 3 / 9 },
@@ -599,12 +906,52 @@ function updatePacemaker(now) {
         if (!next) next = { name: 'MAX', ratio: 1.0 };
         targetRatio = next.ratio;
         currentLabel = next.name;
+    } else if (STATE.pacemakerTarget === 'IR TOP') {
+        // Use top score from IR leaderboard
+        if (STATE.irChartData && STATE.irChartData.top) {
+            targetRatio = STATE.irChartData.top / Math.max(1, maxEx);
+            currentLabel = 'IR TOP';
+        } else {
+            targetRatio = 24 / 27; // Fallback to AAA
+            currentLabel = 'IR TOP (N/A)';
+        }
+    } else if (STATE.pacemakerTarget === 'IR AVG') {
+        // Use average score from IR leaderboard
+        if (STATE.irChartData && STATE.irChartData.avg) {
+            targetRatio = STATE.irChartData.avg / Math.max(1, maxEx);
+            currentLabel = 'IR AVG';
+        } else {
+            targetRatio = 21 / 27; // Fallback to AA
+            currentLabel = 'IR AVG (N/A)';
+        }
+    } else if (STATE.pacemakerTarget === 'IR NEXT') {
+        // Use next rank on IR leaderboard above player
+        if (STATE.irChartData && STATE.irChartData.next) {
+            targetRatio = STATE.irChartData.next / Math.max(1, maxEx);
+            currentLabel = 'IR NEXT';
+        } else {
+            targetRatio = 24 / 27; // Fallback to AAA
+            currentLabel = 'IR NEXT (N/A)';
+        }
+    } else if (STATE.pacemakerTarget.startsWith('RIVAL')) {
+        // Get rival number (1, 2, or 3)
+        const rivalNum = parseInt(STATE.pacemakerTarget.split(' ')[1]) - 1;
+        const rivalPB = STATE.rivalPBs && STATE.rivalPBs[rivalNum];
+        if (rivalPB && rivalPB.score) {
+            targetRatio = rivalPB.score / Math.max(1, maxEx);
+            currentLabel = 'RIVAL ' + (rivalNum + 1);
+        } else {
+            targetRatio = 21 / 27; // Fallback to AA
+            currentLabel = 'RIVAL ' + (rivalNum + 1) + ' (N/A)';
+        }
     }
 
     // Estimate how many notes should have been passed by 'now'
     const notesPassed = STATE.loadedSong.notes.filter(n => n.time <= now).length;
     const noteProgress = notesPassed / Math.max(1, totalNotes);
 
+    // Cumulative scores at current point
+    const maxScoreAtNow = notesPassed * 2; // Max possible score at this point
     const targetScoreCurrent = Math.floor(maxEx * targetRatio * noteProgress);
     const bestScoreCurrent = Math.floor(bestExScore * noteProgress);
 
@@ -616,9 +963,12 @@ function updatePacemaker(now) {
     ui.paceScoreTarget.textContent = targetScoreCurrent;
     ui.paceTargetName.textContent = currentLabel;
 
-    ui.paceBarYou.style.height = ((STATE.score / Math.max(1, maxEx)) * 100) + '%';
-    ui.paceBarTarget.style.height = (targetRatio * noteProgress * 100) + '%';
-    ui.paceBarBest.style.height = (bestExScore / Math.max(1, maxEx) * 100) + '%';
+    // Bar heights: show cumulative scores relative to max possible at current point
+    // This makes bars grow as notes pass, showing real-time progress
+    const barMax = Math.max(1, maxScoreAtNow);
+    ui.paceBarYou.style.height = ((STATE.score / barMax) * 100) + '%';
+    ui.paceBarTarget.style.height = ((targetScoreCurrent / barMax) * 100) + '%';
+    ui.paceBarBest.style.height = ((bestScoreCurrent / barMax) * 100) + '%';
 
     ui.paceDiffTarget.textContent = (diffTarget >= 0 ? '+' : '') + diffTarget;
     ui.paceDiffTarget.className = 'val ' + (diffTarget >= 0 ? 'plus' : 'minus');
@@ -626,6 +976,13 @@ function updatePacemaker(now) {
     ui.paceDiffBest.className = 'val ' + (diffBest >= 0 ? 'plus' : 'minus');
 
     ui.paceGhostLabel.textContent = 'vs ' + currentLabel;
+
+    // Update inline ghost indicator (above judgement)
+    if (ui.paceGhostInline) {
+        ui.paceGhostInline.textContent = (diffTarget >= 0 ? '+' : '') + diffTarget;
+        ui.paceGhostInline.className = diffTarget >= 0 ? 'plus' : 'minus';
+        ui.paceGhostInline.style.display = STATE.pacemakerTarget !== 'OFF' ? 'block' : 'none';
+    }
 }
 
 const ACTIONS = {
@@ -749,7 +1106,21 @@ function _saveOptions() {
             gaugeAutoShift: STATE.gaugeAutoShift,
             gasMinGauge: STATE.gasMinGauge,
             judgeOffset: STATE.judgeOffset,
-            autoOffset: STATE.autoOffset
+            autoOffset: STATE.autoOffset,
+            greenFix: STATE.greenFix,
+            targetGreenNumber: STATE.targetGreenNumber, // Persist constant GN preference
+            bgaDisplay: STATE.bgaDisplay,
+            autoJudgeAdjust: STATE.autoJudgeAdjust,
+            // Misc Options
+            laneCover: STATE.laneCover,
+            liftCover: STATE.liftCover,
+            hidden: STATE.hidden,
+            // Sound Options
+            masterVolume: STATE.masterVolume,
+            keyVolume: STATE.keyVolume,
+            bgmVolume: STATE.bgmVolume,
+            // Rivals
+            rivalUserIds: STATE.rivalUserIds || []
         }
     };
 
@@ -769,10 +1140,8 @@ function showAdvancedPanel() {
         modal.style.display = 'flex';
         modal.classList.add('open');
     }
-    // Update Green/White numbers
-    updateGreenWhiteNumbers();
-    // Initialize wheels for advanced options
-    initAdvancedOptionsWheels();
+    // Update UI to reflect current STATE
+    updateAdvancedOptionsUI();
     playSystemSound('o-open');
 }
 
@@ -785,46 +1154,131 @@ function hideAdvancedPanel() {
     savePlayerOptions();
 }
 
-function initAdvancedOptionsWheels() {
-    // Helper to render a wheel with items
-    const renderWheel = (wheelId, items, currentVal) => {
-        const wheel = document.querySelector(`#modal-advanced #${wheelId}`);
-        if (!wheel) return;
-        const strip = wheel.querySelector('.option-wheel-strip');
-        if (!strip) return;
-
-        strip.innerHTML = items.map(item => {
-            const isActive = item.val === currentVal;
-            return `<div class="option-wheel-item${isActive ? ' active' : ''}">${item.lbl}</div>`;
-        }).join('');
-    };
-
-    // GAS wheel
-    const gasConfig = OPTIONS_KEYS['wheel-gas'];
-    if (gasConfig) {
-        renderWheel('wheel-gas', gasConfig.items, STATE[gasConfig.key]);
+function updateAdvancedOptionsUI() {
+    // Update Gauge Auto Shift buttons
+    const gasBox = document.getElementById('adv-box-gas');
+    if (gasBox) {
+        gasBox.querySelectorAll('.adv-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === STATE.gaugeAutoShift);
+        });
     }
 
-    // GAS Min wheel
-    const gasMinConfig = OPTIONS_KEYS['wheel-gas-min'];
-    if (gasMinConfig) {
-        renderWheel('wheel-gas-min', gasMinConfig.items, STATE[gasMinConfig.key]);
+    // Update Green Number display
+    const bpm = STATE.loadedSong?.bpm || 130;
+    let greenNumber;
+    if (STATE.greenFix && STATE.greenFix !== 'OFF') {
+        greenNumber = parseInt(STATE.greenFix) || 300;
+    } else {
+        greenNumber = Math.round(60000 / (bpm * STATE.speed));
+    }
+    const durationVal = document.getElementById('adv-duration-val');
+    const greenVal = document.getElementById('adv-green-val');
+    if (durationVal) durationVal.textContent = Math.round(greenNumber * 1.67); // Approximate ms
+    if (greenVal) greenVal.textContent = greenNumber;
+
+    // Update BGA buttons
+    const bgaBox = document.getElementById('adv-box-bga');
+    if (bgaBox) {
+        const bgaVal = STATE.bgaDisplay || 'AUTO';
+        bgaBox.querySelectorAll('.adv-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === bgaVal);
+        });
     }
 
-    // Auto Offset wheel
-    const autoOffsetConfig = OPTIONS_KEYS['wheel-auto-offset'];
-    if (autoOffsetConfig) {
-        renderWheel('wheel-auto-offset', autoOffsetConfig.items, STATE[autoOffsetConfig.key]);
+    // Update Judge Auto Adjust buttons
+    const autoJudgeBox = document.getElementById('adv-box-auto-judge');
+    if (autoJudgeBox) {
+        const autoVal = STATE.autoJudgeAdjust ? 'ON' : 'OFF';
+        autoJudgeBox.querySelectorAll('.adv-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === autoVal);
+        });
     }
 
-    // Timing offset wheel - numeric display
-    const offsetWheel = document.querySelector('#modal-advanced #wheel-offset');
-    if (offsetWheel) {
-        const strip = offsetWheel.querySelector('.option-wheel-strip');
-        if (strip) {
-            strip.innerHTML = `<div class="option-wheel-item active">${STATE.judgeOffset >= 0 ? '+' : ''}${STATE.judgeOffset}ms</div>`;
+    // Update Judge Timing display
+    const timingVal = document.getElementById('adv-timing-val');
+    if (timingVal) {
+        const offset = STATE.judgeOffset || 0;
+        timingVal.textContent = (offset >= 0 ? '+' : '') + offset;
+    }
+}
+
+// Handle Advanced Panel key inputs
+function handleAdvancedPanelInput(action) {
+    let changed = false;
+
+    // Key 1: BGA Display (cycle ON -> AUTO -> OFF)
+    if (action === ACTIONS.P1_1) {
+        const bgaModes = ['ON', 'AUTO', 'OFF'];
+        let idx = bgaModes.indexOf(STATE.bgaDisplay || 'AUTO');
+        STATE.bgaDisplay = bgaModes[(idx + 1) % bgaModes.length];
+        changed = true;
+    }
+
+    // Key 2: Gauge Auto Shift (cycle)
+    if (action === ACTIONS.P1_2) {
+        const gasModes = ['OFF', 'CONTINUE', 'HARD_TO_GROOVE', 'BEST_CLEAR', 'SELECT_TO_UNDER'];
+        let idx = gasModes.indexOf(STATE.gaugeAutoShift || 'OFF');
+        STATE.gaugeAutoShift = gasModes[(idx + 1) % gasModes.length];
+        changed = true;
+    }
+
+    // Key 3: Judge Auto Adjust (toggle)
+    if (action === ACTIONS.P1_3) {
+        STATE.autoJudgeAdjust = !STATE.autoJudgeAdjust;
+        changed = true;
+    }
+
+    // Key 4: Decrease Green Number (Notes Display Time)
+    if (action === ACTIONS.P1_4) {
+        if (!STATE.greenFix || STATE.greenFix === 'OFF') {
+            const bpm = STATE.loadedSong?.bpm || 130;
+            // Use existing target or derive from current
+            const currentGN = STATE.targetGreenNumber || Math.round(60000 / (bpm * STATE.speed));
+            const newGN = Math.max(10, currentGN - 1); // Decrease GN
+
+            STATE.targetGreenNumber = newGN; // SAVE PREFERENCE
+            STATE.speed = 60000 / (bpm * newGN);
+            STATE.speed = Math.max(0.05, Math.min(10.0, STATE.speed)); // Clamp speed standard
+            changed = true;
         }
     }
+
+    // Key 6: Increase Green Number (Notes Display Time)
+    if (action === ACTIONS.P1_6) {
+        if (!STATE.greenFix || STATE.greenFix === 'OFF') {
+            const bpm = STATE.loadedSong?.bpm || 130;
+            const currentGN = STATE.targetGreenNumber || Math.round(60000 / (bpm * STATE.speed));
+            const newGN = Math.min(2000, currentGN + 1); // Increase GN
+
+            STATE.targetGreenNumber = newGN; // SAVE PREFERENCE
+            STATE.speed = 60000 / (bpm * newGN);
+            STATE.speed = Math.max(0.05, Math.min(10.0, STATE.speed)); // Clamp speed standard
+            changed = true;
+        }
+    }
+
+    // Key 5: Decrease Judge Timing (earlier, shift to negative)
+    if (action === ACTIONS.P1_5) {
+        STATE.judgeOffset = Math.max(-99, (STATE.judgeOffset || 0) - 1);
+        changed = true;
+    }
+
+    // Key 7: Increase Judge Timing (later, shift to positive)
+    if (action === ACTIONS.P1_7) {
+        STATE.judgeOffset = Math.min(99, (STATE.judgeOffset || 0) + 1);
+        changed = true;
+    }
+
+    if (changed) {
+        playSystemSound('o-change');
+        updateAdvancedOptionsUI();
+    }
+}
+
+// Deprecated: kept for compatibility but no longer used
+function initAdvancedOptionsWheels() {
+    // Now handled by updateAdvancedOptionsUI
+    updateAdvancedOptionsUI();
 }
 
 // ========== LANE COVER HUD (Green/White Numbers) ==========
@@ -851,7 +1305,16 @@ function hideLaneCoverInfo() {
 
 function updateGreenWhiteNumbers() {
     const bpm = STATE.loadedSong?.bpm || 130;
-    const greenNumber = Math.round(60000 / (bpm * STATE.speed));
+
+    // Green Number: calculated from speed/BPM, or fixed value if greenFix is set
+    let greenNumber;
+    if (STATE.greenFix && STATE.greenFix !== 'OFF') {
+        greenNumber = parseInt(STATE.greenFix) || 300;
+    } else {
+        greenNumber = Math.round(60000 / (bpm * STATE.speed));
+    }
+
+    // White Number: SUDDEN+ × 10
     const whiteNumber = Math.round(STATE.suddenPlus * 10);
 
     // Update Advanced Panel displays
@@ -1366,6 +1829,7 @@ const ui = {
     // Centered Ghost Display
     paceGhostDisplay: document.getElementById('ghost-display'),
     paceGhostVal: document.getElementById('ghost-val-target'),
+    paceGhostInline: document.getElementById('pace-ghost-inline'),
 
     // Decide Screen
     screenDecide: document.getElementById('screen-decide'),
@@ -2598,7 +3062,11 @@ async function updateInfoCard(item) {
 }
 
 function updateOptionsUI() {
+    // Update Advanced Options logic if panel is open OR options menu is open (shared state logic sometimes?)
+    if (STATE.isAdvancedPanelOpen) updateAdvancedOptionsUI();
+
     if (!STATE.isOptionsOpen) return;
+    updateAdvancedOptionsUI(); // Redundant but safe if both true, or just ensure it runs.
 
     const hsValEl = document.getElementById('opt-hispeed-val');
     if (hsValEl) hsValEl.textContent = STATE.speed.toFixed(1);
@@ -2905,6 +3373,14 @@ async function loadChart(idx, el, focusOnly = false) {
         STATE.loadedSong.keyMode = STATE.baseSongData.keyMode;
         // Copy md5 from library entry for Tachi score submission
         STATE.loadedSong.md5 = c.md5;
+
+        // Auto-Adjust Hi-Speed for Constant Green Number (if feature active via targetGreenNumber)
+        if ((!STATE.greenFix || STATE.greenFix === 'OFF') && STATE.targetGreenNumber) {
+            const bpm = STATE.loadedSong.bpm || 130;
+            let newSpeed = 60000 / (bpm * STATE.targetGreenNumber);
+            newSpeed = Math.max(0.05, Math.min(10.0, newSpeed));
+            STATE.speed = newSpeed;
+        }
 
         STATE.currentFileRef = c.fileRef;
         STATE.replayFileRef = c.fileRef;
@@ -3493,11 +3969,15 @@ function updateTallyDisplay() {
     ui.tallyCb.textContent = STATE.comboBreaks;
 }
 
-function playSound(id) {
+function playSound(id, type = 'key') {
     if (STATE.audioBuffers[id]) {
         const s = audioCtx.createBufferSource();
         s.buffer = STATE.audioBuffers[id];
-        s.connect(audioCtx.destination);
+
+        // Connect to appropriate gain node
+        if (type === 'bgm') s.connect(bgmGain);
+        else s.connect(keyGain);
+
         s.start(0);
 
         // Track source for stopping
@@ -3522,7 +4002,10 @@ function playSystemSound(id, loop = false) {
     if (STATE.systemAudio[id]) {
         const s = audioCtx.createBufferSource();
         s.buffer = STATE.systemAudio[id];
-        s.connect(audioCtx.destination);
+
+        // System sounds use BGM gain
+        s.connect(bgmGain);
+
         s.loop = loop;
         s.start(0);
         return s;
@@ -3632,17 +4115,45 @@ function updatePacemaker(now) {
         const entry = _scoresDb[fileRef];
         if (entry) targetScore = entry.exScore || 0;
     } else if (pacemakerTarget === 'NEXT') {
-        // Dynamic next rank
-        const percent = (STATE.score / Math.max(1, maxEx)) * 100;
-        const next = getNextRankInfo(percent, maxEx);
-        targetScore = next ? (STATE.score + next.diff) : maxEx;
+        // Dynamic next rank using 27th-based sub-ranks
+        const ranks = [
+            { name: 'MAX', ratio: 27 / 27 },
+            { name: 'MAX-', ratio: 26 / 27 },
+            { name: 'AAA+', ratio: 25 / 27 },
+            { name: 'AAA', ratio: 24 / 27 },
+            { name: 'AAA-', ratio: 23 / 27 },
+            { name: 'AA+', ratio: 22 / 27 },
+            { name: 'AA', ratio: 21 / 27 },
+            { name: 'AA-', ratio: 20 / 27 },
+            { name: 'A+', ratio: 19 / 27 },
+            { name: 'A', ratio: 18 / 27 },
+            { name: 'A-', ratio: 17 / 27 },
+            { name: 'B', ratio: 5 / 9 },
+            { name: 'C', ratio: 4 / 9 },
+            { name: 'D', ratio: 3 / 9 },
+            { name: 'E', ratio: 2 / 9 }
+        ];
+        const currentRatio = STATE.score / Math.max(1, maxEx);
+        let next = ranks.find(r => currentRatio < r.ratio);
+        if (!next) next = { name: 'MAX', ratio: 1.0 };
+        targetScore = Math.ceil(maxEx * next.ratio);
     } else {
-        // Fixed Ranks
+        // Fixed Ranks (27th-based sub-ranks for pacemaker)
         const rates = {
-            'AAA': 8 / 9, 'AA': 7 / 9, 'A': 6 / 9, 'B': 5 / 9, 'C': 4 / 9,
-            'D': 3 / 9, 'E': 2 / 9, 'F': 0
+            'MAX': 27 / 27,   // 100%
+            'MAX-': 26 / 27,  // ~96.30%
+            'AAA+': 25 / 27,  // ~92.59%
+            'AAA': 24 / 27,   // ~88.89%
+            'AAA-': 23 / 27,  // ~85.19%
+            'AA+': 22 / 27,   // ~81.48%
+            'AA': 21 / 27,    // ~77.78%
+            'AA-': 20 / 27,   // ~74.07%
+            'A+': 19 / 27,    // ~70.37%
+            'A': 18 / 27,     // ~66.67%
+            'A-': 17 / 27,    // ~62.96%
+            'B': 5 / 9, 'C': 4 / 9, 'D': 3 / 9, 'E': 2 / 9, 'F': 0
         };
-        const ratio = rates[pacemakerTarget] || (8 / 9);
+        const ratio = rates[pacemakerTarget] !== undefined ? rates[pacemakerTarget] : (24 / 27);
         targetScore = Math.ceil(maxEx * ratio);
     }
 
@@ -3734,7 +4245,7 @@ function loop() {
 
     const bgm = STATE.loadedSong.bgm;
     while (STATE.bgmCursor < bgm.length && bgm[STATE.bgmCursor].time <= now) {
-        playSound(bgm[STATE.bgmCursor].id);
+        playSound(bgm[STATE.bgmCursor].id, 'bgm');
         STATE.bgmCursor++;
     }
 
@@ -3784,7 +4295,7 @@ function loop() {
         // Autoplay
         if (STATE.autoplay && diff >= 0) {
             n.hit = true;
-            playSound(n.id);
+            playSound(n.id, 'key');
             handleJudgment('PGREAT', 0);
             if (i === STATE.logicCursor) STATE.logicCursor++;
 
@@ -3887,77 +4398,164 @@ function handleJudgment(result, diffMs, isEmptyPoor = false) {
         STATE.currentMaxScore += 2;
     }
 
-    // Gauge Logic
-    let damage = 0;
-    let recover = 0;
-
-    if (STATE.gaugeType === 'EXHARD') {
-        // EX-HARD
-        if (isEmptyPoor) damage = 8.0;
-        else if (result === 'PGREAT') recover = 0.1;
-        else if (result === 'GREAT') recover = 0.1;
-        else if (result === 'GOOD') recover = 0.1;
-        else if (result === 'BAD') damage = 10.0;
-        else if (result === 'POOR') damage = 18.0;
-
-        STATE.gauge = STATE.gauge + recover - damage;
+    // Universal Gauge Calculation
+    if (!STATE.gaugeValues) {
+        // Fallback init if missing
+        STATE.gaugeValues = { 'HAZARD': 100, 'EXHARD': 100, 'HARD': 100, 'GROOVE': 20, 'EASY': 20, 'ASSIST': 20 };
+        STATE.gauge = STATE.gaugeValues[STATE.gaugeType] || 20;
     }
-    else if (STATE.gaugeType === 'HARD') {
-        // HARD
-        if (isEmptyPoor) damage = 2.0;
-        else if (result === 'PGREAT') recover = 0.1;
-        else if (result === 'GREAT') recover = 0.1;
-        else if (result === 'GOOD') recover = 0.1;
-        else if (result === 'BAD') damage = 6.0;
-        else if (result === 'POOR') damage = 10.0;
 
-        // LR2 Hard Gauge Adjustment
-        if (damage > 0 && STATE.gauge <= 30) {
-            damage *= 0.6;
+    const updateSingleGauge = (type, val, res, empty) => {
+        let d = 0, r = 0;
+        if (type === 'EXHARD') {
+            if (empty) d = 8.0;
+            else if (res === 'PGREAT' || res === 'GREAT' || res === 'GOOD') r = 0.1;
+            else if (res === 'BAD') d = 10.0;
+            else if (res === 'POOR') d = 18.0;
+        } else if (type === 'HARD' || type === 'HAZARD') {
+            if (empty) d = 2.0;
+            else if (res === 'PGREAT' || res === 'GREAT' || res === 'GOOD') r = 0.1;
+            else if (res === 'BAD') d = 6.0;
+            else if (res === 'POOR') d = 10.0;
+            if (d > 0 && val <= 30) d *= 0.6; // 30% soft buffer
+        } else if (type === 'EASY' || type === 'ASSIST') {
+            // Easy/Assist share rates (Validation: Assist usually 60% clear, same rates? Yes)
+            if (empty) d = 1.6;
+            else if (res === 'PGREAT' || res === 'GREAT') r = STATE.gaugeTick;
+            else if (res === 'GOOD') r = STATE.gaugeTick / 2;
+            else if (res === 'BAD') d = 1.6;
+            else if (res === 'POOR') d = 4.8;
+        } else { // GROOVE
+            if (empty) d = 2.0;
+            else if (res === 'PGREAT' || res === 'GREAT') r = STATE.gaugeTick;
+            else if (res === 'GOOD') r = STATE.gaugeTick / 2;
+            else if (res === 'BAD') d = 2.0;
+            else if (res === 'POOR') d = 6.0;
         }
 
-        STATE.gauge = STATE.gauge + recover - damage;
-    }
-    else if (STATE.gaugeType === 'EASY') {
-        // EASY
-        if (isEmptyPoor) damage = 1.6;
-        else if (result === 'PGREAT' || result === 'GREAT') recover = STATE.gaugeTick;
-        else if (result === 'GOOD') recover = (STATE.gaugeTick / 2);
-        else if (result === 'BAD') damage = 1.6;
-        else if (result === 'POOR') damage = 4.8;
+        // Apply
+        let newVal = val + r - d;
+        // Clamp
+        if (newVal > 100) newVal = 100;
 
-        STATE.gauge = STATE.gauge + recover - damage;
-    }
-    else {
-        // GROOVE (Normal)
-        if (isEmptyPoor) damage = 2.0;
-        else if (result === 'PGREAT' || result === 'GREAT') recover = STATE.gaugeTick;
-        else if (result === 'GOOD') recover = (STATE.gaugeTick / 2);
-        else if (result === 'BAD') damage = 2.0;
-        else if (result === 'POOR') damage = 6.0;
+        // Min Clamp depends on type
+        if (['HARD', 'EXHARD', 'HAZARD'].includes(type)) {
+            // Allow drop to 0 (death)
+            if (newVal < 0) newVal = 0;
+        } else {
+            if (newVal < 2) newVal = 2; // Standard min for light gauges
+        }
+        return newVal;
+    };
 
-        STATE.gauge = STATE.gauge + recover - damage;
+    // Update ALL gauges
+    for (let t in STATE.gaugeValues) {
+        STATE.gaugeValues[t] = updateSingleGauge(t, STATE.gaugeValues[t], result, isEmptyPoor);
     }
 
-    // Fail Check for Hard/ExHard/Hazard
-    if ((STATE.gaugeType === 'HARD' || STATE.gaugeType === 'EXHARD') && STATE.gauge <= 0) {
-        STATE.gauge = 0;
-        triggerHardFail();
-        return;
-    }
-
-    // Hazard mode: combo break fails (except empty POORs)
+    // Check Fail Condition for Hazard: Combo Break fails (except empty poor)
     if (STATE.gaugeType === 'HAZARD' && !isEmptyPoor && (result === 'BAD' || result === 'POOR')) {
-        STATE.gauge = 0;
-        triggerHardFail();
-        return;
+        STATE.gaugeValues['HAZARD'] = 0; // Instance Death
     }
 
-    // Clamp
-    if (STATE.gauge > 100) STATE.gauge = 100;
-    if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD' && STATE.gauge < 2) STATE.gauge = 2;
+    // Update Current Display Gauge
+    STATE.gauge = STATE.gaugeValues[STATE.gaugeType];
 
-    // BATCHED: Mark HUD dirty instead of updating immediately
+    // --- GAS LOGIC ---
+    if (STATE.gaugeAutoShift !== 'NONE') {
+        const order = ['HAZARD', 'EXHARD', 'HARD', 'GROOVE', 'EASY', 'ASSIST'];
+        const minIdx = order.indexOf(STATE.gasMinGauge); // Limit index
+
+        // Helper: Is type allowed? (Must be lower index = harder, or higher index = easier?)
+        // order is Descending Difficulty.
+        // gasMinGauge = 'HARD'.
+        // allowed = Hazard, ExHard, Hard. (Indices <= minIdx)
+        // Wait, typical GAS limit: "Don't go below X".
+        // So if limit is HARD, we can be on ExHard. Can we drop to Groove? No.
+        // So valid indices are 0 to minIdx.
+
+        const isAllowed = (t) => {
+            const idx = order.indexOf(t);
+            return idx <= minIdx;
+        };
+
+        // 1. Demotion Check
+        let demote = false;
+        if (['HARD', 'EXHARD', 'HAZARD'].includes(STATE.gaugeType)) {
+            // Survival Fail
+            if (STATE.gauge <= 0) demote = true;
+        } else {
+            // Light Gauge Threshold (< 80%)
+            if (STATE.gauge < 80) demote = true;
+        }
+
+        if (demote) {
+            // Try to shift down
+            const curIdx = order.indexOf(STATE.gaugeType);
+            // Look for next valid gauge
+            for (let i = curIdx + 1; i <= minIdx; i++) {
+                const nextType = order[i];
+                // Check if alive/valid
+                // For Survival types, must be > 0. For Light, always valid (starts > 0).
+                // Actually light starts at 20, updates concurrently.
+                if (['HARD', 'EXHARD', 'HAZARD'].includes(nextType)) {
+                    if (STATE.gaugeValues[nextType] > 0) {
+                        STATE.gaugeType = nextType;
+                        STATE.gauge = STATE.gaugeValues[nextType];
+                        // playSystemSound('access');
+                        markHudDirty();
+                        demote = false; // Handled
+                        break;
+                    }
+                } else {
+                    // Light gauge is always a valid fallback?
+                    // Logic says: if light < 80, shift down.
+                    // But if NEXT is also < 80?
+                    // We just shift. It's better than failing.
+                    STATE.gaugeType = nextType;
+                    STATE.gauge = STATE.gaugeValues[nextType];
+                    // playSystemSound('access');
+                    markHudDirty();
+                    demote = false;
+                    break;
+                }
+            }
+
+            // If still demote needed (no fallback found), and it was a Survival Fail -> Real Fail
+            if (demote && ['HARD', 'EXHARD', 'HAZARD'].includes(STATE.gaugeType)) {
+                triggerHardFail();
+                return;
+            }
+        }
+
+        // 2. Promotion Check (Light Gauges Promoted to Higher Light Gauges)
+        if (['ASSIST', 'EASY'].includes(STATE.gaugeType)) {
+            const nextMap = { 'ASSIST': 'EASY', 'EASY': 'GROOVE' };
+            const nextType = nextMap[STATE.gaugeType];
+
+            // Promote if next gauge >= 80% (Clear Threshold)
+            // Note: Groove required 80%, Easy 80%, Assist 60%?
+            // User said: "Assist Gauge only requires 60% to clear"
+            // But strict promotion usually requires satisfying the HIGHER requirement.
+            // "if the next gauge reaches 80%, promote".
+
+            if (STATE.gaugeValues[nextType] >= 80) {
+                // Check if allowed by Min/Max constraints? Not really, GAS boosts result.
+                STATE.gaugeType = nextType;
+                STATE.gauge = STATE.gaugeValues[nextType];
+                playSystemSound('access');
+                markHudDirty();
+            }
+        }
+    } else {
+        // GAS OFF - Standard Fail
+        if (['HARD', 'EXHARD', 'HAZARD'].includes(STATE.gaugeType) && STATE.gauge <= 0) {
+            triggerHardFail();
+            return;
+        }
+    }
+
+    // Mark HUD dirty (batched update)
     markHudDirty();
 
     showJudge(result, diffMs, isEmptyPoor);
@@ -4128,7 +4726,9 @@ function updateGaugeDisplay() {
     ui.gaugeGrade.style.color = getRankColor(grade);
 
     if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD') {
-        const threshold = (STATE.gaugeType === 'ASSIST' || STATE.gaugeType === 'EASY') ? 60 : 80;
+        let threshold = 80;
+        if (STATE.gaugeType === 'ASSIST') threshold = 60;
+
         if (STATE.gauge >= threshold) ui.gaugeBar.classList.add('cleared');
         else ui.gaugeBar.classList.remove('cleared');
     }
@@ -4486,7 +5086,28 @@ function triggerHardFail() {
         STATE.isFailedScreen = false;
         STATE.failTimeout = null;
     }, 3000);
-    STATE.gauge = 0;
+    // Initialize Universal Gauges (Concurrent Tracking)
+    STATE.gaugeValues = {
+        'HAZARD': 100,
+        'EXHARD': 100,
+        'HARD': 100,
+        'GROOVE': 20,
+        'EASY': 20,
+        'ASSIST': 20
+    };
+
+    // Default Start Gauge based on selection, but override for GAS
+    let startGauge = STATE.gaugeType;
+    if (STATE.gaugeAutoShift === 'SURVIVAL_TO_GROOVE' || STATE.gaugeAutoShift === 'BEST_CLEAR') {
+        startGauge = 'HAZARD';
+    } else if (STATE.gaugeAutoShift === 'SELECT_TO_UNDER' || STATE.gaugeAutoShift === 'CONTINUE') {
+        // Keep user selection
+        startGauge = STATE.gaugeType;
+    }
+
+    STATE.gaugeType = startGauge;
+    STATE.gauge = STATE.gaugeValues[startGauge];
+
     updateGaugeDisplay();
 
     // Timeout logic moved up into variable assignment
@@ -4498,14 +5119,9 @@ function determineClearLamp(isClear) {
     if (!isClear) return LAMPS.FAILED;
 
     const maxEx = STATE.loadedSong.notes.length * 2;
-    const isPerfect = (STATE.judgeCounts.pgreat === STATE.loadedSong.notes.length); // All PGREAT
+    const isPerfect = (STATE.judgeCounts.pgreat === STATE.loadedSong.notes.length);
     const isNoBadPoor = (STATE.judgeCounts.bad === 0 && STATE.judgeCounts.poor === 0);
-    const isFC = (STATE.comboBreaks === 0 && isNoBadPoor); // Full Combo: no combo breaks AND no bad/poor
-
-    // Correction: Perfect is 100% EX score. 
-    // The user says: Perfect (only PGreat and Great) -> MAX (100%)
-    // So: Perfect is FC + only PG/GR. MAX is all PG.
-
+    const isFC = (STATE.comboBreaks === 0 && isNoBadPoor);
     const onlyPGGR = (STATE.judgeCounts.good === 0 && STATE.judgeCounts.bad === 0 && STATE.judgeCounts.poor === 0);
     const isMax = (STATE.score === maxEx);
 
@@ -4513,11 +5129,33 @@ function determineClearLamp(isClear) {
     if (onlyPGGR && isFC) return LAMPS.PERFECT;
     if (isFC) return LAMPS.FC;
 
-    // Gauge based clears
+    // Highest Gauge Cleared (for GAS Result)
+    // Even without GAS, we can use this check if available
+    if (STATE.gaugeValues) {
+        if (STATE.gaugeValues['HAZARD'] > 0 || STATE.gaugeValues['EXHARD'] > 0) return LAMPS.EXHARD;
+        if (STATE.gaugeValues['HARD'] > 0) return LAMPS.HARD;
+        // Normal/Groove >= 80%
+        if (STATE.gaugeValues['GROOVE'] >= 80) return LAMPS.CLEAR;
+        // Easy >= 80%
+        if (STATE.gaugeValues['EASY'] >= 80) return LAMPS.EASY;
+        // Assist >= 60%
+        if (STATE.gaugeValues['ASSIST'] >= 60) return LAMPS.ASSIST;
+        return LAMPS.FAILED;
+    }
+
+    // Fallback for Legacy / Single Gauge
     if (STATE.gaugeType === 'EXHARD') return LAMPS.EXHARD;
     if (STATE.gaugeType === 'HARD') return LAMPS.HARD;
     if (STATE.gaugeType === 'EASY' || STATE.gaugeType === 'ASSIST') {
-        if (STATE.gaugeType === 'ASSIST') return LAMPS.ASSIST;
+        if (STATE.gaugeType === 'ASSIST') return LAMPS.ASSIST; // Assist clears at any % if survived? OR >60?
+        // Standard Assist usually requires 60% unless it's just 'pass'.
+        // Let's assume > 60 check was done in loop or is standard.
+        // Usually loop ends, result check is:
+        // isClear passed in is true if gauge > threshold.
+        // showResults(isClear) logic at line 4338 check:
+        // isClear = (HARD/EX) ? (g>0) : (g>=80).
+        // For Assist we should correct the isClear check or handle it here.
+        // But here we just return the lamp ID.
         return LAMPS.EASY;
     }
     return LAMPS.CLEAR;
@@ -4845,8 +5483,8 @@ window.addEventListener('keydown', e => {
 
     const actions = STATE.keyCodeToAction[e.code];
 
-    // Digit3 hold handling for advanced panel (works on song select screen)
-    if (e.code === 'Digit3') {
+    // Digit5 hold handling for advanced panel (works on song select screen)
+    if (e.code === 'Digit5') {
         // Only on song select (not playing, not in results, not in decide screen)
         const canShowAdvanced = !STATE.isPlaying && !STATE.isResults && !STATE.isDecideActive && !STATE.isStarting;
         if (canShowAdvanced && !STATE.key3HoldTimer && !e.repeat) {
@@ -4858,6 +5496,15 @@ window.addEventListener('keydown', e => {
     }
 
     if (!actions) return;
+
+    // Advanced Panel input handling (when panel is open)
+    if (STATE.isAdvancedPanelOpen) {
+        e.preventDefault();
+        actions.forEach(action => {
+            handleAdvancedPanelInput(action);
+        });
+        return; // Block other inputs while Advanced Panel is open
+    }
 
     // Block input in Autoplay
     if (STATE.autoplay && STATE.isPlaying) return;
@@ -5111,7 +5758,7 @@ window.addEventListener('keydown', e => {
         if (noteIdx !== -1) {
             const note = notes[noteIdx];
             note.hit = true;
-            playSound(note.id);
+            playSound(note.id, 'key');
             const diff = now - note.time;
             const absDiff = Math.abs(diff);
             let res = 'BAD';
@@ -5172,8 +5819,8 @@ window.addEventListener('keyup', e => {
         });
     }
 
-    // Digit3 keyup: Clear hold timer and hide advanced panel (before actions check)
-    if (e.code === 'Digit3') {
+    // Digit5 keyup: Clear hold timer and hide advanced panel (before actions check)
+    if (e.code === 'Digit5') {
         if (STATE.key3HoldTimer) {
             clearTimeout(STATE.key3HoldTimer);
             STATE.key3HoldTimer = null;
@@ -5244,6 +5891,7 @@ window.addEventListener('resize', resize);
     await loadKeybindsAsync();
     await loadPlayerOptionsAsync();
     await loadSystemSounds();
+    initAdvancedOptions();
 
     // Load Judgement Image
     STATE.judgementImage = new Image();

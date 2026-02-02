@@ -352,6 +352,88 @@ async function fetchTachiBestScores(userId, playtype = '7K', limit = 50) {
     }
 }
 
+/**
+ * Fetch chart leaderboard (PBs for a specific chart)
+ * @param {string} chartId - Tachi chart ID
+ * @param {string} playtype - '7K' or '14K'
+ * @returns {Promise<Object>} - Leaderboard data
+ */
+async function fetchChartLeaderboard(chartId, playtype = '7K') {
+    if (!isTachiEnabled()) return { success: false, error: 'No API Key' };
+
+    try {
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/games/bms/${playtype}/charts/${chartId}/pbs`;
+        const res = await fetch(url, { headers: getTachiHeaders() });
+        const data = await res.json();
+
+        if (data.success) {
+            return { success: true, pbs: data.body.pbs || [], users: data.body.users || [] };
+        } else {
+            return { success: false, error: data.description };
+        }
+    } catch (e) {
+        console.error('[Tachi] Error fetching chart leaderboard:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Fetch a specific user's PB on a chart by MD5 hash
+ * Uses the score search endpoint with bmsChartHash matching
+ * @param {string|number} userId - User ID
+ * @param {string} chartMd5 - Chart MD5 hash
+ * @param {string} playtype - '7K' or '14K'
+ * @returns {Promise<Object>} - User's PB on the chart
+ */
+async function fetchUserChartPB(userId, chartMd5, playtype = '7K') {
+    if (!isTachiEnabled()) return { success: false, error: 'No API Key' };
+
+    try {
+        // Search user's PBs for matching chart hash
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/games/bms/${playtype}/pbs?search=${chartMd5}`;
+        const res = await fetch(url, { headers: getTachiHeaders() });
+        const data = await res.json();
+
+        if (data.success && data.body.pbs && data.body.pbs.length > 0) {
+            // Find matching chart by MD5
+            const matchingPB = data.body.pbs.find(pb => {
+                const chart = data.body.charts?.find(c => c.chartID === pb.chartID);
+                return chart && chart.data?.hashMD5 === chartMd5;
+            });
+            if (matchingPB) {
+                return { success: true, pb: matchingPB };
+            }
+        }
+        return { success: false, error: 'No PB found for this chart' };
+    } catch (e) {
+        console.error('[Tachi] Error fetching user chart PB:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Fetch PBs for multiple rivals on a specific chart
+ * @param {Array<string|number>} rivalIds - Array of rival user IDs
+ * @param {string} chartMd5 - Chart MD5 hash
+ * @param {string} playtype - '7K' or '14K'
+ * @returns {Promise<Object>} - Rival PBs
+ */
+async function fetchRivalsPBs(rivalIds, chartMd5, playtype = '7K') {
+    if (!isTachiEnabled()) return { success: false, error: 'No API Key' };
+    if (!rivalIds || rivalIds.length === 0) return { success: false, error: 'No rivals configured' };
+
+    const results = [];
+    for (const rivalId of rivalIds.slice(0, 3)) { // Max 3 rivals
+        const result = await fetchUserChartPB(rivalId, chartMd5, playtype);
+        if (result.success) {
+            results.push({ userId: rivalId, pb: result.pb });
+        } else {
+            results.push({ userId: rivalId, pb: null });
+        }
+    }
+    return { success: true, rivals: results };
+}
+
 // Export for use in game.js
 if (typeof window !== 'undefined') {
     window.TachiIR = {
@@ -370,6 +452,9 @@ if (typeof window !== 'undefined') {
         getSubmissionResumeTime,
         fetchTachiRecentScores,
         fetchTachiBestScores,
+        fetchChartLeaderboard,
+        fetchUserChartPB,
+        fetchRivalsPBs,
         LAMP_MAP
     };
 }

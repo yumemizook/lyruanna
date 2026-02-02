@@ -224,6 +224,9 @@
                     </div>
                 </div>
 
+                <!-- Inline Ghost Indicator (above judgement) -->
+                <div id="pace-ghost-inline" style="display:none;">+0</div>
+
                 <div class="hud-tally" id="hud-tally">
                     <div class="tally-row pgreat"><span class="tally-label">PGREAT</span><span class="tally-value"
                             id="tally-pg">0</span></div>
@@ -562,55 +565,165 @@
             </div>
         </div>
 
-        <!-- ADVANCED OPTIONS MODAL (HOLD Digit3) - Standalone overlay -->
-        <div id="modal-advanced" class="modal modal-iidx" style="display:none;">
-            <div class="advanced-panel">
-                <div class="advanced-header">ADVANCED OPTIONS</div>
-                <div class="advanced-grid">
-                    <!-- Left Column: Gauge & Timing -->
-                    <div class="advanced-col">
-                        <div class="adv-option-group">
-                            <div class="adv-label">GAUGE AUTO SHIFT</div>
-                            <div class="option-wheel-box compact" id="wheel-gas" data-opt="gaugeAutoShift">
-                                <div class="option-wheel-strip"></div>
+        <!-- ADVANCED OPTIONS MODAL (HOLD Digit3) - Beatoraja-style -->
+        <div id="modal-advanced" class="modal modal-advanced-beatoraja" style="display:none;">
+            <div class="adv-container">
+                <!-- Left Column: SUB MENU -->
+                <div class="adv-sub-menu">
+                    <div class="adv-sub-header">SUB MENU</div>
+                    <div class="adv-sub-note">鍵盤以外での設定が可能な項目です</div>
+
+                    <!-- MISC OPTION -->
+                    <div class="adv-misc-section">
+                        <div class="adv-misc-title">MISC OPTION</div>
+                        <div class="adv-misc-hint">項目をクリックで設定を変更</div>
+                        <div class="adv-misc-grid">
+                            <div class="adv-misc-item" id="adv-gas-limit">
+                                <span class="adv-misc-label">LowerLimit of GAS</span>
+                                <span class="adv-misc-value" id="adv-gas-limit-val">ASSIST EASY</span>
                             </div>
-                        </div>
-                        <div class="adv-option-group">
-                            <div class="adv-label">LOWEST GAUGE</div>
-                            <div class="option-wheel-box compact" id="wheel-gas-min" data-opt="gasMinGauge">
-                                <div class="option-wheel-strip"></div>
+                            <div class="adv-misc-item" id="adv-lane-cover">
+                                <span class="adv-misc-label">LANE COVER</span>
+                                <span class="adv-misc-value" id="adv-lane-cover-val">ON</span>
                             </div>
-                        </div>
-                        <div class="adv-option-group">
-                            <div class="adv-label">TIMING OFFSET</div>
-                            <div class="option-wheel-box compact" id="wheel-offset" data-opt="judgeOffset">
-                                <div class="option-wheel-strip"></div>
+                            <div class="adv-misc-item" id="adv-lift-cover">
+                                <span class="adv-misc-label">LIFT COVER</span>
+                                <span class="adv-misc-value" id="adv-lift-cover-val">OFF</span>
                             </div>
-                        </div>
-                        <div class="adv-option-group">
-                            <div class="adv-label">AUTO ADJUST</div>
-                            <div class="option-wheel-box compact" id="wheel-auto-offset" data-opt="autoOffset">
-                                <div class="option-wheel-strip"></div>
+                            <div class="adv-misc-item" id="adv-hidden">
+                                <span class="adv-misc-label">HIDDEN</span>
+                                <span class="adv-misc-value" id="adv-hidden-val">OFF</span>
                             </div>
                         </div>
                     </div>
-                    <!-- Right Column: Green/White Numbers -->
-                    <div class="advanced-col">
-                        <div class="adv-number-display">
-                            <div class="adv-label">GREEN NUMBER</div>
-                            <div class="adv-number green" id="opt-green-number">300</div>
+
+                    <!-- SOUND OPTION -->
+                    <div class="adv-sound-section">
+                        <div class="adv-sound-title">SOUND OPTION</div>
+                        <div class="adv-sound-hint">スライダーで設定を変更</div>
+                        <div class="adv-slider-row">
+                            <span class="adv-slider-label">MASTER</span>
+                            <input type="range" class="adv-slider" id="adv-master-vol" min="0" max="100" value="50">
+                            <span class="adv-slider-val" id="adv-master-vol-val">50</span>
                         </div>
-                        <div class="adv-option-group">
-                            <div class="adv-label">GREEN FIX</div>
-                            <div class="option-wheel-box compact" id="wheel-green-fix" data-opt="greenFix">
-                                <div class="option-wheel-strip"></div>
+                        <div class="adv-slider-row">
+                            <span class="adv-slider-label">KEY SOUND</span>
+                            <input type="range" class="adv-slider" id="adv-key-vol" min="0" max="100" value="50">
+                            <span class="adv-slider-val" id="adv-key-vol-val">50</span>
+                        </div>
+                        <div class="adv-slider-row">
+                            <span class="adv-slider-label">BGY SOUND</span>
+                            <input type="range" class="adv-slider" id="adv-bgy-vol" min="0" max="100" value="50">
+                            <span class="adv-slider-val" id="adv-bgy-vol-val">50</span>
+                        </div>
+                    </div>
+
+                    <!-- IR RIVALS -->
+                    <div class="adv-rivals-section">
+                        <div class="adv-misc-title">IR RIVALS</div>
+                        <div class="adv-misc-hint">Enter Tachi usernames or IDs for rival tracking</div>
+                        <div class="adv-rival-inputs">
+                            <div class="adv-rival-row">
+                                <span class="adv-rival-label">RIVAL 1</span>
+                                <input type="text" class="adv-rival-input" id="adv-rival-1" placeholder="username or ID">
+                            </div>
+                            <div class="adv-rival-row">
+                                <span class="adv-rival-label">RIVAL 2</span>
+                                <input type="text" class="adv-rival-input" id="adv-rival-2" placeholder="username or ID">
+                            </div>
+                            <div class="adv-rival-row">
+                                <span class="adv-rival-label">RIVAL 3</span>
+                                <input type="text" class="adv-rival-input" id="adv-rival-3" placeholder="username or ID">
                             </div>
                         </div>
-                        <div class="adv-number-display">
-                            <div class="adv-label">WHITE NUMBER</div>
-                            <div class="adv-number white" id="opt-white-number">200</div>
+                    </div>
+                </div>
+
+                <!-- Right Column: OPTION MENU -->
+                <div class="adv-option-menu">
+                    <div class="adv-option-header">OPTION MENU</div>
+                    <div class="adv-option-note">白鍵盤と黒鍵盤でゲームオプションを設定できます</div>
+
+                    <!-- New Top Row: GAS & Display Time -->
+                    <div class="adv-options-top" style="display:flex; gap:12px; overflow-x:auto; margin-bottom:12px;">
+                         <div class="adv-box adv-box-orange" id="adv-box-gas">
+                            <div class="adv-box-header">ゲージオートシフト</div>
+                            <div class="adv-box-subheader">GAUGE AUTO SHIFT</div>
+                            <div class="adv-box-desc">GASを使用しません<br>指定ゲージが選択されます</div>
+                            <div class="adv-box-buttons vertical">
+                                <button class="adv-btn" data-val="OFF">OFF</button>
+                                <button class="adv-btn" data-val="CONTINUE">CONTINUE</button>
+                                <button class="adv-btn" data-val="HARD_TO_GROOVE">HARD TO GROOVE</button>
+                                <button class="adv-btn" data-val="BEST_CLEAR">BEST CLEAR</button>
+                                <button class="adv-btn" data-val="SELECT_TO_UNDER">SELECT TO UNDER</button>
+                            </div>
                         </div>
-                        <div class="adv-hint">WHITE = SUDDEN+ × 10</div>
+
+                        <div class="adv-box adv-box-green" id="adv-box-display-time">
+                            <div class="adv-box-header">ノーツ表示時間・緑数字</div>
+                            <div class="adv-box-subheader">NOTES DISPLAY TIME</div>
+                            <div class="adv-box-desc">DURATIONはmsでの表示時間を表記</div>
+                            <div class="adv-box-values">
+                                <div class="adv-val-row">
+                                    <span class="adv-val-label">DURATION</span>
+                                    <span class="adv-val-number" id="adv-duration-val">500</span>
+                                </div>
+                                <div class="adv-val-row highlight">
+                                    <span class="adv-val-label">NOTES DISPLAY TIME</span>
+                                    <span class="adv-val-number green" id="adv-green-val">300</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keyboard Guide (Updated Colors) -->
+                    <div class="adv-keyboard-guide">
+                        <div class="adv-key-row black">
+                            <div class="adv-key black key-orange" data-key="2">2</div>
+                            <div class="adv-key black key-green" data-key="4">4</div>
+                            <div class="adv-key black key-green" data-key="6">6</div>
+                        </div>
+                        <div class="adv-key-row white">
+                            <div class="adv-key white key-magenta" data-key="1">1</div>
+                            <div class="adv-key white key-cyan" data-key="3">3</div>
+                            <div class="adv-key white key-white" data-key="5">5</div>
+                            <div class="adv-key white key-white" data-key="7">7</div>
+                        </div>
+                    </div>
+
+                    <!-- Main Options Grid -->
+                    <!-- Main Options Grid (Bottom) -->
+                    <div class="adv-options-grid">
+                        <div class="adv-box adv-box-pink" id="adv-box-bga">
+                            <div class="adv-box-header">BGA表示切り替え</div>
+                            <div class="adv-box-subheader">BACK GROUND ANIMATION</div>
+                            <div class="adv-box-buttons vertical">
+                                <button class="adv-btn" data-val="ON">ON</button>
+                                <button class="adv-btn" data-val="AUTO">AUTO</button>
+                                <button class="adv-btn" data-val="OFF">OFF</button>
+                            </div>
+                        </div>
+
+
+                        <div class="adv-box adv-box-cyan" id="adv-box-auto-judge">
+                            <div class="adv-box-header">判定自動調節</div>
+                            <div class="adv-box-subheader">AUTO ADJUST</div>
+                            <div class="adv-box-desc">判定を自動調節します</div>
+                            <div class="adv-box-buttons vertical">
+                                <button class="adv-btn" data-val="OFF">OFF</button>
+                                <button class="adv-btn" data-val="ON">ON</button>
+                            </div>
+                        </div>
+
+                        <div class="adv-box adv-box-white" id="adv-box-timing">
+                            <div class="adv-box-header">判定タイミング調整</div>
+                            <div class="adv-box-subheader">JUDGE TIMING</div>
+                            <div class="adv-box-desc">FASTが多い場合は-方向へ<br>SLOWが多い場合は+方向へ調節</div>
+                            <div class="adv-timing-row">
+                                <button class="adv-btn" id="adv-timing-label">JUDGE TIMING</button>
+                                <span class="adv-timing-val" id="adv-timing-val">+0</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
