@@ -1163,18 +1163,38 @@ function updateAdvancedOptionsUI() {
         });
     }
 
-    // Update Green Number display
+    // Update Green Number / Duration display
     const bpm = STATE.loadedSong?.bpm || 130;
-    let greenNumber;
+    const sudden = (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') ? (STATE.suddenPlus || 0) : 0;
+    const visibleRatio = 1 - (sudden / 100);
+
+    // Unify: Duration is the source of truth
+    let duration; // ms
     if (STATE.greenFix && STATE.greenFix !== 'OFF') {
-        greenNumber = parseInt(STATE.greenFix) || 300;
+        const gn = parseInt(STATE.greenFix) || 300;
+        duration = gn * 1.67;
     } else {
-        greenNumber = Math.round(60000 / (bpm * STATE.speed));
+        // Calculate current duration from speed
+        // Constant C=2250 calibrated for 1.0x speed @ 150BPM (refBpm logic)
+        // Here we just use a simpler display-only approx or the full formula
+        // For consistency, let's use the same logic as updateGreenWhiteNumbers
+        let refBpm = 150;
+        if (STATE.loadedSong) {
+            if (STATE.hiSpeedFix === 'CONSTANT') refBpm = bpm;
+            else if (STATE.hiSpeedFix === 'MAX') refBpm = STATE.loadedSong.maxBpm || 150;
+            else if (STATE.hiSpeedFix === 'MIN') refBpm = STATE.loadedSong.minBpm || 150;
+            else if (STATE.hiSpeedFix === 'AVG') refBpm = STATE.loadedSong.avgFixBpm || 150;
+            else if (STATE.hiSpeedFix === 'START') refBpm = STATE.loadedSong.initialBpm || 150;
+            else if (STATE.hiSpeedFix === 'MAIN') refBpm = STATE.loadedSong.mainBpm || 150;
+        }
+        const C = 2250;
+        duration = (C * visibleRatio * refBpm) / (STATE.speed * bpm);
     }
+
     const durationVal = document.getElementById('adv-duration-val');
     const greenVal = document.getElementById('adv-green-val');
-    if (durationVal) durationVal.textContent = Math.round(greenNumber * 1.67); // Approximate ms
-    if (greenVal) greenVal.textContent = greenNumber;
+    if (durationVal) durationVal.textContent = Math.round(duration);
+    if (greenVal) greenVal.textContent = Math.round(duration / 1.67);
 
     // Update BGA buttons
     const bgaBox = document.getElementById('adv-box-bga');
@@ -1228,31 +1248,44 @@ function handleAdvancedPanelInput(action) {
         changed = true;
     }
 
-    // Key 4: Decrease Green Number (Notes Display Time)
+    // Key 4: Decrease Duration (Faster Speed)
     if (action === ACTIONS.P1_4) {
-        if (!STATE.greenFix || STATE.greenFix === 'OFF') {
+        if (!STATE.greenFix || STATE.greenFix === 'OFF' || true) { // Always allow Duration change
             const bpm = STATE.loadedSong?.bpm || 130;
-            // Use existing target or derive from current
-            const currentGN = STATE.targetGreenNumber || Math.round(60000 / (bpm * STATE.speed));
-            const newGN = Math.max(10, currentGN - 1); // Decrease GN
+            const currentDuration = STATE.targetDuration || 500;
+            const newDuration = Math.max(10, currentDuration - 1); // Decrease Duration by 1ms
 
-            STATE.targetGreenNumber = newGN; // SAVE PREFERENCE
-            STATE.speed = 60000 / (bpm * newGN);
-            STATE.speed = Math.max(0.05, Math.min(10.0, STATE.speed)); // Clamp speed standard
+            STATE.targetDuration = newDuration;
+            STATE.targetGreenNumber = Math.round(newDuration / 1.67);
+
+            // Keep greenFix in sync if enabled
+            if (STATE.greenFix && STATE.greenFix !== 'OFF') {
+                STATE.greenFix = STATE.targetGreenNumber.toString();
+            }
+
+            // Recalculate speed using unified formula
+            updateGreenWhiteNumbersFromTarget();
             changed = true;
         }
     }
 
-    // Key 6: Increase Green Number (Notes Display Time)
+    // Key 6: Increase Duration (Slower Speed)
     if (action === ACTIONS.P1_6) {
-        if (!STATE.greenFix || STATE.greenFix === 'OFF') {
+        if (!STATE.greenFix || STATE.greenFix === 'OFF' || true) { // Always allow Duration change
             const bpm = STATE.loadedSong?.bpm || 130;
-            const currentGN = STATE.targetGreenNumber || Math.round(60000 / (bpm * STATE.speed));
-            const newGN = Math.min(2000, currentGN + 1); // Increase GN
+            const currentDuration = STATE.targetDuration || 500;
+            const newDuration = Math.min(3000, currentDuration + 1); // Increase Duration by 1ms
 
-            STATE.targetGreenNumber = newGN; // SAVE PREFERENCE
-            STATE.speed = 60000 / (bpm * newGN);
-            STATE.speed = Math.max(0.05, Math.min(10.0, STATE.speed)); // Clamp speed standard
+            STATE.targetDuration = newDuration;
+            STATE.targetGreenNumber = Math.round(newDuration / 1.67);
+
+            // Keep greenFix in sync if enabled
+            if (STATE.greenFix && STATE.greenFix !== 'OFF') {
+                STATE.greenFix = STATE.targetGreenNumber.toString();
+            }
+
+            // Recalculate speed using unified formula
+            updateGreenWhiteNumbersFromTarget();
             changed = true;
         }
     }
@@ -1286,14 +1319,8 @@ function showLaneCoverInfo() {
     const el = document.getElementById('lane-cover-info');
     if (!el) return;
 
-    const bpm = STATE.loadedSong?.bpm || 130;
-    const greenNumber = Math.round(60000 / (bpm * STATE.speed));
-    const whiteNumber = Math.round(STATE.suddenPlus * 10);
-
-    const gnEl = document.getElementById('hud-green-number');
-    const wnEl = document.getElementById('hud-white-number');
-    if (gnEl) gnEl.textContent = greenNumber;
-    if (wnEl) wnEl.textContent = whiteNumber;
+    // Unify logic: HUD now uses the same calculation as everyone else
+    updateGreenWhiteNumbers();
 
     el.style.display = 'block';
 }
@@ -1303,31 +1330,128 @@ function hideLaneCoverInfo() {
     if (el) el.style.display = 'none';
 }
 
-function updateGreenWhiteNumbers() {
-    const bpm = STATE.loadedSong?.bpm || 130;
+/**
+ * Recalculate Speed from targetDuration or targetGreenNumber
+ */
+function updateGreenWhiteNumbersFromTarget() {
+    const bpm = (STATE.isPlaying && STATE.currentBpm) ? STATE.currentBpm : (STATE.loadedSong?.bpm || 150);
+    const sudden = (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') ? (STATE.suddenPlus || 0) : 0;
+    const visibleRatio = 1 - (sudden / 100);
 
-    // Green Number: calculated from speed/BPM, or fixed value if greenFix is set
-    let greenNumber;
-    if (STATE.greenFix && STATE.greenFix !== 'OFF') {
-        greenNumber = parseInt(STATE.greenFix) || 300;
-    } else {
-        greenNumber = Math.round(60000 / (bpm * STATE.speed));
+    let refBpm = 150;
+    if (STATE.loadedSong) {
+        if (STATE.hiSpeedFix === 'CONSTANT') refBpm = bpm;
+        else if (STATE.hiSpeedFix === 'MAX') refBpm = STATE.loadedSong.maxBpm || 150;
+        else if (STATE.hiSpeedFix === 'MIN') refBpm = STATE.loadedSong.minBpm || 150;
+        else if (STATE.hiSpeedFix === 'AVG') refBpm = STATE.loadedSong.avgFixBpm || 150;
+        else if (STATE.hiSpeedFix === 'START') refBpm = STATE.loadedSong.initialBpm || 150;
+        else if (STATE.hiSpeedFix === 'MAIN') refBpm = STATE.loadedSong.mainBpm || 150;
     }
 
-    // White Number: SUDDEN+ × 10
+    const C = 2250;
+    const duration = STATE.targetDuration || 500;
+
+    // Speed = (C * ratio * refBpm) / (Duration * bpm)
+    STATE.speed = (C * visibleRatio * refBpm) / (duration * bpm);
+    STATE.speed = Math.max(0.05, Math.min(20.0, STATE.speed));
+
+    updateGreenWhiteNumbers();
+}
+
+function updateGreenWhiteNumbers() {
+    const bpm = (STATE.isPlaying && STATE.currentBpm) ? STATE.currentBpm : (STATE.loadedSong?.bpm || 150);
+
+    // Determine effective Sudden+ value based on Range Mode
+    let sudden = 0;
+    if (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') {
+        sudden = STATE.suddenPlus || 0;
+    }
+
+    // Determine Reference BPM (Must match Renderer7K logic)
+    let refBpm = 150;
+    if (STATE.loadedSong) {
+        if (STATE.hiSpeedFix === 'CONSTANT') refBpm = bpm;
+        else if (STATE.hiSpeedFix === 'MAX') refBpm = STATE.loadedSong.maxBpm || 150;
+        else if (STATE.hiSpeedFix === 'MIN') refBpm = STATE.loadedSong.minBpm || 150;
+        else if (STATE.hiSpeedFix === 'AVG') refBpm = STATE.loadedSong.avgFixBpm || 150;
+        else if (STATE.hiSpeedFix === 'START') refBpm = STATE.loadedSong.initialBpm || 150;
+        else if (STATE.hiSpeedFix === 'MAIN') refBpm = STATE.loadedSong.mainBpm || 150;
+    }
+
+    // Constant C = 2250 (Calibrated)
+    const C = 2250;
+    const visibleRatio = 1 - (sudden / 100);
+
+    let duration;
+    let greenNumber;
+
+    if (STATE.greenFix && STATE.greenFix !== 'OFF') {
+        // Floating Hi-Speed: use targetDuration as master source
+        duration = STATE.targetDuration || 500;
+        greenNumber = Math.round(duration / 1.67);
+
+        // Recalculate Speed to maintain this Duration at current BPM
+        let newSpeed = (C * visibleRatio * refBpm) / (duration * bpm);
+        STATE.speed = Math.max(0.1, Math.min(20.0, newSpeed));
+
+        // Keep the greenFix string updated (for persistence and display)
+        STATE.greenFix = greenNumber.toString();
+    } else {
+        // Normal Hi-Speed: Calculate current Duration and GN from speed
+        duration = (C * visibleRatio * refBpm) / (STATE.speed * bpm);
+        greenNumber = Math.round(duration / 1.67);
+    }
+
+    // Sync all UI elements
+    const gnIds = ['opt-green-number', 'hud-green-number', 'adv-green-val'];
+    gnIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = greenNumber;
+    });
+
+    const durIds = ['adv-duration-val', 'hud-duration-val'];
+    durIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = Math.round(duration);
+    });
+
     const whiteNumber = Math.round(STATE.suddenPlus * 10);
+    const wnIds = ['opt-white-number', 'hud-white-number'];
+    wnIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = whiteNumber;
+    });
 
-    // Update Advanced Panel displays
-    const gnOptEl = document.getElementById('opt-green-number');
-    const wnOptEl = document.getElementById('opt-white-number');
-    if (gnOptEl) gnOptEl.textContent = greenNumber;
-    if (wnOptEl) wnOptEl.textContent = whiteNumber;
+    // Update Hi-Speed Display in Options (if open)
+    const optHsVal = document.getElementById('opt-hispeed-val');
+    if (optHsVal) optHsVal.textContent = STATE.speed.toFixed(2);
 
-    // Update in-game HUD
-    const gnHudEl = document.getElementById('hud-green-number');
-    const wnHudEl = document.getElementById('hud-white-number');
-    if (gnHudEl) gnHudEl.textContent = greenNumber;
-    if (wnHudEl) wnHudEl.textContent = whiteNumber;
+    // DYNAMIC HUD POSITIONING
+    const hudEl = document.getElementById('lane-cover-info');
+    if (hudEl) {
+        const fieldStartX = 30;
+        const fieldWidth = 340; // 60 + 40*7
+        const canvasH = 720; // Assume 720p base for UI scaling
+        const hitY = canvasH * 0.75; // 540
+
+        hudEl.style.left = (fieldStartX + fieldWidth / 2) + "px";
+        hudEl.style.transform = "translateX(-50%)";
+
+        if (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') {
+            const suddenHeight = hitY * ((STATE.suddenPlus || 0) / 100);
+            hudEl.style.top = suddenHeight + "px";
+            hudEl.style.bottom = "auto";
+        } else if (STATE.rangeMode === 'LIFT') {
+            const liftHeight = (canvasH - hitY) * ((STATE.lift || 0) / 100);
+            const liftTop = hitY + 15 - liftHeight;
+            hudEl.style.top = (liftTop - 60) + "px"; // Offset above the lift cover
+            hudEl.style.bottom = "auto";
+        } else {
+            // Default center if OFF (though usually hidden)
+            hudEl.style.top = (hitY - 100) + "px";
+            hudEl.style.bottom = "auto";
+        }
+    }
 }
 
 // ========== GAUGE AUTO SHIFT (GAS) LOGIC ==========
@@ -1427,6 +1551,13 @@ async function loadPlayerOptionsAsync() {
 
     if (options) {
         Object.assign(STATE, options);
+        if (STATE.targetDuration === undefined && STATE.speed) {
+            // Initial derivation if missing
+            const bpm = 150;
+            const C = 2250;
+            STATE.targetDuration = Math.round((C * 1.0 * 150) / (STATE.speed * 150));
+            STATE.targetGreenNumber = Math.round(STATE.targetDuration / 1.67);
+        }
         applyWindowSettings(true);
     }
 }
@@ -1470,6 +1601,7 @@ function renderSettings() {
     document.getElementById('opt-resolution').value = STATE.resolution;
     document.getElementById('opt-show-tally').checked = STATE.showTally;
     document.getElementById('opt-replay-type').value = STATE.replaySaveType || 'BEST_EX';
+    document.getElementById('opt-green-fix').checked = (STATE.greenFix && STATE.greenFix !== 'OFF');
 
     // Tachi Settings
     const tachiKeyInput = document.getElementById('opt-tachi-api-key');
@@ -1627,6 +1759,8 @@ const STATE = {
     isOptionsOpen: false,
     isOptionsPersistent: false,
     optionsChangedFilter: false,
+    targetDuration: 500, // Primary determinant for note speed (ms)
+    targetGreenNumber: 300, // Derived from Duration (LR2 compatibility)
 
     // Game State
     isPlaying: false,
@@ -1944,10 +2078,19 @@ document.getElementById('btn-save-settings').onclick = () => {
     STATE.showTally = document.getElementById('opt-show-tally').checked;
     STATE.replaySaveType = document.getElementById('opt-replay-type').value;
 
+    const greenFixChecked = document.getElementById('opt-green-fix').checked;
+    if (!greenFixChecked) {
+        STATE.greenFix = 'OFF';
+    } else {
+        // Use currently set target green number as the fix value
+        STATE.greenFix = (STATE.targetGreenNumber || 300).toString();
+    }
+
     savePlayerOptions();
     applyWindowSettings();
     saveKeybinds();
     rebuildInputMap();
+    updateGreenWhiteNumbers();
 };
 
 // Manual Course Import
@@ -3761,6 +3904,10 @@ async function enterGame() {
     }
 
     STATE.currentBpm = STATE.loadedSong.initialBpm;
+
+    // [FIX] Initial Speed Calculation: Ensure Duration-based speed is used from the start
+    updateGreenWhiteNumbers();
+
     STATE.loadedSong.notes.forEach(n => {
         n.hit = false;
         n.isMissed = false;
@@ -4250,16 +4397,21 @@ function loop() {
     }
 
     const bpms = STATE.loadedSong.bpmEvents;
+    const prevBpmCursor = STATE.bpmCursor; // Track if BPM changes
     while (STATE.bpmCursor < bpms.length && bpms[STATE.bpmCursor].time <= now) {
         STATE.currentBpm = Math.max(0.001, bpms[STATE.bpmCursor].bpm);
         STATE.bpmCursor++;
+    }
 
+    if (STATE.bpmCursor > prevBpmCursor) {
         // OPTIMIZED: Only update DOM if BPM changes significantly (int)
         const newBpmInt = Math.round(STATE.currentBpm);
         if (STATE.lastDisplayedBpm !== newBpmInt) {
             ui.statBpm.textContent = newBpmInt;
             STATE.lastDisplayedBpm = newBpmInt;
         }
+        // Handle Green Number floating speed or display update
+        updateGreenWhiteNumbers();
     }
 
     const bgas = STATE.loadedSong.bgaEvents;
@@ -5560,8 +5712,10 @@ window.addEventListener('keydown', e => {
                     const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
                     let idx = fixes.indexOf(STATE.hiSpeedFix);
                     STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
+                    updateGreenWhiteNumbers();
                 } else {
                     STATE.speed = Math.max(0.5, STATE.speed - 0.5);
+                    updateGreenWhiteNumbers();
                 }
             }
             if (action === ACTIONS.P1_7) {
@@ -5569,12 +5723,15 @@ window.addEventListener('keydown', e => {
                     const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
                     let idx = fixes.indexOf(STATE.hiSpeedFix);
                     STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
+                    updateGreenWhiteNumbers();
                 } else if (has6) {
                     const ranges = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
                     let idx = ranges.indexOf(STATE.rangeMode);
                     STATE.rangeMode = ranges[(idx + 1) % ranges.length];
+                    updateGreenWhiteNumbers();
                 } else {
                     STATE.speed = Math.min(10, STATE.speed + 0.5);
+                    updateGreenWhiteNumbers();
                 }
             }
             // Key 6: Assist / Range
@@ -5583,6 +5740,7 @@ window.addEventListener('keydown', e => {
                     const ranges = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
                     let idx = ranges.indexOf(STATE.rangeMode);
                     STATE.rangeMode = ranges[(idx + 1) % ranges.length];
+                    updateGreenWhiteNumbers();
                 } else {
                     const assists = ['OFF', 'A-SCR', 'EX-JUDGE', 'BOTH'];
                     let idx = assists.indexOf(STATE.assistMode);
@@ -5614,8 +5772,9 @@ window.addEventListener('keydown', e => {
     if (STATE.isPlaying) {
         actions.forEach(action => {
             // TOGGLE (Double Start)
-            if (action === ACTIONS.START) {
+            if (action === ACTIONS.START && !e.repeat) {
                 const now = Date.now();
+                // If it's a second press within 300ms, toggle the cover
                 if (now - (STATE.lastStartPress || 0) < 300) {
                     if (STATE.rangeMode !== 'OFF') {
                         STATE.lastRangeMode = STATE.rangeMode;
@@ -5625,24 +5784,33 @@ window.addEventListener('keydown', e => {
                     }
                     savePlayerOptions();
                     playSystemSound('o-change');
+                    // Reset timer so a triple-tap doesn't double toggle
+                    STATE.lastStartPress = 0;
+                } else {
+                    STATE.lastStartPress = now;
                 }
-                STATE.lastStartPress = now;
 
                 // Show Green/White Number HUD when START is held
                 showLaneCoverInfo();
             }
 
-            // OFFSET (Hold Start + Scratch)
+            // OFFSET (Hold Start + Scratch) - Now exactly 1 unit per rotation tick
             if (STATE.activeActions.has(ACTIONS.START)) {
                 if (action === ACTIONS.P1_SC_CW || action === ACTIONS.P1_SC_CCW) {
                     const delta = (action === ACTIONS.P1_SC_CW) ? 1 : -1;
                     if (STATE.rangeMode === 'SUDDEN+' || STATE.rangeMode === 'LIFT-SUD+') {
+                        // Increment/Decrement by exactly 1
                         STATE.suddenPlus = Math.max(0, Math.min(100, (STATE.suddenPlus || 0) + delta));
                         // Update HUD in real-time when adjusting
                         updateGreenWhiteNumbers();
+                    } else if (STATE.rangeMode === 'LIFT') {
+                        // Also handle LIFT adjustment
+                        STATE.lift = Math.max(0, Math.min(100, (STATE.lift || 0) + delta));
+                        updateGreenWhiteNumbers();
                     }
                     savePlayerOptions();
-                    STATE.activeActions.delete(action); // Consume
+                    // Consume the action so it doesn't cause fast repeat? 
+                    // Actually handleInput actions are discrete from the listener.
                 }
             }
         });

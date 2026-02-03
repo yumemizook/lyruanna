@@ -3297,11 +3297,13 @@
 
         .adv-container {
             display: flex;
-            gap: 20px;
-            width: 75vw;
-            max-width: 90vw;
-            max-height: 90vh;
-            padding: 20px;
+            gap: 10px;
+            width: 60%;
+            max-width: 1600px;
+            height: auto;
+            max-height: 96vh;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
         /* Left Column: SUB MENU */
@@ -3432,10 +3434,12 @@
             background: rgba(20, 20, 30, 0.95);
             border: 1px solid #444;
             border-radius: 8px;
-            padding: 16px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
+            min-width: 0;
+            overflow: visible;
         }
 
         .adv-option-header {
@@ -3533,8 +3537,9 @@
         .adv-options-grid,
         .adv-options-top {
             display: flex;
-            gap: 12px;
-            overflow-x: auto;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .adv-box {
@@ -3544,13 +3549,15 @@
         }
 
         .adv-box {
+            flex: 1 1 180px;
             background: rgba(0, 0, 0, 0.4);
             border: 2px solid #444;
             border-radius: 8px;
-            padding: 12px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
+            box-sizing: border-box;
         }
 
         #adv-box-display-time {
@@ -3567,8 +3574,9 @@
         #adv-box-gas,
         #adv-box-bga,
         #adv-box-auto-judge {
-            padding: 12px 62px;
-            /* 12px + 50px */
+            padding: 8px;
+            max-width: 150px;
+            flex: 1 1 150px;
         }
 
         .adv-box-orange {
@@ -3815,4 +3823,48 @@
         #pace-ghost-inline.minus {
             color: #ff4444;
             text-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
+        }
+
+        .lane-cover-info {
+            position: absolute;
+            z-index: 20;
+            width: 150px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 5px;
+            pointer-events: none;
+            transition: top 0.1s ease-out;
+        }
+
+        .cover-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            line-height: 1.2;
+            font-family: 'Century Gothic', sans-serif;
+        }
+
+        .cover-label {
+            font-size: 14px;
+            color: #888;
+            font-weight: bold;
+        }
+
+        .cover-val {
+            font-size: 20px;
+            font-weight: 900;
+            font-family: monospace;
+        }
+
+        .cover-val.green {
+            color: #0f0;
+        }
+
+        .cover-val.cyan {
+            color: #0ff;
+        }
+
+        .cover-val.white {
+            color: #fff;
         }
