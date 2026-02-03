@@ -1099,6 +1099,7 @@ function _saveOptions() {
             resolution: STATE.resolution,
             replaySaveType: STATE.replaySaveType,
             showTally: STATE.showTally,
+            frameLimit: STATE.frameLimit,
             // Lane Cover Persistence
             suddenPlus: STATE.suddenPlus,
             lift: STATE.lift,
@@ -1409,11 +1410,8 @@ function updateGreenWhiteNumbers() {
         if (el) el.textContent = greenNumber;
     });
 
-    const durIds = ['adv-duration-val', 'hud-duration-val'];
-    durIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = Math.round(duration);
-    });
+    const advDurVal = document.getElementById('adv-duration-val');
+    if (advDurVal) advDurVal.textContent = Math.round(duration);
 
     const whiteNumber = Math.round(STATE.suddenPlus * 10);
     const wnIds = ['opt-white-number', 'hud-white-number'];
@@ -1441,11 +1439,13 @@ function updateGreenWhiteNumbers() {
             const suddenHeight = hitY * ((STATE.suddenPlus || 0) / 100);
             hudEl.style.top = suddenHeight + "px";
             hudEl.style.bottom = "auto";
+            hudEl.style.transform = "translate(-50%, -100%)";
         } else if (STATE.rangeMode === 'LIFT') {
             const liftHeight = (canvasH - hitY) * ((STATE.lift || 0) / 100);
             const liftTop = hitY + 15 - liftHeight;
-            hudEl.style.top = (liftTop - 60) + "px"; // Offset above the lift cover
+            hudEl.style.top = (liftTop - 6) + "px"; // Small gap above lift cover
             hudEl.style.bottom = "auto";
+            hudEl.style.transform = "translate(-50%, -100%)";
         } else {
             // Default center if OFF (though usually hidden)
             hudEl.style.top = (hitY - 100) + "px";
@@ -1602,6 +1602,7 @@ function renderSettings() {
     document.getElementById('opt-show-tally').checked = STATE.showTally;
     document.getElementById('opt-replay-type').value = STATE.replaySaveType || 'BEST_EX';
     document.getElementById('opt-green-fix').checked = (STATE.greenFix && STATE.greenFix !== 'OFF');
+    document.getElementById('opt-frame-limit').value = STATE.frameLimit || 'VSYNC';
 
     // Tachi Settings
     const tachiKeyInput = document.getElementById('opt-tachi-api-key');
@@ -1761,6 +1762,11 @@ const STATE = {
     optionsChangedFilter: false,
     targetDuration: 500, // Primary determinant for note speed (ms)
     targetGreenNumber: 300, // Derived from Duration (LR2 compatibility)
+    frameLimit: 'VSYNC', // VSYNC, 120, 240, 480, 960, UNLIMITED
+    fps: 0,
+    lastFrameTime: 0,
+    frameCount: 0,
+    lastFpsUpdate: 0,
 
     // Game State
     isPlaying: false,
@@ -2077,6 +2083,7 @@ document.getElementById('btn-save-settings').onclick = () => {
     STATE.resolution = document.getElementById('opt-resolution').value;
     STATE.showTally = document.getElementById('opt-show-tally').checked;
     STATE.replaySaveType = document.getElementById('opt-replay-type').value;
+    STATE.frameLimit = document.getElementById('opt-frame-limit').value;
 
     const greenFixChecked = document.getElementById('opt-green-fix').checked;
     if (!greenFixChecked) {
@@ -4061,6 +4068,11 @@ async function enterGame() {
     const lastNote = STATE.loadedSong.notes[STATE.loadedSong.notes.length - 1];
     STATE.lastNoteTime = lastNote ? lastNote.time : 0;
 
+    // Reset FPS / Timing
+    STATE.lastFpsUpdate = 0;
+    STATE.frameCount = 0;
+    STATE.lastFrameTime = performance.now();
+
     requestAnimationFrame(loop);
 }
 
@@ -4492,7 +4504,31 @@ function loop() {
         return;
     }
 
-    requestAnimationFrame(loop);
+    // FPS Counter
+    const perfNow = performance.now();
+    if (!STATE.lastFpsUpdate) STATE.lastFpsUpdate = perfNow;
+    STATE.frameCount++;
+    if (perfNow - STATE.lastFpsUpdate >= 500) {
+        STATE.fps = Math.round((STATE.frameCount * 1000) / (perfNow - STATE.lastFpsUpdate));
+        const fpsEl = document.getElementById('fps-display');
+        if (fpsEl) fpsEl.textContent = STATE.fps + ' FPS';
+        STATE.frameCount = 0;
+        STATE.lastFpsUpdate = perfNow;
+    }
+
+    // Schedule next frame
+    if (STATE.frameLimit === 'VSYNC') {
+        requestAnimationFrame(loop);
+    } else if (STATE.frameLimit === 'UNLIMITED') {
+        setTimeout(loop, 0);
+    } else {
+        const targetFps = parseInt(STATE.frameLimit);
+        const frameTime = 1000 / targetFps;
+        const elapsed = perfNow - STATE.lastFrameTime;
+        const delay = Math.max(0, frameTime - elapsed);
+        STATE.lastFrameTime = perfNow;
+        setTimeout(loop, delay);
+    }
 }
 
 function render(time) {

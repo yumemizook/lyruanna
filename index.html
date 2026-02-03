@@ -40,6 +40,8 @@
             </div>
         </div>
 
+        <div id="fps-display">60 FPS</div>
+
         <!-- LOADING SCREEN -->
         <div id="screen-loading">
             <div class="loading-content">
@@ -194,18 +196,8 @@
             <div class="lane-cover-bottom" id="lane-cover-bottom" style="height:0;"></div>
             <!-- Green/White Number HUD (visible when holding START in-game) -->
             <div id="lane-cover-info" class="lane-cover-info" style="display:none;">
-                <div class="cover-info-row">
-                    <span class="cover-label">GN</span>
-                    <span class="cover-val green" id="hud-green-number">300</span>
-                </div>
-                <div class="cover-info-row">
-                    <span class="cover-label">DUR</span>
-                    <span class="cover-val cyan" id="hud-duration-val">500</span>
-                </div>
-                <div class="cover-info-row">
-                    <span class="cover-label">WN</span>
-                    <span class="cover-val white" id="hud-white-number">200</span>
-                </div>
+                <span id="hud-white-number">200</span>
+                <span id="hud-green-number">300</span>
             </div>
             <canvas id="game-canvas"></canvas>
             <!-- Progress Bar -->
@@ -440,6 +432,17 @@
                     <div class="option-row">
                         <span class="option-label">Green Number Fix (Floating)</span>
                         <input type="checkbox" id="opt-green-fix">
+                    </div>
+                    <div class="option-row">
+                        <span class="option-label">Frame Limit</span>
+                        <select id="opt-frame-limit">
+                            <option value="VSYNC">VSync</option>
+                            <option value="120">2x refresh (120 FPS)</option>
+                            <option value="240">4x refresh (240 FPS)</option>
+                            <option value="480">8x refresh (480 FPS)</option>
+                            <option value="960">16x refresh (960 FPS)</option>
+                            <option value="UNLIMITED">Unlimited</option>
+                        </select>
                     </div>
                 </div>
 
