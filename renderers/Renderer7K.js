@@ -7,39 +7,37 @@ class Renderer7K {
         this.channels = channels;
 
         // Caching for GC reduction
+        this.notePool = new window.ObjectPool(() => ({ x: 0, y: 0, w: 0 }), 100);
         this.noteBatches = {
             scratch: [],
             white: [],
             blue: []
         };
 
-        // Cache Gradients (Lazy init or fixed if size constant)
-        // Since resize might change height, we might need to recreate them on render if size changes,
-        // or just recreate if null. For now, valid cache.
-        this.beamGradients = [];
+        // Cache Gradients
+        this.beamGradients = {};
+        this.lastHitY = -1;
+        this.lastBeamH = -1;
         this.lastTime = 0;
     }
 
-    getBeamGradient(ctx, hitY, beamH, isScratch, alpha) {
-        // Gradients depend on alpha, so strictly caching specific alpha objects is hard unless we use globalAlpha.
-        // Better: gradient from color to transparent, use globalAlpha or fillStyle with rgba.
-        // Actually, creating a gradient every frame IS heavy.
-        // Optimization: Create ONE gradient (Start -> End) and only update colors? 
-        // Canvas gradients are objects. 
-        // Better optimization: Pre-render beam to an offscreen canvas or image?
-        // For this fix, let's keep it simple: Use a cached gradient if possible, but alpha changes.
-        // Actually, if we use `ctx.globalAlpha`, we can reuse the SAME gradient object (opaque to transparent)
-        // and just fade it with globalAlpha.
+    getBeamGradient(ctx, hitY, beamH, isScratch) {
+        // If dimensions changed, clear cache
+        if (hitY !== this.lastHitY || beamH !== this.lastBeamH) {
+            this.beamGradients = {};
+            this.lastHitY = hitY;
+            this.lastBeamH = beamH;
+        }
 
         const key = isScratch ? 'scratch' : 'normal';
         if (!this.beamGradients[key]) {
             const g = ctx.createLinearGradient(0, hitY, 0, hitY - beamH);
             if (isScratch) {
-                g.addColorStop(0, `rgba(255, 50, 50, 1)`);
-                g.addColorStop(1, `rgba(255, 0, 0, 0)`);
+                g.addColorStop(0, 'rgba(255, 50, 50, 1)');
+                g.addColorStop(1, 'rgba(255, 0, 0, 0)');
             } else {
-                g.addColorStop(0, `rgba(200, 255, 255, 1)`);
-                g.addColorStop(1, `rgba(0, 255, 255, 0)`);
+                g.addColorStop(0, 'rgba(200, 255, 255, 1)');
+                g.addColorStop(1, 'rgba(0, 255, 255, 0)');
             }
             this.beamGradients[key] = g;
         }
@@ -111,7 +109,7 @@ class Renderer7K {
                 // Actually, I'll invalid cache if hitY matches.
 
                 // Using method call for cleaner code
-                const grad = this.getBeamGradient(ctx, hitY, beamH, isScratch, alpha);
+                const grad = this.getBeamGradient(ctx, hitY, beamH, isScratch);
 
                 ctx.save();
                 ctx.globalAlpha = isScratch ? alpha * 0.6 : alpha * 0.5;
@@ -166,6 +164,7 @@ class Renderer7K {
         }
 
         // Recycle note batches
+        this.notePool.reset();
         const noteBatches = this.noteBatches;
         noteBatches.scratch.length = 0;
         noteBatches.white.length = 0;
@@ -203,12 +202,16 @@ class Renderer7K {
                 y = hitY; // Clamp to receptor
             }
 
-            // Double check bounds (though indices should cover it)
             if (y < -50 || y > canvas.height + 50) continue;
 
-            if (isSc) noteBatches.scratch.push({ x: x + 1, y, w: w - 2 });
-            else if (isBlue) noteBatches.blue.push({ x: x + 1, y, w: w - 2 });
-            else noteBatches.white.push({ x: x + 1, y, w: w - 2 });
+            const noteObj = this.notePool.borrow();
+            noteObj.x = x + 1;
+            noteObj.y = y;
+            noteObj.w = w - 2;
+
+            if (isSc) noteBatches.scratch.push(noteObj);
+            else if (isBlue) noteBatches.blue.push(noteObj);
+            else noteBatches.white.push(noteObj);
         }
 
         // Draw Batches

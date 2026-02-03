@@ -181,10 +181,13 @@
                         </filter>
                     </defs>
                 </svg>
-                <img id="bga-img" style="display:none;">
-                <video id="bga-video" style="display:none;" muted></video>
+                <img id="bga-img"
+                    style="visibility:hidden; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
+                <video id="bga-video"
+                    style="visibility:hidden; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;"
+                    muted></video>
                 <img id="bga-layer"
-                    style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; filter: url(#chromakey);">
+                    style="visibility:hidden; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; filter: url(#chromakey);">
             </div>
             <!-- Ghost Score Display (Centered, just value) -->
             <div id="ghost-display"
@@ -815,6 +818,14 @@
                                 <span class="pd-rating-val" id="pd-rating-val">--</span>
                             </div>
                         </div>
+                        <div id="pd-pause-container"
+                            style="display:none; margin-left: 15px; background: rgba(255,100,0,0.1); border: 1px solid rgba(255,100,0,0.3); padding: 4px 10px; border-radius: 4px;">
+                            <div style="font-size: 10px; color: #f82; font-weight: bold; letter-spacing: 0.5px;">
+                                SUBMISSIONS PAUSED</div>
+                            <div id="pd-pause-timer"
+                                style="font-size: 14px; font-weight: 900; color: #fff; font-family: monospace;">00:00
+                            </div>
+                        </div>
                     </div>
                     <div class="pd-header-right">
                         <div class="pd-rank-label">CLASS RANK</div>
@@ -865,6 +876,7 @@
         </div>
     </div>
 
+    <script src="PerformanceUtils.js"></script>
     <script src="renderers/Renderer7K.js"></script>
     <script src="renderers/Renderer5K.js"></script>
     <script src="renderers/Renderer9K.js"></script>

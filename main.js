@@ -14,6 +14,18 @@ if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath.replace('app.asar', 'app.asar.unpacked'));
 }
 
+// Difficulty Inference Helper
+const inferDifficulty = (title, filename) => {
+    const t = (title || '').toLowerCase();
+    const f = (filename || '').toLowerCase();
+    if (f.endsWith('_b') || t.includes('beginner')) return 1;
+    if (f.endsWith('_n') || t.includes('normal') || t.includes('light')) return 2;
+    if (f.endsWith('_h') || t.includes('hyper')) return 3;
+    if (f.endsWith('_l') || t.includes('leggendaria') || t.includes('insane') || t.includes('black another')) return 5;
+    if (f.endsWith('_a') || t.includes('another')) return 4;
+    return 0; // Unknown fallback
+};
+
 // Global Streaming Server
 let streamServer;
 let streamPort = 0;
@@ -47,13 +59,17 @@ function startStreamServer() {
             });
 
             const command = ffmpeg(filePath)
-                .inputOptions(['-re']) // Read at native framerate
+                .inputOptions([
+                    '-hwaccel', 'auto',        // Use hardware acceleration if available
+                    '-re'                      // Read at native framerate
+                ])
                 .outputOptions([
                     '-f', 'mjpeg',             // Output format MJPEG
-                    '-q:v', '12',              // Medium Quality (2-31, higher = lower quality, 12 is good for BG)
-                    '-vf', 'scale=640:-1',     // Downscale for performance
-                    '-r', '20',                // Limit framerate to 20fps
-                    '-threads', '2'            // Start with 2 threads, ensures game loop isn't starved
+                    '-q:v', '15',              // Lower quality (15) for better performance as BG
+                    '-vf', 'scale=480:-1',     // Further downscale (480p) for legacy content
+                    '-r', '15',                // Limit framerate to 15fps as background is enough
+                    '-threads', '2',           // Limit threads
+                    '-tune', 'zerolatency'     // Optimize for streaming latency
                 ])
                 // Pipe to response
                 .on('start', (cmd) => console.log('[FFmpeg] Started:', cmd))
@@ -151,25 +167,7 @@ function createWindow() {
         height: 400,
         backgroundColor: '#121212',
         frame: false,
-        alwaysOnTop: true,
-        icon: path.join(__dirname, 'icon/icon.png'),
-        webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true
-        }
-    });
-
-    splash.loadFile('splash.html');
-    splash.center();
-
-    mainWindow = new BrowserWindow({
-        width: logicalWidth,
-        height: logicalHeight,
-        fullscreen: fullscreen,
-        backgroundColor: '#121212',
-        frame: false,
-        resizable: false,
-        show: false, // Don't show immediately
+        alwaysOnTop: false,
         icon: path.join(__dirname, 'icon/icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -178,19 +176,47 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadFile('index.html');
+    splash.loadFile('splash.html');
+    splash.center();
 
-    // Wait for main window to be ready before showing it and destroying splash
-    mainWindow.once('ready-to-show', () => {
-        splash.destroy();
-        mainWindow.show();
+    ipcMain.once('start-game', () => {
+        mainWindow = new BrowserWindow({
+            width: logicalWidth,
+            height: logicalHeight,
+            fullscreen: fullscreen,
+            backgroundColor: '#121212',
+            frame: false,
+            resizable: false,
+            show: false, // Don't show immediately
+            icon: path.join(__dirname, 'icon/icon.png'),
+            webPreferences: {
+                preload: path.join(__dirname, 'preload.js'),
+                contextIsolation: true,
+                nodeIntegration: false
+            }
+        });
+
+        mainWindow.loadFile('index.html');
+
+        ipcMain.once('app-ready', () => {
+            if (splash && !splash.isDestroyed()) {
+                splash.destroy();
+                splash = null;
+            }
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.show();
+            }
+        });
     });
 }
 
 // --- IPC HANDLERS ---
 
 // Window Controls
-ipcMain.on('window-close', () => mainWindow.close());
+ipcMain.on('window-close', () => {
+    if (mainWindow) mainWindow.close();
+    else app.quit();
+});
 ipcMain.on('window-set-title', (event, title) => {
     if (mainWindow) mainWindow.setTitle(title);
 });
@@ -242,7 +268,7 @@ ipcMain.handle('get-window-settings', async () => {
 ipcMain.handle('scan-library', async () => {
     initPaths();
     // Open folder dialog
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow || null, {
         properties: ['openDirectory']
     });
 
@@ -309,7 +335,7 @@ ipcMain.handle('scan-library', async () => {
                 md5,
                 title: titleMatch ? cleanStr(titleMatch[1]) : 'Unknown',
                 artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown',
-                difficulty: diffMatch ? parseInt(diffMatch[1]) : 2,
+                difficulty: diffMatch ? parseInt(diffMatch[1]) : inferDifficulty(titleMatch ? titleMatch[1] : '', path.basename(file, path.extname(file))),
                 level: levelMatch ? parseInt(levelMatch[1]) : 0,
                 keyMode: keyMode,
                 noteCount: noteCount
@@ -549,7 +575,7 @@ ipcMain.handle('get-library-folders', async () => {
 // 7. Add Library Folder
 ipcMain.handle('add-library-folder', async () => {
     initPaths();
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow || null, {
         properties: ['openDirectory']
     });
 
@@ -615,7 +641,9 @@ ipcMain.handle('rescan-all-folders', async () => {
     const songs = [];
 
     // Send initial progress
-    mainWindow.webContents.send('scan-progress', { current: 0, total: totalFiles, status: 'Starting scan...' });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('scan-progress', { current: 0, total: totalFiles, status: 'Starting scan...' });
+    }
 
     let lastProgressTime = 0;
     // Parse each file
@@ -675,7 +703,7 @@ ipcMain.handle('rescan-all-folders', async () => {
                 md5,
                 title: titleMatch ? cleanStr(titleMatch[1]) : 'Unknown',
                 artist: artistMatch ? cleanStr(artistMatch[1]) : 'Unknown',
-                difficulty: diffMatch ? parseInt(diffMatch[1]) : 2,
+                difficulty: diffMatch ? parseInt(diffMatch[1]) : inferDifficulty(titleMatch ? titleMatch[1] : '', path.basename(file, path.extname(file))),
                 level: levelMatch ? parseInt(levelMatch[1]) : 0,
                 keyMode: keyMode,
                 noteCount: noteCount
@@ -732,7 +760,7 @@ ipcMain.handle('rescan-all-folders', async () => {
 
 // 10. Open Course Dialog
 ipcMain.handle('open-course-dialog', async () => {
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(mainWindow || null, {
         properties: ['openFile', 'multiSelections'],
         filters: [{ name: 'LR2 Course File', extensions: ['lr2crs'] }]
     });

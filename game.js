@@ -2001,7 +2001,13 @@ if (IS_DESKTOP) {
     // Handle scan progress
     let lastScanCurrent = 0;
     let lastScanTotal = 0;
+    let startupTransitionTriggered = false;
     window.electronAPI.onScanProgress((data) => {
+        // Trigger window transition on the first progress update (after globbing is done)
+        if (!startupTransitionTriggered && window.electronAPI.appReady) {
+            window.electronAPI.appReady();
+            startupTransitionTriggered = true;
+        }
         if (data.total > 0) {
             // Reset if explicitly 0 (start of scan)
             if (data.current === 0) {
@@ -2138,7 +2144,7 @@ document.getElementById('btn-save-options').onclick = () => {
 // Filter button handlers
 document.getElementById('btn-diff-filter').onclick = () => {
     playSystemSound('difficulty');
-    const filters = ['ALL', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+    const filters = ['ALL', 'UNKNOWN', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
     let idx = filters.indexOf(STATE.difficultyFilter);
     STATE.difficultyFilter = filters[(idx + 1) % filters.length];
     savePlayerOptions();
@@ -2508,8 +2514,8 @@ function renderSongList_OLD() {
     else {
         // Back navigation is now via Escape key only - no '..' folder shown
 
-        const diffTierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
-        const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter) + 1;
+        const diffTierNames = ['UNKNOWN', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+        const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter);
         const filtered = STATE.charts.filter(c => {
             if (getCategoryName(c) !== STATE.currentFolder) return false;
             if (STATE.difficultyFilter !== 'ALL' && c.difficulty !== diffIdx) return false;
@@ -2531,10 +2537,10 @@ function renderSongList_OLD() {
         };
         if (sortModes[STATE.sortMode]) filtered.sort(sortModes[STATE.sortMode]);
 
-        const diffColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+        const diffColors = ['#888', '#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
         filtered.forEach(c => {
             const lamp = getLamp(c.fileRef);
-            const diffColor = c.difficulty > 0 && c.difficulty <= 5 ? diffColors[c.difficulty - 1] : '#888';
+            const diffColor = (c.difficulty >= 0 && c.difficulty <= 5) ? diffColors[c.difficulty] : '#888';
             const div = document.createElement('div');
             div.className = 'song-card';
 
@@ -2659,8 +2665,8 @@ function refreshSongList() {
         // Back Button
         STATE.currentList.push({ type: 'back', title: '.. (BACK)', level: '<i class="ph ph-arrow-u-up-left" style="font-size:1.1em; vertical-align:middle; color:var(--accent)"></i>', lamp: { class: '' } });
 
-        const diffTierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
-        const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter) + 1;
+        const diffTierNames = ['UNKNOWN', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+        const diffIdx = diffTierNames.indexOf(STATE.difficultyFilter);
 
         let filtered = STATE.charts.filter(c => {
             if (getCategoryName(c) !== STATE.currentFolder) return false;
@@ -3541,13 +3547,13 @@ async function loadChart(idx, el, focusOnly = false) {
         ui.artistGenre.textContent = genre ? `${c.artist} | ${genre}` : c.artist;
 
         const level = data.headers['PLAYLEVEL'] || data.headers['DIFFICULTY'] || '?';
-        const diffTier = parseInt(data.headers['DIFFICULTY']) || 2;
-        const tierNames = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
-        const tierColors = ['#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
+        const diffTier = (c.difficulty !== undefined) ? c.difficulty : (parseInt(data.headers['DIFFICULTY']) || 0);
+        const tierNames = ['UNKNOWN', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+        const tierColors = ['#888', '#5ff', '#0f0', '#fa0', '#f00', '#f0f'];
 
         ui.diffLevel.textContent = level;
-        ui.diffLevel.style.color = tierColors[Math.min(diffTier - 1, 4)] || '#fff';
-        ui.diffTier.textContent = tierNames[Math.min(diffTier - 1, 4)] || 'NORMAL';
+        ui.diffLevel.style.color = tierColors[Math.min(Math.max(0, diffTier), 5)] || '#888';
+        ui.diffTier.textContent = tierNames[Math.min(Math.max(0, diffTier), 5)] || 'UNKNOWN';
 
         // Star Logic
         const numLevel = parseInt(level) || 0;
@@ -3670,7 +3676,16 @@ async function loadChart(idx, el, focusOnly = false) {
 async function loadAudioResources(data) {
     STATE.audioBuffers = {};
     STATE.bgaDefinitions = {};
-    STATE.isLoadingCancelled = false; // Reset cancellation flag
+    STATE.isLoadingCancelled = false;
+    STATE.currentBgaId = null;     // Guard for base layer
+    STATE.currentBgaLayerId = null; // Guard for upper layer
+
+    // Pre-fetch stream URL once per load
+    if (IS_DESKTOP && window.electronAPI.getStreamUrl) {
+        window.electronAPI.getStreamUrl().then(url => {
+            STATE.streamBaseUrl = url;
+        });
+    }
 
     // Cancellation Handler
     const cancelHandler = (e) => {
@@ -4172,8 +4187,13 @@ function playSystemSound(id, loop = false) {
     return null;
 }
 
-async function updateBGA(event) {
-    // If event is just ID (legacy call or fallback), wrap it
+function updateBGA(event) {
+    if (STATE.bgaDisplay === 'OFF') {
+        ui.gameBga.style.visibility = 'hidden';
+        return;
+    }
+    ui.gameBga.style.visibility = 'visible';
+
     if (typeof event === 'number' || typeof event === 'string') {
         event = { id: event, ch: 0x04 };
     }
@@ -4182,51 +4202,62 @@ async function updateBGA(event) {
     const def = STATE.bgaDefinitions[event.id];
     if (!def) return;
 
-    // Detect if this is a Layer event (Channel 0x07) or Base (0x04)
     const isLayer = (event.ch === 0x07 || event.ch === 7);
 
-    // Choose target element
+    // REDUNDANCY GUARD: Skip if already showing this ID on this layer
+    if (isLayer) {
+        if (STATE.currentBgaLayerId === event.id) return;
+        STATE.currentBgaLayerId = event.id;
+    } else {
+        if (STATE.currentBgaId === event.id) return;
+        STATE.currentBgaId = event.id;
+    }
+
     const targetImg = isLayer ? ui.bgaLayer : ui.bgaImg;
 
-    // Video only supported on base layer for now
-    if (def.isVideo && !STATE.bgaDefinitions[event.id].useStream && /\.(mp4|webm)$/i.test(def.url) && !isLayer) {
-        ui.bgaImg.style.display = 'none';
-        ui.bgaVideo.src = def.url;
-        ui.bgaVideo.style.display = 'block';
-        if (ui.bgaVideo.paused) {
-            ui.bgaVideo.currentTime = 0; // Optional: restart?
-            ui.bgaVideo.play().catch(() => { });
+    // Video only supported on base layer
+    if (def.isVideo && !isLayer) {
+        const isNativeVideo = /\.(mp4|webm|mov)$/i.test(def.url);
+        if (isNativeVideo) {
+            ui.bgaImg.style.visibility = 'hidden';
+            if (ui.bgaVideo.src !== def.url) {
+                ui.bgaVideo.src = def.url;
+            }
+            ui.bgaVideo.style.visibility = 'visible';
+            if (ui.bgaVideo.paused) {
+                ui.bgaVideo.currentTime = 0;
+                ui.bgaVideo.play().catch(() => { });
+            }
+            return;
         }
-    } else {
-        // Image or Stream
-        if ((/\.(avi|mpg|mpeg|wmv|m4v)$/i.test(def.filename) || def.isVideo) && !isLayer) {
-            // Stream logic (only for base layer)
-            if (!STATE.streamBaseUrl && window.electronAPI) {
-                STATE.streamBaseUrl = await window.electronAPI.getStreamUrl();
-            }
 
-            if (STATE.streamBaseUrl) {
-                let videoPath = def.url.replace('file://', '');
-                if (videoPath.startsWith('/') && videoPath[2] === ':') videoPath = videoPath.substring(1);
-                videoPath = decodeURIComponent(videoPath);
-                const streamUrl = `${STATE.streamBaseUrl}?path=${encodeURIComponent(videoPath)}`;
+        // MJPEG Stream for other video formats
+        if (STATE.streamBaseUrl) {
+            let videoPath = def.url.replace('file://', '');
+            if (videoPath.startsWith('/') && videoPath[2] === ':') videoPath = videoPath.substring(1);
+            videoPath = decodeURIComponent(videoPath);
+            const streamUrl = `${STATE.streamBaseUrl}?path=${encodeURIComponent(videoPath)}`;
 
-                ui.bgaVideo.pause();
-                ui.bgaVideo.style.display = 'none';
+            ui.bgaVideo.pause();
+            ui.bgaVideo.style.visibility = 'hidden';
+            if (ui.bgaImg.src !== streamUrl) {
                 ui.bgaImg.src = streamUrl;
-                ui.bgaImg.style.display = 'block';
             }
-        } else {
-            // Standard Image
-            if (!isLayer) {
-                ui.bgaVideo.pause();
-                ui.bgaVideo.style.display = 'none';
-            }
-
-            targetImg.src = def.url;
-            targetImg.style.display = 'block';
+            ui.bgaImg.style.visibility = 'visible';
+            return;
         }
     }
+
+    // Standard Image
+    if (!isLayer) {
+        ui.bgaVideo.pause();
+        ui.bgaVideo.style.visibility = 'hidden';
+    }
+
+    if (targetImg.src !== def.url) {
+        targetImg.src = def.url;
+    }
+    targetImg.style.visibility = 'visible';
 }
 
 const SYSTEM_SOUND_FILES = [
@@ -4396,10 +4427,11 @@ function loop() {
     if (!STATE.isPlaying) return;
     const now = (audioCtx.currentTime - STATE.startTime) * 1000;
 
-    // Update progress bar
-    if (STATE.lastNoteTime > 0 && ui.progressFill) {
+    // Update progress bar (Throttled to once per 100ms or significant change)
+    if (STATE.lastNoteTime > 0 && ui.progressFill && (now - (STATE.lastProgressUpdate || 0) > 100)) {
         const progress = Math.min(100, Math.max(0, (now / STATE.lastNoteTime) * 100));
-        ui.progressFill.style.height = `${progress}%`;
+        ui.progressFill.style.height = `${progress.toFixed(1)}%`;
+        STATE.lastProgressUpdate = now;
     }
 
     const bgm = STATE.loadedSong.bgm;
@@ -4495,7 +4527,11 @@ function loop() {
         STATE.history.score.push(STATE.score);
     }
 
-    updatePacemaker(now);
+    // Update Pacemaker (Throttled to ~60fps max, or less if performance suffers)
+    if (now - (STATE.lastPaceUpdate || 0) > 16) {
+        updatePacemaker(now);
+        STATE.lastPaceUpdate = now;
+    }
 
     // End of song check
     if (now > STATE.lastNoteTime + 2000) {
@@ -4579,6 +4615,7 @@ function handleJudgment(result, diffMs, isEmptyPoor = false) {
         else if (result === 'POOR') STATE.judgeCounts.poor++;
 
         // Mark HUD dirty (batched update)
+        markHudDirty();
     }
 
     // Update Max Score for Running Average (ignore empty poors)
@@ -5926,7 +5963,7 @@ window.addEventListener('keydown', e => {
 
         // SELECT KEY CYCLE LOGIC
         if (action === ACTIONS.SELECT && !STATE.isPlaying) {
-            const filters = ['ALL', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
+            const filters = ['ALL', 'UNKNOWN', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
             let idx = filters.indexOf(STATE.difficultyFilter);
             STATE.difficultyFilter = filters[(idx + 1) % filters.length];
             renderSongList();
@@ -6138,6 +6175,8 @@ window.addEventListener('resize', resize);
             updateProfileDisplay();
         }
 
+
+
         const data = await window.electronAPI.rescanAllFolders();
         loadLibraryFromDesktop(data);
         STATE.loadingComplete = true;
@@ -6179,7 +6218,7 @@ async function updateProfileDisplay() {
         pRating.textContent = 'OFFLINE';
         pRating.className = 'offline';
         if (pIcon) pIcon.innerHTML = '';
-        pContainer.classList.add('hidden'); // Optional: hide if offline
+        pContainer.classList.remove('hidden'); // Always show
         _tachiUserId = null;
         return;
     }
@@ -6269,13 +6308,23 @@ const pdCloseBtn = document.getElementById('btn-close-player-details');
 if (pdCloseBtn) {
     pdCloseBtn.addEventListener('click', () => {
         pdModal.classList.remove('open');
+        if (_pdPauseTimerId) {
+            clearInterval(_pdPauseTimerId);
+            _pdPauseTimerId = null;
+        }
     });
 }
 
 // Close on click outside
 if (pdModal) {
     pdModal.addEventListener('click', (e) => {
-        if (e.target === pdModal) pdModal.classList.remove('open');
+        if (e.target === pdModal) {
+            pdModal.classList.remove('open');
+            if (_pdPauseTimerId) {
+                clearInterval(_pdPauseTimerId);
+                _pdPauseTimerId = null;
+            }
+        }
     });
 }
 
@@ -6283,11 +6332,7 @@ if (pdModal) {
 const profileDisplay = document.getElementById('profile-display');
 if (profileDisplay) {
     profileDisplay.addEventListener('click', () => {
-        if (_tachiUserId) {
-            showPlayerDetails();
-        } else {
-            console.log('Cannot open player details: User ID not loaded');
-        }
+        showPlayerDetails(); // Allow opening even if Guest
     });
 }
 
@@ -6300,6 +6345,8 @@ if (pdTabRecent && pdTabBest) {
     pdTabBest.addEventListener('click', () => switchPdTab('best'));
 }
 
+let _pdPauseTimerId = null;
+
 function switchPdTab(tab) {
     _pdCurrentTab = tab;
     if (tab === 'recent') {
@@ -6309,50 +6356,94 @@ function switchPdTab(tab) {
         pdTabRecent.classList.remove('active');
         pdTabBest.classList.add('active');
     }
-    loadPlayerScores(tab);
+
+    if (_tachiUserId) {
+        loadPlayerScores(tab);
+    } else {
+        const list = document.getElementById('pd-scores-list');
+        list.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">Offline - Connect Tachi to view scores</div>';
+    }
 }
 
 
 async function showPlayerDetails() {
     pdModal.classList.add('open');
 
-    // Populate Header Cache (should be fresh from updateProfileDisplay)
     const pAvatar = document.getElementById('pd-avatar');
     const pUser = document.getElementById('pd-username');
     const pRatingVal = document.getElementById('pd-rating-val');
     const pRatingIcon = document.getElementById('pd-rating-icon');
     const pRankVal = document.getElementById('pd-rank-val');
     const pRankTotal = document.getElementById('pd-rank-total');
+    const pauseContainer = document.getElementById('pd-pause-container');
+    const pauseTimer = document.getElementById('pd-pause-timer');
 
-    // Use cached values or fallbacks
-    pUser.textContent = _tachiUserProfile ? _tachiUserProfile.username : 'Unknown';
-    pAvatar.src = document.getElementById('profile-avatar').src; // Reuse loaded image
+    // Default Avatar
+    const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
 
-    if (_tachiUserStats && _tachiUserStats.rating !== null) {
-        let r = _tachiUserStats.rating;
-        let rText = '';
-        if (r >= 13.0) {
-            pRatingIcon.innerHTML = `<i class="ph-fill ph-star" style="color:#ffcc00; font-size:16px;"></i>`;
-            rText = (r - 12.0).toFixed(2);
+    if (_tachiUserId) {
+        pUser.textContent = _tachiUserProfile ? _tachiUserProfile.username : 'Unknown';
+        pAvatar.src = document.getElementById('profile-avatar').src || defaultAvatar;
+
+        if (_tachiUserStats && _tachiUserStats.rating !== null) {
+            let r = _tachiUserStats.rating;
+            let rText = '';
+            if (r >= 13.0) {
+                pRatingIcon.innerHTML = `<i class="ph-fill ph-star" style="color:#ffcc00; font-size:16px;"></i>`;
+                rText = (r - 12.0).toFixed(2);
+            } else {
+                pRatingIcon.innerHTML = `<i class="ph-bold ph-star" style="color:#ffcc00; font-size:16px;"></i>`;
+                rText = r.toFixed(2);
+            }
+            pRatingVal.textContent = rText;
         } else {
-            pRatingIcon.innerHTML = `<i class="ph-bold ph-star" style="color:#ffcc00; font-size:16px;"></i>`;
-            rText = r.toFixed(2);
+            pRatingVal.textContent = '0.00';
+            pRatingIcon.innerHTML = `<i class="ph-bold ph-star" style="color:#444; font-size:16px;"></i>`;
         }
-        pRatingVal.textContent = rText;
-    } else {
-        pRatingVal.textContent = '--';
-    }
 
-    if (_tachiUserStats && _tachiUserStats.rankObj) {
-        pRankVal.textContent = '#' + _tachiUserStats.rankObj.ranking;
-        pRankTotal.textContent = '/ ' + _tachiUserStats.rankObj.outOf;
+        if (_tachiUserStats && _tachiUserStats.rankObj) {
+            pRankVal.textContent = '#' + _tachiUserStats.rankObj.ranking;
+            pRankTotal.textContent = '/ ' + _tachiUserStats.rankObj.outOf;
+        } else {
+            pRankVal.textContent = '#--';
+            pRankTotal.textContent = '';
+        }
     } else {
+        // Offline / Guest Mode
+        pUser.textContent = 'Guest';
+        pAvatar.src = defaultAvatar;
+        pRatingVal.textContent = 'OFFLINE';
+        pRatingIcon.innerHTML = '';
         pRankVal.textContent = '#--';
         pRankTotal.textContent = '';
     }
 
+    // Handle Pause Timer
+    if (_pdPauseTimerId) clearInterval(_pdPauseTimerId);
+
+    const updatePauseTimer = () => {
+        const resumeTime = window.TachiIR ? TachiIR.getSubmissionResumeTime() : 0;
+        const now = Date.now();
+        if (resumeTime > now) {
+            pauseContainer.style.display = 'block';
+            const diff = Math.floor((resumeTime - now) / 1000);
+            const m = Math.floor(diff / 60);
+            const s = diff % 60;
+            pauseTimer.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        } else {
+            pauseContainer.style.display = 'none';
+            if (_pdPauseTimerId) {
+                clearInterval(_pdPauseTimerId);
+                _pdPauseTimerId = null;
+            }
+        }
+    };
+
+    updatePauseTimer();
+    _pdPauseTimerId = setInterval(updatePauseTimer, 1000);
+
     // Default to Recent
-    switchPdTab('recent');
+    switchPdTab(_pdCurrentTab || 'recent');
 }
 
 async function loadPlayerScores(type) {
@@ -6384,26 +6475,17 @@ async function loadPlayerScores(type) {
 
 function renderPlayerScores(body) {
     const list = document.getElementById('pd-scores-list');
+    list.classList.add('card-layout'); // For CSS styling
 
-    // Body contains { scores or pbs, songs, charts }
     const items = body.scores || body.pbs || [];
     const songs = body.songs || [];
-    // const charts = body.charts || [];
+    const charts = body.charts || [];
 
     if (!items || items.length === 0) {
-        list.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#666;">No scores found.</td></tr>';
+        list.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">No scores found.</div>';
         return;
     }
 
-    // Helper to find song title
-    const getSongTitle = (item) => {
-        if (item.song) return item.song.title;
-        // Resolve from songs array using item.songID
-        const s = songs.find(s => s.id === item.songID);
-        return s ? s.title : 'Unknown Song';
-    };
-
-    // Tachi Lamp Colors
     const LAMP_COLORS = {
         'FAILED': '#aaaaaa',
         'ASSIST CLEAR': '#aa44ff',
@@ -6416,72 +6498,72 @@ function renderPlayerScores(body) {
     };
 
     items.forEach(s => {
-        const songTitle = getSongTitle(s);
-
-        // Tachi v1 BMS scores have data nested in scoreData
         const scoreData = s.scoreData || {};
         const lamp = scoreData.lamp || 'FAILED';
         const score = scoreData.score || 0;
         const grade = scoreData.grade || 'F';
 
-        let rating = 0;
-        if (s.calculatedData && s.calculatedData.sieglinde) {
-            rating = s.calculatedData.sieglinde;
-        } else if (s.weight) {
-            rating = s.weight;
+        // Resolve Song & Chart
+        const song = songs.find(sg => sg.id === (s.songID || (s.song ? s.song.id : null))) || s.song || {};
+        const chart = charts.find(c => c.chartID === s.chartID) || {};
+
+        const title = song.title || 'Unknown Song';
+        const subtitle = (song.data && song.data.subtitle) ? song.data.subtitle : '';
+
+        // Rate% calculation
+        let rate = 0;
+        if (s.calculatedData && s.calculatedData.rate !== undefined) {
+            rate = s.calculatedData.rate;
+        } else if (chart.data && chart.data.notecount) {
+            rate = (score / (chart.data.notecount * 2)) * 100;
         }
 
-        // Use timeAchieved if available, fallback to timePlayed
+        // Sieglinde formatting
+        let rating = 0;
+        if (s.calculatedData && s.calculatedData.sieglinde) rating = s.calculatedData.sieglinde;
+        else if (s.weight) rating = s.weight;
+
+        let ratingDisplay = '';
+        if (rating > 0) {
+            if (rating >= 13.0) {
+                ratingDisplay = `<span class="rating-star">★</span><span class="rating-num">${(rating - 12).toFixed(2)}</span>`;
+            } else {
+                ratingDisplay = `<span class="rating-star">☆</span><span class="rating-num">${rating.toFixed(2)}</span>`;
+            }
+        }
+
         const timestamp = s.timeAchieved || s.timePlayed;
         const dateStr = timestamp ? new Date(timestamp).toLocaleDateString() : '-';
 
-        const tr = document.createElement('tr');
+        const card = document.createElement('div');
+        card.className = 'pd-score-card';
+        card.style.borderLeftColor = LAMP_COLORS[lamp] || '#333';
 
-        // Lamp Dot
-        const tdLamp = document.createElement('td');
-        const lampDot = document.createElement('span');
-        lampDot.className = 'pd-lamp';
-        lampDot.style.backgroundColor = LAMP_COLORS[lamp] || '#333';
-        lampDot.title = lamp;
-        tdLamp.appendChild(lampDot);
-        tr.appendChild(tdLamp);
+        // Create Gradient Background
+        const glowColor = (LAMP_COLORS[lamp] || '#333');
+        card.style.background = `linear-gradient(90deg, ${glowColor}1A 0%, #1a1a1a 40%)`;
 
-        // Title
-        const tdTitle = document.createElement('td');
-        const divTitle = document.createElement('div');
-        divTitle.className = 'pd-title';
-        divTitle.textContent = songTitle;
-        tdTitle.appendChild(divTitle);
-        tr.appendChild(tdTitle);
+        card.innerHTML = `
+            <div class="pd-card-left">
+                <div class="pd-card-title-group">
+                    <div class="pd-card-title">${title}</div>
+                    ${subtitle ? `<div class="pd-card-subtitle">${subtitle}</div>` : ''}
+                </div>
+            </div>
+            <div class="pd-card-center">
+                <div class="pd-card-score-group">
+                    <div class="pd-card-score">${score.toLocaleString()}</div>
+                    <div class="pd-card-rate">${rate.toFixed(2)}%</div>
+                </div>
+                <div class="pd-card-grade" data-grade="${grade}">${grade}</div>
+                <div class="pd-card-lamp" style="color:${glowColor}">${lamp}</div>
+            </div>
+            <div class="pd-card-right">
+                <div class="pd-card-rating">${ratingDisplay}</div>
+                <div class="pd-card-date">${dateStr}</div>
+            </div>
+        `;
 
-        // Score
-        const tdScore = document.createElement('td');
-        tdScore.className = 'pd-score';
-        tdScore.textContent = score.toLocaleString();
-        tr.appendChild(tdScore);
-
-        // Grade
-        const tdGrade = document.createElement('td');
-        tdGrade.className = 'pd-grade';
-        tdGrade.textContent = grade;
-        // Colorize grade
-        if (grade === 'AAA') tdGrade.style.color = '#ffcc00';
-        else if (grade === 'AA') tdGrade.style.color = '#ccc';
-        else tdGrade.style.color = '#888';
-        tr.appendChild(tdGrade);
-
-        // Rating
-        const tdRating = document.createElement('td');
-        tdRating.className = 'pd-rating';
-        tdRating.textContent = rating ? rating.toFixed(2) : '-';
-        tr.appendChild(tdRating);
-
-        // Time
-        const tdTime = document.createElement('td');
-        tdTime.className = 'pd-time';
-        tdTime.textContent = dateStr;
-        tr.appendChild(tdTime);
-
-        list.appendChild(tr);
+        list.appendChild(card);
     });
 }

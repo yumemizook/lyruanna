@@ -3078,72 +3078,172 @@
             padding: 0;
         }
 
-        .pd-scores-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
+        /* Card-based Score Layout */
+        #pd-scores-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 15px;
         }
 
-        .pd-scores-table th {
-            text-align: left;
-            padding: 10px 15px;
-            color: #666;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid #333;
-            position: sticky;
-            top: 0;
-            background: #12121e;
-            z-index: 10;
+        .pd-score-card {
+            display: grid;
+            grid-template-columns: 1.5fr minmax(auto, 350px) 120px;
+            align-items: center;
+            padding: 14px 24px;
+            border-radius: 12px;
+            border-left: 5px solid #333;
+            transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
-        .pd-scores-table td {
-            padding: 8px 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        .pd-score-card:hover {
+            transform: translateY(-2px);
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
         }
 
-        .pd-scores-table tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+        /* Card Sections */
+        .pd-card-left {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding-right: 20px;
         }
 
-        .pd-lamp {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: block;
+        .pd-card-center {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 0 20px;
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .pd-title {
-            color: #ddd;
-            font-weight: 500;
+        .pd-card-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            padding-left: 20px;
+        }
+
+        /* Title Group */
+        .pd-card-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .pd-card-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 300px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
-        .pd-score {
+        .pd-card-subtitle {
+            font-size: 12px;
+            color: #aaa;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        /* Score Group */
+        .pd-card-score-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 90px;
+        }
+
+        .pd-card-score {
             font-family: 'Century Gothic', monospace;
-            font-weight: bold;
-            color: #fff;
-        }
-
-        .pd-grade {
+            font-size: 22px;
             font-weight: 900;
-            width: 30px;
+            color: #fff;
+            line-height: 1;
         }
 
-        .pd-rating {
-            font-family: 'Century Gothic', monospace;
-            color: var(--accent);
-            font-weight: bold;
+        .pd-card-rate {
+            font-size: 13px;
+            color: #888;
+            font-weight: 700;
+            margin-top: 2px;
         }
 
-        .pd-time {
-            color: #666;
+        /* Grade & Lamp */
+        .pd-card-grade {
+            font-size: 32px;
+            font-weight: 900;
+            min-width: 60px;
+            text-align: center;
+            font-family: 'Outfit', sans-serif;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .pd-card-grade[data-grade="AAA"] {
+            color: #ffcc00;
+            text-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
+        }
+
+        .pd-card-grade[data-grade="AA"] {
+            color: #d0d0d0;
+        }
+
+        .pd-card-grade[data-grade="A"] {
+            color: #999;
+        }
+
+        .pd-card-lamp {
             font-size: 11px;
-            text-align: right;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            text-align: center;
+            min-width: 100px;
+            white-space: nowrap;
+        }
+
+        /* Rating & Date */
+        .pd-card-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'Century Gothic', monospace;
+            font-weight: 900;
+            color: var(--accent);
+        }
+
+        .pd-card-rating .rating-star {
+            font-size: 18px;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .pd-card-rating .rating-num {
+            font-size: 20px;
+        }
+
+        .pd-card-date {
+            font-size: 11px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* Hide the old table header */
+        .pd-scores-table thead {
+            display: none;
+        }
+
+        .pd-scores-table {
+            display: block;
         }
 
         /* Make profile display clickable */
@@ -3816,19 +3916,20 @@
             color: #ff4444;
             text-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
         }
-/* FPS DISPLAY */
-#fps-display {
-    position: fixed;
-    bottom: 10px;
-    right: 15px;
-    color: var(--accent, #ceb3ff);
-    font-family: \ Century Gothic\, monospace;
-    font-size: 14px;
-    font-weight: bold;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
-    z-index: 10000;
-    pointer-events: none;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 2px 8px;
-    border-radius: 4px;
-}
+
+        /* FPS DISPLAY */
+        #fps-display {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            color: var(--accent, #ceb3ff);
+            font-family: \ Century Gothic\, monospace;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
