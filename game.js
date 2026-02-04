@@ -1462,13 +1462,15 @@ function handleGaugeAutoShift() {
     const isSurvival = ['HARD', 'EXHARD', 'HAZARD'].includes(STATE.gaugeType);
 
     if (mode === 'CONTINUE' && isSurvival) {
-        STATE.gasContinueMode = true; // Flag: gauge stays 0%, no clear possible
+        STATE.gasContinueMode = true;
+        STATE.gauge = 0; // Ensure it hits floor
         return true;
     }
 
     if (mode === 'SURVIVAL_TO_GROOVE' && isSurvival) {
         STATE.gaugeType = 'GROOVE';
-        STATE.gauge = 20; // Start at 20% Groove gauge
+        STATE.gauge = 20;
+        updateGaugeDisplay(); // Force color update
         return true;
     }
 
@@ -1487,6 +1489,7 @@ function shiftToNextLowerGauge() {
     if (currentIdx >= 0 && currentIdx < order.length - 1 && currentIdx < minIdx) {
         STATE.gaugeType = order[currentIdx + 1];
         STATE.gauge = getStartingGauge(STATE.gaugeType);
+        updateGaugeDisplay(); // Force color update
         return true;
     }
     return false;
@@ -1860,6 +1863,32 @@ rebuildInputMap();
 const workerUrl = new URL('./bms-parser.worker.js', window.location.href);
 const parserWorker = new Worker(workerUrl);
 
+// Metadata Caching (songs.db)
+let _metadataCache = {};
+let _metadataCacheDirty = false;
+let _metadataSaveTimeout = null;
+
+async function loadMetadataCache() {
+    if (IS_DESKTOP) {
+        const cached = await window.electronAPI.readUserData('songs.db');
+        if (cached) _metadataCache = cached;
+    }
+}
+
+function saveMetadataCacheThrottled() {
+    if (!IS_DESKTOP) return;
+    _metadataCacheDirty = true;
+    if (_metadataSaveTimeout) return;
+
+    _metadataSaveTimeout = setTimeout(async () => {
+        if (_metadataCacheDirty) {
+            await window.electronAPI.writeUserData('songs.db', _metadataCache);
+            _metadataCacheDirty = false;
+        }
+        _metadataSaveTimeout = null;
+    }, 5000); // 5 second throttle
+}
+
 function parseChartAsync(text) {
     // Increment parse ID to invalidate any pending parses
     const parseId = ++STATE.currentParseId;
@@ -1871,12 +1900,15 @@ function parseChartAsync(text) {
 
         // One-off handler
         const handler = (e) => {
+            // Only handle messages matching our parseId
+            if (e.data.id !== parseId) return;
+
             clearTimeout(timeout);
             parserWorker.removeEventListener('message', handler);
 
-            // Check if this parse is still the current one
+            // Check if this parse is still the latest one for the STATE
             if (parseId !== STATE.currentParseId) {
-                console.log("Parse abandoned - newer request pending");
+                // console.log("Parse results arrived but newer request pending - abandoning");
                 resolve(null);
                 return;
             }
@@ -1893,7 +1925,7 @@ function parseChartAsync(text) {
 
         parserWorker.addEventListener('message', handler);
         parserWorker.addEventListener('error', errHandler);
-        parserWorker.postMessage(text);
+        parserWorker.postMessage({ id: parseId, text: text });
     });
 }
 
@@ -2127,18 +2159,10 @@ document.getElementById('btn-options').onclick = () => {
     STATE.isOptionsPersistent = true;
     ui.modalOptions.classList.add('open');
     updateOptionsUI();
-    setTimeout(drawWiringLines, 50); // Delay to allow layout to render
 };
-document.getElementById('btn-save-options').onclick = () => {
-    const savedIndex = STATE.selectedIndex; // Preserve selection
-    playSystemSound('o-close');
-    ui.modalOptions.classList.remove('open');
-    STATE.isOptionsOpen = false;
-    STATE.isOptionsPersistent = false;
-    savePlayerOptions();
-    renderSongList(); // Refresh in case key mode filter changed
-    STATE.selectedIndex = Math.min(savedIndex, STATE.currentList.length - 1); // Restore selection
-    updateSelection();
+document.getElementById('btn-save-options').onclick = (e) => {
+    if (e) e.preventDefault();
+    closeOptions();
 };
 
 // Filter button handlers
@@ -3218,256 +3242,153 @@ async function updateInfoCard(item) {
 }
 
 function updateOptionsUI() {
-    // Update Advanced Options logic if panel is open OR options menu is open (shared state logic sometimes?)
     if (STATE.isAdvancedPanelOpen) updateAdvancedOptionsUI();
-
     if (!STATE.isOptionsOpen) return;
-    updateAdvancedOptionsUI(); // Redundant but safe if both true, or just ensure it runs.
 
+    // 1. Update Top Indicators
     const hsValEl = document.getElementById('opt-hispeed-val');
-    if (hsValEl) hsValEl.textContent = STATE.speed.toFixed(1);
-    const hsFixEl = document.getElementById('opt-hsfix-val');
-    if (hsFixEl) hsFixEl.textContent = `FIX: ${STATE.hiSpeedFix}`;
+    if (hsValEl) hsValEl.textContent = STATE.speed.toFixed(2);
+    const gnValEl = document.getElementById('opt-green-number');
+    if (gnValEl) gnValEl.textContent = (STATE.targetDuration ? Math.round(STATE.targetDuration / 1.67) : 300);
 
-    // Render Wheels
-    Object.keys(OPTIONS_KEYS).forEach(wheelId => {
-        renderWheel(wheelId);
+    // 2. Render Target List (Left Column)
+    const targetList = document.getElementById('iidx-target-list');
+    if (targetList) {
+        targetList.innerHTML = '';
+        PACEMAKER_TARGETS.forEach(target => {
+            const item = document.createElement('div');
+            item.className = 'adv-misc-item';
+            if (STATE.pacemakerTarget === target) item.classList.add('active');
+            item.innerHTML = `
+                <span class="adv-misc-label">${target}</span>
+                <span class="adv-misc-value">${STATE.pacemakerTarget === target ? 'SELECTED' : ''}</span>
+            `;
+            item.onclick = (e) => {
+                e.stopPropagation();
+                STATE.pacemakerTarget = target;
+                playSystemSound('scratch');
+                updateOptionsUI();
+                savePlayerOptions();
+            };
+            targetList.appendChild(item);
+        });
+    }
+
+    // 3. Render Option Buttons (Right Column)
+    const renderButtons = (containerId, options, currentVal, onSelect) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const list = container.querySelector('.adv-box-buttons') || container;
+        list.innerHTML = '';
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'adv-btn';
+            if (opt.val === currentVal) btn.classList.add('active');
+            btn.textContent = opt.lbl;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                onSelect(opt.val);
+            };
+            list.appendChild(btn);
+        });
+    };
+
+    // MODE
+    renderButtons('adv-box-mode', [
+        { val: 'ALL', lbl: 'ALL' }, { val: '单', lbl: 'SINGLE' }, { val: '5', lbl: '5KEYS' },
+        { val: '7', lbl: '7KEYS' }, { val: '9', lbl: '9KEYS' }, { val: '双', lbl: 'DOUBLE' },
+        { val: '10', lbl: '10KEYS' }, { val: '14', lbl: '14KEYS' }
+    ], STATE.keyModeFilter, (val) => {
+        STATE.keyModeFilter = val;
+        STATE.optionsChangedFilter = true;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
     });
 
-    // Target Wheel (Seamless with Snapping)
-    if (ui.targetWheel) {
-        const totalSets = 5;
-        const setSize = PACEMAKER_TARGETS.length;
-        const itemHeight = 40;
-        const centerOffset = 80;
+    // STYLE
+    renderButtons('adv-box-style', [
+        { val: 'OFF', lbl: 'OFF' }, { val: 'MIRROR', lbl: 'MIRROR' }, { val: 'RANDOM', lbl: 'RANDOM' },
+        { val: 'S-RANDOM', lbl: 'S-RANDOM' }, { val: 'H-RANDOM', lbl: 'H-RANDOM' },
+        { val: 'R-RANDOM', lbl: 'R-RANDOM' }, { val: 'ALL-SCRATCH', lbl: 'ALL-SCRATCH' }
+    ], STATE.modifier, (val) => {
+        STATE.modifier = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
 
-        // 1. Initialize logic/DOM if needed
-        if (typeof STATE.pacemakerVisualIndex === 'undefined') {
-            const currentLogicIdx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
-            STATE.pacemakerVisualIndex = (setSize * 2) + Math.max(0, currentLogicIdx);
-        }
+    // GAUGE
+    renderButtons('adv-box-gauge', [
+        { val: 'ASSIST', lbl: 'ASSIST' }, { val: 'EASY', lbl: 'EASY' }, { val: 'GROOVE', lbl: 'GROOVE' },
+        { val: 'HARD', lbl: 'HARD' }, { val: 'EXHARD', lbl: 'EX-HARD' }, { val: 'HAZARD', lbl: 'HAZARD' }
+    ], STATE.gaugeType, (val) => {
+        STATE.gaugeType = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
 
-        if (ui.targetWheel.children.length !== setSize * totalSets) {
-            ui.targetWheel.innerHTML = '';
-            for (let s = 0; s < totalSets; s++) {
-                PACEMAKER_TARGETS.forEach(target => {
-                    const item = document.createElement('div');
-                    item.className = 'iidx-target-item';
-                    item.textContent = target;
-                    ui.targetWheel.appendChild(item);
-                });
-            }
-            // Disable transition for initialization
-            ui.targetWheel.classList.add('no-transition');
-            const targetPos = STATE.pacemakerVisualIndex * itemHeight;
-            ui.targetWheel.style.transform = `translateY(${centerOffset - targetPos}px)`;
-            ui.targetWheel.offsetHeight; // force reflow
-            ui.targetWheel.classList.remove('no-transition');
-        }
+    // ASSIST
+    renderButtons('btn-list-assist', [
+        { val: 'OFF', lbl: 'OFF' }, { val: 'A-SCR', lbl: 'A-SCR' },
+        { val: 'EX-JUDGE', lbl: 'EX-JDG' }, { val: 'BOTH', lbl: 'BOTH' }
+    ], STATE.assistMode, (val) => {
+        STATE.assistMode = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
 
-        // 2. Snapping Logic: Only snap if we drift to the extreme sets (0 or 4)
-        // We want to allow smooth scrolling into Set 1 or Set 3.
-        if (STATE.pacemakerVisualIndex < setSize || STATE.pacemakerVisualIndex >= setSize * 4) {
-            ui.targetWheel.classList.add('no-transition');
+    // RANGE
+    renderButtons('btn-list-range', [
+        { val: 'OFF', lbl: 'OFF' }, { val: 'SUDDEN+', lbl: 'SUD+' },
+        { val: 'LIFT', lbl: 'LIFT' }, { val: 'LIFT-SUD+', lbl: 'BOTH' }
+    ], STATE.rangeMode, (val) => {
+        STATE.rangeMode = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
 
-            // Equivalent position in Set 2
-            const modIdx = ((STATE.pacemakerVisualIndex % setSize) + setSize) % setSize;
-            STATE.pacemakerVisualIndex = (setSize * 2) + modIdx;
+    // HS FIX
+    renderButtons('adv-box-hsfix', [
+        { val: 'NONE', lbl: 'OFF' }, { val: 'MIN', lbl: 'MIN' }, { val: 'MAX', lbl: 'MAX' },
+        { val: 'AVG', lbl: 'AVG' }, { val: 'CONSTANT', lbl: 'CONST' },
+        { val: 'START', lbl: 'START' }, { val: 'MAIN', lbl: 'MAIN' }
+    ], STATE.hiSpeedFix, (val) => {
+        STATE.hiSpeedFix = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
 
-            const snapPos = STATE.pacemakerVisualIndex * itemHeight;
-            ui.targetWheel.style.transform = `translateY(${centerOffset - snapPos}px)`;
-            ui.targetWheel.offsetHeight; // force reflow
-            ui.targetWheel.classList.remove('no-transition');
-        }
-
-        // 3. Final Position Update (with transition if it was a user click)
-        const targetPos = STATE.pacemakerVisualIndex * itemHeight;
-        ui.targetWheel.style.transform = `translateY(${centerOffset - targetPos}px)`;
-
-        // 4. Update highlights
-        Array.from(ui.targetWheel.children).forEach((child, i) => {
-            child.classList.toggle('selected', i === STATE.pacemakerVisualIndex);
+    // 4. Update Keyboard Guide
+    const guide = document.getElementById('modal-options').querySelector('.adv-keyboard-guide');
+    if (guide) {
+        guide.querySelectorAll('.adv-key').forEach(key => {
+            const act = ACTIONS[`P1_${key.dataset.key}`];
+            key.classList.toggle('active', STATE.activeActions.has(act));
         });
     }
 }
 
-function renderWheel(wheelId) {
-    const container = document.getElementById(wheelId);
-    if (!container) return;
-    const strip = container.querySelector('.option-wheel-strip');
-    if (!strip) return;
-
-    const config = OPTIONS_KEYS[wheelId];
-    if (!config) return;
-
-    const currentVal = STATE[config.key];
-    const idx = config.items.findIndex(i => i.val === currentVal);
-    const len = config.items.length;
-
-    // Calculate cyclic indices
-    const prevIdx = (idx - 1 + len) % len;
-    const nextIdx = (idx + 1) % len;
-
-    // Create visible items: Prev, Curr, Next
-    // We rebuild DOM for simplicity in cyclic logic
-    strip.innerHTML = '';
-
-    const visibleIndices = [prevIdx, idx, nextIdx];
-    visibleIndices.forEach((i, pos) => {
-        const item = config.items[i];
-        const el = document.createElement('div');
-        el.className = 'option-wheel-item';
-        el.textContent = item.lbl;
-
-        if (pos === 1) el.classList.add('selected'); // Middle item
-
-        // Allow clicking adjacent items to scroll
-        if (pos === 0) el.onclick = (e) => { e.stopPropagation(); stepOption(config.key, -1); };
-        if (pos === 2) el.onclick = (e) => { e.stopPropagation(); stepOption(config.key, 1); };
-
-        strip.appendChild(el);
-    });
-
-    // Reset transform calculation since we are now statically placing 3 items
-    // But strict placement: Item height 40px. 
-    // 3 items stack: 0-40, 40-80, 80-120.
-    // This fills the 120px container perfectly.
-    strip.style.transform = 'none';
-}
-
-function setOption(key, val) {
-    STATE[key] = val;
-    savePlayerOptions();
-    updateOptionsUI();
-
-    if (key === 'keyModeFilter' || key === 'difficultyFilter') {
-        STATE.optionsChangedFilter = true;
-    }
-}
-
-// Wheel Interaction (Click on top/bottom areas to scroll)
-// Delegate click for the wheel box to handle prev/next if clicking empty space
-document.addEventListener('click', (e) => {
-    const box = e.target.closest('.option-wheel-box');
-    if (!box) return;
-    const wheelId = box.id;
-    const config = OPTIONS_KEYS[wheelId];
-    if (!config) return;
-
-    // If clicked directly on the box (not on an item, though items cover most),
-    // or we might want to support clicking transparent areas.
-    // But let's rely on item clicks logic above. 
-    // We can add simple wheel scroll support
-});
-
-document.addEventListener('wheel', (e) => {
-    const box = e.target.closest('.option-wheel-box');
-    if (!box) return;
-    if (!STATE.isOptionsOpen) return;
-
-    const wheelId = box.id;
-    const config = OPTIONS_KEYS[wheelId];
-    if (!config) return;
-
-    e.preventDefault();
-
-    if (e.deltaY > 0) stepOption(config.key, 1); // Down -> Next
-    else if (e.deltaY < 0) stepOption(config.key, -1); // Up -> Prev
-}, { passive: false });
-
-function stepOption(key, dir) {
-    // Find which wheel
-    let wheelId = null;
-    let config = null;
-    for (const [id, c] of Object.entries(OPTIONS_KEYS)) {
-        if (c.key === key) { config = c; wheelId = id; break; }
-    }
-    if (!config) return;
-
-    const currentVal = STATE[key];
-    const idx = config.items.findIndex(i => i.val === currentVal);
-
-    // Cyclic Wrapping
-    let nextIdx = (idx + dir) % config.items.length;
-    if (nextIdx < 0) nextIdx += config.items.length;
-
-    if (nextIdx !== idx) {
-        setOption(key, config.items[nextIdx].val);
-        playSystemSound('o-change');
-    }
-}
+// Wheel static rendering and wiring lines are removed in the new Beatoraja-style UI.
 
 function closeOptions() {
     if (!STATE.isOptionsOpen) return;
+    const savedIndex = STATE.selectedIndex;
     playSystemSound('o-close');
     ui.modalOptions.classList.remove('open');
     STATE.isOptionsOpen = false;
+    STATE.isOptionsPersistent = false;
 
     if (STATE.optionsChangedFilter) {
         renderSongList();
+        STATE.selectedIndex = Math.min(savedIndex, STATE.currentList.length - 1);
+        updateSelection();
         STATE.optionsChangedFilter = false;
     }
-}
-
-function drawWiringLines() {
-    const svg = document.getElementById('iidx-wiring-svg');
-    const guide = document.getElementById('iidx-keyboard-guide');
-    const grid = document.querySelector('.iidx-options-grid');
-    if (!svg || !guide || !grid) return;
-
-    svg.innerHTML = '';
-    const guideRect = guide.getBoundingClientRect();
-    const gridRect = grid.getBoundingClientRect();
-
-    // Key-to-Column mapping
-    // Columns IDs are still the same, but now we map keys to wheel functionality
-    // 1->mode, 2->style, 4->gauge, 6->assist, 6+7->range
-    // 5->hispeed, 7->hispeed
-    const keyToCol = {
-        1: 'sec-mode',
-        2: 'sec-style',
-        3: 'sec-battle',
-        4: 'sec-gauge',
-        5: 'sec-hispeed',
-        6: 'sec-assist',
-        7: 'sec-hispeed'
-    };
-
-    const keys = guide.querySelectorAll('.iidx-key');
-    let lineIndex = 0;
-    keys.forEach(key => {
-        const keyNum = parseInt(key.dataset.key);
-        const colId = keyToCol[keyNum];
-        const colEl = document.getElementById(colId);
-        if (!colEl) return; // Should exist
-
-        const keyRect = key.getBoundingClientRect();
-        const colRect = colEl.getBoundingClientRect();
-
-        // Calculate positions
-        const x1 = keyRect.left + keyRect.width / 2 - guideRect.left;
-        const y1 = keyRect.bottom - guideRect.top + 5;
-
-        // Align to center of column
-        const x2 = colRect.left + colRect.width / 2 - guideRect.left;
-
-        // Adjust Y2 to point to the wheel box top, not the section text
-        // Attempt to find the wheel box inside
-        let y2 = gridRect.top - guideRect.top; // default top of grid
-        const wheelBox = colEl.querySelector('.option-wheel-box');
-        if (wheelBox) {
-            const wbRect = wheelBox.getBoundingClientRect();
-            y2 = wbRect.top - guideRect.top;
-        }
-
-        // 90-degree turn
-        const midY = y1 + 10 + lineIndex * 6;
-        lineIndex++;
-
-        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-        polyline.setAttribute('points', `${x1},${y1} ${x1},${midY} ${x2},${midY} ${x2},${y2}`);
-        svg.appendChild(polyline);
-    });
 }
 
 async function loadChart(idx, el, focusOnly = false) {
@@ -3483,6 +3404,10 @@ async function loadChart(idx, el, focusOnly = false) {
         if (!IS_DESKTOP) ui.loadingStatus.textContent = "Reading file...";
         bmsText = await dataLayer.readFile(c.fileRef);
         c.raw = bmsText;
+
+        // [FIX] Staleness check after async file read
+        const currentBatch = STATE.currentList[STATE.selectedIndex];
+        if (!currentBatch || currentBatch.type !== 'chart' || currentBatch.data !== c) return;
     }
 
     // Parse using Worker
@@ -3509,14 +3434,23 @@ async function loadChart(idx, el, focusOnly = false) {
     ui.songStats.style.display = 'none'; // Hide stats until parsed
 
     try {
-        const data = await parseChartAsync(bmsText); // Worker call
+        let data;
+        if (c.md5 && _metadataCache[c.md5]) {
+            data = _metadataCache[c.md5];
+        } else {
+            data = await parseChartAsync(bmsText); // Worker call
+            if (data && c.md5) {
+                _metadataCache[c.md5] = data;
+                saveMetadataCacheThrottled();
+            }
+        }
         if (!data) return; // Abandoned
 
         // STALENESS CHECK: If this card is no longer active (user selected another), discard
         // Robust check: verify the loaded chart matches the currently selected item's data
         const currentItem = STATE.currentList[STATE.selectedIndex];
         if (!currentItem || currentItem.type !== 'chart' || currentItem.data !== c) {
-            // console.log("Discarding stale chart load:", c.title);
+            // console.log("Discarding stale chart load:", c.title, "Expected:", currentItem?.data?.title);
             return;
         }
 
@@ -4055,6 +3989,10 @@ async function enterGame() {
     STATE.gaugeTick = rawTick;
 
     // GAUGE INIT
+    if (STATE.gaugeAutoShift === 'BEST_CLEAR') {
+        STATE.gaugeType = 'HAZARD';
+    }
+
     ui.gaugeBar.className = 'gauge-fill no-transition'; // Disable transitions during gameplay
 
     // Set gauge clear marker position (80% for normal+, 60% for easy/assist)
@@ -4950,7 +4888,21 @@ function updateGaugeDisplay() {
     ui.gaugeGrade.textContent = grade;
     ui.gaugeGrade.style.color = getRankColor(grade);
 
-    if (STATE.gaugeType !== 'HARD' && STATE.gaugeType !== 'EXHARD' && STATE.gaugeType !== 'HAZARD') {
+    // Dynamic Gauge Type Styling
+    const gaugeClasses = ['hard', 'exhard', 'hazard', 'assist', 'easy', 'normal'];
+    ui.gaugeBar.classList.remove(...gaugeClasses);
+
+    if (STATE.gaugeType === 'HARD') ui.gaugeBar.classList.add('hard');
+    else if (STATE.gaugeType === 'EXHARD') ui.gaugeBar.classList.add('exhard');
+    else if (STATE.gaugeType === 'HAZARD') ui.gaugeBar.classList.add('hazard');
+    else if (STATE.gaugeType === 'ASSIST') ui.gaugeBar.classList.add('assist');
+    else if (STATE.gaugeType === 'EASY') ui.gaugeBar.classList.add('easy');
+    else ui.gaugeBar.classList.add('normal');
+
+    if (['HARD', 'EXHARD', 'HAZARD'].includes(STATE.gaugeType)) {
+        // Survival gauges don't have a "cleared" threshold color shift unlike Groove
+        ui.gaugeBar.classList.remove('cleared');
+    } else {
         let threshold = 80;
         if (STATE.gaugeType === 'ASSIST') threshold = 60;
 
@@ -5743,7 +5695,6 @@ window.addEventListener('keydown', e => {
             STATE.startOpenedOptions = true; // Track that START was used to open options
             ui.modalOptions.classList.add('open');
             updateOptionsUI();
-            drawWiringLines();
         }
     }
 
@@ -5751,6 +5702,8 @@ window.addEventListener('keydown', e => {
     if (STATE.isOptionsOpen) {
         e.preventDefault();
         actions.forEach(action => {
+            if (e.repeat) return; // Block repeat for options
+
             // Update active actions for multi-key combos (like 5+7 or 6+7)
             STATE.activeActions.add(action);
 
@@ -5771,13 +5724,13 @@ window.addEventListener('keydown', e => {
                 let idx = styles.indexOf(STATE.modifier);
                 STATE.modifier = styles[(idx + 1) % styles.length];
             }
-            // Key 3: Handled by Digit3 hold above, no action-based cycling needed
-            if (action === ACTIONS.P1_3 && STATE.isAdvancedPanelOpen) {
-                // Advanced panel is open - scroll through options with scratch
-            }
+            // Key 3: (Placeholder for additional sub-menu logic if needed)
+
             // Key 4: Gauge Cycle
             if (action === ACTIONS.P1_4) {
-                stepOption('gaugeType', 1);
+                const gauges = ['ASSIST', 'EASY', 'GROOVE', 'HARD', 'EXHARD', 'HAZARD'];
+                let idx = gauges.indexOf(STATE.gaugeType);
+                STATE.gaugeType = gauges[(idx + 1) % gauges.length];
             }
             // Key 5/7: HS / Fix
             if (action === ACTIONS.P1_5) {
@@ -5798,9 +5751,11 @@ window.addEventListener('keydown', e => {
                     STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
                     updateGreenWhiteNumbers();
                 } else if (has6) {
-                    const ranges = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
-                    let idx = ranges.indexOf(STATE.rangeMode);
-                    STATE.rangeMode = ranges[(idx + 1) % ranges.length];
+                    const ranges = ['OFF', 'S_SUDDEN+', 'LIFT', 'LIFT-SUD+']; // Fixing typos if any
+                    // Note: ensure ranges match STATE.rangeMode strings exactly
+                    const rList = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
+                    let idx = rList.indexOf(STATE.rangeMode);
+                    STATE.rangeMode = rList[(idx + 1) % rList.length];
                     updateGreenWhiteNumbers();
                 } else {
                     STATE.speed = Math.min(10, STATE.speed + 0.5);
@@ -5810,9 +5765,9 @@ window.addEventListener('keydown', e => {
             // Key 6: Assist / Range
             if (action === ACTIONS.P1_6) {
                 if (has7) {
-                    const ranges = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
-                    let idx = ranges.indexOf(STATE.rangeMode);
-                    STATE.rangeMode = ranges[(idx + 1) % ranges.length];
+                    const rList = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
+                    let idx = rList.indexOf(STATE.rangeMode);
+                    STATE.rangeMode = rList[(idx + 1) % rList.length];
                     updateGreenWhiteNumbers();
                 } else {
                     const assists = ['OFF', 'A-SCR', 'EX-JUDGE', 'BOTH'];
@@ -5830,8 +5785,7 @@ window.addEventListener('keydown', e => {
             }
 
             // Play change sound for relevant keys
-            // Note: P1_4 uses stepOption which plays sound/saves internally, so it's excluded here
-            if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7, ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW].includes(action)) {
+            if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7, ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW].includes(action)) {
                 playSystemSound('o-change');
                 savePlayerOptions();
             }
@@ -6174,6 +6128,9 @@ window.addEventListener('resize', resize);
         if (typeof updateProfileDisplay === 'function') {
             updateProfileDisplay();
         }
+
+        // Load metadata cache from songs.db
+        await loadMetadataCache();
 
 
 

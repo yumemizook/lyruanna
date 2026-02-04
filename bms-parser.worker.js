@@ -1,11 +1,12 @@
 /* BMS Parser Web Worker */
 
 self.onmessage = function (e) {
+    const { id, text } = e.data;
     try {
-        const result = BMSParser.parse(e.data);
-        self.postMessage({ success: true, data: result });
+        const result = BMSParser.parse(text);
+        self.postMessage({ success: true, id, data: result });
     } catch (err) {
-        self.postMessage({ success: false, error: err.message });
+        self.postMessage({ success: false, id, error: err.message });
     }
 };
 

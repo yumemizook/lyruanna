@@ -508,101 +508,112 @@
             </div>
         </div>
 
-        <!-- PLAYER OPTIONS MODAL (IIDX-STYLE) -->
-        <div id="modal-options" class="modal modal-iidx">
-            <div class="iidx-target-wheel-container">
-                <div class="iidx-target-header">TARGET SCORE GRAPH</div>
-                <div class="iidx-target-wheel-viewport">
-                    <div class="iidx-target-wheel-strip" id="iidx-target-wheel">
-                        <!-- Items populated by JS -->
+        <!-- PLAYER OPTIONS MODAL (Beatoraja-style Redesign) -->
+        <div id="modal-options" class="modal modal-advanced-beatoraja" style="display:none;">
+            <div class="adv-container">
+                <!-- Left Column: SUB MENU (Targets) -->
+                <div class="adv-sub-menu">
+                    <div class="adv-sub-header">TARGET SCORE</div>
+                    <div class="adv-sub-note">Select a target score for the graph</div>
+                    <div class="adv-misc-section">
+                        <div class="adv-misc-title">TARGET LIST</div>
+                        <div class="adv-misc-hint">Click a target to select</div>
+                        <div class="adv-misc-grid" id="iidx-target-list">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="iidx-right-column">
-                <div class="iidx-options-container">
-                    <div class="iidx-options-header">PLAYER OPTIONS</div>
+
+                <!-- Right Column: OPTION MENU -->
+                <div class="adv-option-menu">
+                    <div class="adv-option-header">PLAYER OPTIONS</div>
+                    <div class="adv-option-note">Configure your play environment</div>
+
+                    <!-- Hi-Speed Display -->
+                    <div class="adv-options-top" style="display:flex; justify-content: center; margin-bottom:12px;">
+                        <div class="adv-box adv-box-green" id="adv-box-hi-speed">
+                            <div class="adv-box-header">ハイスピード設定</div>
+                            <div class="adv-box-subheader">HI-SPEED SETTINGS</div>
+                            <div class="adv-box-values">
+                                <div class="adv-val-row">
+                                    <span class="adv-val-label">HI-SPEED</span>
+                                    <span class="adv-val-number" id="opt-hispeed-val">4.00</span>
+                                </div>
+                                <div class="adv-val-row highlight">
+                                    <span class="adv-val-label">GREEN NUMBER</span>
+                                    <span class="adv-val-number green" id="opt-green-number">300</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Keyboard Guide -->
-                    <div class="iidx-keyboard-guide" id="iidx-keyboard-guide">
-                        <div class="iidx-key-row">
-                            <div class="iidx-key iidx-key-black" data-key="2"></div>
-                            <div class="iidx-key iidx-key-black" data-key="4"></div>
-                            <div class="iidx-key iidx-key-black" data-key="6"></div>
+                    <div class="adv-keyboard-guide">
+                        <div class="adv-key-row black">
+                            <div class="adv-key black key-orange" data-key="2">2</div>
+                            <div class="adv-key black key-green" data-key="4">4</div>
+                            <div class="adv-key black key-green" data-key="6">6</div>
                         </div>
-                        <div class="iidx-key-row">
-                            <div class="iidx-key iidx-key-white" data-key="1"></div>
-                            <div class="iidx-key iidx-key-white" data-key="3"></div>
-                            <div class="iidx-key iidx-key-white" data-key="5"></div>
-                            <div class="iidx-key iidx-key-white" data-key="7"></div>
+                        <div class="adv-key-row white">
+                            <div class="adv-key white key-magenta" data-key="1">1</div>
+                            <div class="adv-key white key-cyan" data-key="3">3</div>
+                            <div class="adv-key white key-white" data-key="5">5</div>
+                            <div class="adv-key white key-white" data-key="7">7</div>
                         </div>
-                        <svg class="iidx-wiring-svg" id="iidx-wiring-svg"></svg>
                     </div>
 
-                    <div class="iidx-options-grid">
-                        <!-- COLUMN 1: KEY MODE (KEY 1) -->
-                        <div class="iidx-section" id="sec-mode" data-opt="keyModeFilter">
-                            <div class="iidx-section-name">MODE</div>
-                            <div class="option-wheel-box" id="wheel-mode">
-                                <div class="option-wheel-strip"></div>
+                    <!-- Main Options Grid -->
+                    <div class="adv-options-grid">
+                        <div class="adv-box adv-box-cyan" id="adv-box-mode">
+                            <div class="adv-box-header">プレイモード</div>
+                            <div class="adv-box-subheader">MODE [KEY 1]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
 
-                        <!-- COLUMN 2: STYLE (KEY 2) -->
-                        <div class="iidx-section" id="sec-style" data-opt="modifier">
-                            <div class="iidx-section-name">STYLE</div>
-                            <div class="option-wheel-box" id="wheel-style">
-                                <div class="option-wheel-strip"></div>
+                        <div class="adv-box adv-box-orange" id="adv-box-style">
+                            <div class="adv-box-header">プレイスタイル</div>
+                            <div class="adv-box-subheader">STYLE [KEY 2]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
 
-                        <!-- COLUMN 4: GAUGE (KEY 4) -->
-                        <div class="iidx-section" id="sec-gauge" data-opt="gaugeType">
-                            <div class="iidx-section-name">GAUGE</div>
-                            <div class="option-wheel-box" id="wheel-gauge">
-                                <div class="option-wheel-strip"></div>
+                        <div class="adv-box adv-box-pink" id="adv-box-gauge">
+                            <div class="adv-box-header">ゲージタイプ</div>
+                            <div class="adv-box-subheader">GAUGE [KEY 4]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
 
-                        <!-- COLUMN 5: ASSIST/RANGE (KEY 6, 6+7) -->
-                        <div class="iidx-section" id="sec-assist">
-                            <div class="iidx-section-name">ASSIST / RANGE</div>
-
-                            <div style="margin-bottom: 5px;">
-                                <div class="iidx-opt-subname">ASSIST [KEY 6]</div>
-                                <div class="option-wheel-box" id="wheel-assist" data-opt="assistMode">
-                                    <div class="option-wheel-strip"></div>
+                        <div class="adv-box adv-box-white" id="adv-box-assist-range">
+                            <div class="adv-box-header">アシスト / レンジ</div>
+                            <div class="adv-box-subheader">ASSIST [KEY 6] / RANGE [6+7]</div>
+                            <div class="adv-box-desc">アシスト/表示範囲を設定します</div>
+                            <div style="display:flex; gap:8px; margin-top:5px;">
+                                <div id="sub-assist" style="flex:1;">
+                                    <div class="adv-box-buttons vertical" id="btn-list-assist"></div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <div class="iidx-opt-subname">RANGE [KEY 6+7]</div>
-                                <div class="option-wheel-box" id="wheel-range" data-opt="rangeMode">
-                                    <div class="option-wheel-strip"></div>
+                                <div id="sub-range" style="flex:1;">
+                                    <div class="adv-box-buttons vertical" id="btn-list-range"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- COLUMN 6: HI-SPEED (KEY 5/7, 5+7) -->
-                        <div class="iidx-section" id="sec-hispeed">
-                            <div class="iidx-section-name">HI-SPEED</div>
-
-                            <div class="iidx-hs-display" style="margin-bottom:10px;">
-                                <div class="iidx-hs-val" id="opt-hispeed-val">4.0</div>
-                                <div class="iidx-hs-fix" id="opt-hsfix-val">FIX: NONE</div>
-                            </div>
-
-                            <div>
-                                <div class="iidx-opt-subname">HS FIX [KEY 5+7]</div>
-                                <div class="option-wheel-box" id="wheel-hsfix" data-opt="hiSpeedFix">
-                                    <div class="option-wheel-strip"></div>
-                                </div>
+                        <div class="adv-box adv-box-green" id="adv-box-hsfix">
+                            <div class="adv-box-header">ハイスピード固定</div>
+                            <div class="adv-box-subheader">HS FIX [KEY 5+7]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
                     </div>
+
+                    <button class="adv-btn" id="btn-save-options"
+                        style="margin-top:15px; width:100%; height:40px; font-weight:bold;">EXIT [START]</button>
                 </div>
-
-                <!-- Detached Exit Button -->
-                <button class="iidx-btn-large" id="btn-save-options">EXIT [START]</button>
             </div>
         </div>
 
