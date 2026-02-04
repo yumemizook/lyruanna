@@ -509,7 +509,7 @@
         </div>
 
         <!-- PLAYER OPTIONS MODAL (Beatoraja-style Redesign) -->
-        <div id="modal-options" class="modal modal-advanced-beatoraja" style="display:none;">
+        <div id="modal-options" class="modal modal-advanced-beatoraja">
             <div class="adv-container">
                 <!-- Left Column: SUB MENU (Targets) -->
                 <div class="adv-sub-menu">
@@ -522,89 +522,96 @@
                             <!-- Populated by JS -->
                         </div>
                     </div>
+
+                    <div class="adv-misc-section" style="margin-top: auto;">
+                        <div class="adv-misc-title">INFORMATION</div>
+                        <div class="adv-box-desc" style="font-size: 10px; color: #888;">
+                            • SELECT: Cycle options<br>
+                            • START: Save & Exit<br>
+                            • 1/3/5/7: Fast select
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Column: OPTION MENU -->
                 <div class="adv-option-menu">
-                    <div class="adv-option-header">PLAYER OPTIONS</div>
+                    <div class="adv-option-header">OPTION MENU</div>
                     <div class="adv-option-note">Configure your play environment</div>
 
-                    <!-- Hi-Speed Display -->
-                    <div class="adv-options-top" style="display:flex; justify-content: center; margin-bottom:12px;">
-                        <div class="adv-box adv-box-green" id="adv-box-hi-speed">
-                            <div class="adv-box-header">ハイスピード設定</div>
-                            <div class="adv-box-subheader">HI-SPEED SETTINGS</div>
-                            <div class="adv-box-values">
-                                <div class="adv-val-row">
-                                    <span class="adv-val-label">HI-SPEED</span>
-                                    <span class="adv-val-number" id="opt-hispeed-val">4.00</span>
-                                </div>
-                                <div class="adv-val-row highlight">
-                                    <span class="adv-val-label">GREEN NUMBER</span>
-                                    <span class="adv-val-number green" id="opt-green-number">300</span>
-                                </div>
+                    <div class="adv-options-top"
+                        style="display:flex; justify-content: space-between; align-items: flex-start; margin-bottom:12px;">
+                        <!-- Keyboard Guide (Center) -->
+                        <div class="adv-keyboard-guide" style="flex: 1;">
+                            <div class="adv-key-row black">
+                                <div class="adv-key black key-orange" data-key="2">2</div>
+                                <div class="adv-key black key-green" data-key="4">4</div>
+                                <div class="adv-key black key-green" data-key="6">6</div>
+                            </div>
+                            <div class="adv-key-row white">
+                                <div class="adv-key white key-magenta" data-key="1">1</div>
+                                <div class="adv-key white key-cyan" data-key="3">3</div>
+                                <div class="adv-key white key-white" data-key="5">5</div>
+                                <div class="adv-key white key-white" data-key="7">7</div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Keyboard Guide -->
-                    <div class="adv-keyboard-guide">
-                        <div class="adv-key-row black">
-                            <div class="adv-key black key-orange" data-key="2">2</div>
-                            <div class="adv-key black key-green" data-key="4">4</div>
-                            <div class="adv-key black key-green" data-key="6">6</div>
-                        </div>
-                        <div class="adv-key-row white">
-                            <div class="adv-key white key-magenta" data-key="1">1</div>
-                            <div class="adv-key white key-cyan" data-key="3">3</div>
-                            <div class="adv-key white key-white" data-key="5">5</div>
-                            <div class="adv-key white key-white" data-key="7">7</div>
+                        <!-- DP/Extra Option box (Right) -->
+                        <div class="adv-box adv-box-white" id="adv-box-extra" style="width: 180px; flex: 0 0 auto;">
+                            <div class="adv-box-header">DPオプション</div>
+                            <div class="adv-box-subheader">EXTRA OPTION</div>
+                            <div class="adv-box-buttons vertical">
+                                <button class="adv-btn active">OFF</button>
+                                <button class="adv-btn">FLIP</button>
+                                <button class="adv-btn">BATTLE</button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Main Options Grid -->
                     <div class="adv-options-grid">
-                        <div class="adv-box adv-box-cyan" id="adv-box-mode">
-                            <div class="adv-box-header">プレイモード</div>
-                            <div class="adv-box-subheader">MODE [KEY 1]</div>
-                            <div class="adv-box-buttons vertical">
-                                <!-- Populated by JS -->
-                            </div>
-                        </div>
-
                         <div class="adv-box adv-box-orange" id="adv-box-style">
-                            <div class="adv-box-header">プレイスタイル</div>
-                            <div class="adv-box-subheader">STYLE [KEY 2]</div>
+                            <div class="adv-box-header">譜面の配置</div>
+                            <div class="adv-box-subheader">STYLE [KEY 1/2]</div>
                             <div class="adv-box-buttons vertical">
                                 <!-- Populated by JS -->
                             </div>
                         </div>
 
-                        <div class="adv-box adv-box-pink" id="adv-box-gauge">
-                            <div class="adv-box-header">ゲージタイプ</div>
+                        <div class="adv-box adv-box-white" id="adv-box-battle">
+                            <div class="adv-box-header">対戦オプション</div>
+                            <div class="adv-box-subheader">BATTLE [KEY 3]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <div class="adv-box adv-box-green" id="adv-box-gauge">
+                            <div class="adv-box-header">グルーヴゲージ</div>
                             <div class="adv-box-subheader">GAUGE [KEY 4]</div>
                             <div class="adv-box-buttons vertical">
                                 <!-- Populated by JS -->
                             </div>
                         </div>
 
-                        <div class="adv-box adv-box-white" id="adv-box-assist-range">
-                            <div class="adv-box-header">アシスト / レンジ</div>
-                            <div class="adv-box-subheader">ASSIST [KEY 6] / RANGE [6+7]</div>
-                            <div class="adv-box-desc">アシスト/表示範囲を設定します</div>
-                            <div style="display:flex; gap:8px; margin-top:5px;">
-                                <div id="sub-assist" style="flex:1;">
-                                    <div class="adv-box-buttons vertical" id="btn-list-assist"></div>
-                                </div>
-                                <div id="sub-range" style="flex:1;">
-                                    <div class="adv-box-buttons vertical" id="btn-list-range"></div>
-                                </div>
+                        <div class="adv-box adv-box-pink" id="adv-box-hsfix">
+                            <div class="adv-box-header">スクロール固定</div>
+                            <div class="adv-box-subheader">HS FIX [KEY 5]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
 
-                        <div class="adv-box adv-box-green" id="adv-box-hsfix">
-                            <div class="adv-box-header">ハイスピード固定</div>
-                            <div class="adv-box-subheader">HS FIX [KEY 5+7]</div>
+                        <div class="adv-box adv-box-cyan" id="adv-box-sudden-plus">
+                            <div class="adv-box-header">SUDDEN+設定</div>
+                            <div class="adv-box-subheader">LANE COVER [KEY 6]</div>
+                            <div class="adv-box-buttons vertical">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <div class="adv-box adv-box-blue" id="adv-box-visibility">
+                            <div class="adv-box-header">表示オプション</div>
+                            <div class="adv-box-subheader">VISIBILITY [KEY 7]</div>
                             <div class="adv-box-buttons vertical">
                                 <!-- Populated by JS -->
                             </div>
@@ -612,10 +619,98 @@
                     </div>
 
                     <button class="adv-btn" id="btn-save-options"
-                        style="margin-top:15px; width:100%; height:40px; font-weight:bold;">EXIT [START]</button>
+                        style="margin-top:15px; width:100%; height:40px; font-weight:bold; font-size: 14px; letter-spacing: 2px;">EXIT
+                        [START]</button>
                 </div>
             </div>
         </div>
+
+        <!-- ASSIST OPTIONS MODAL -->
+        <div id="modal-assist" class="modal modal-advanced-beatoraja assist-theme">
+            <div class="adv-container">
+                <div class="adv-sub-menu">
+                    <div class="adv-sub-header">ASSIST MENU</div>
+                    <div class="adv-sub-note">Options that disable score saving</div>
+
+                    <div class="adv-misc-section" style="margin-top: auto;">
+                        <div class="adv-misc-title">WARNING</div>
+                        <div class="adv-box-desc" style="font-size: 10px; color: #ff8888;">
+                            • Scores will NOT be saved<br>
+                            • IR submission disabled
+                        </div>
+                    </div>
+                </div>
+
+                <div class="adv-option-menu">
+                    <div class="adv-option-header">ASSIST OPTIONS</div>
+                    <div class="adv-option-note">Configuration for practice and assistance</div>
+
+                    <div class="adv-keyboard-guide">
+                        <div class="adv-key-row black">
+                            <div class="adv-key black key-cyan" data-key="2">2</div>
+                            <div class="adv-key black key-cyan" data-key="4">4</div>
+                            <div class="adv-key black key-cyan" data-key="6">6</div>
+                        </div>
+                        <div class="adv-key-row white">
+                            <div class="adv-key white key-cyan" data-key="1">1</div>
+                            <div class="adv-key white key-cyan" data-key="3">3</div>
+                            <div class="adv-key white key-cyan" data-key="5">5</div>
+                            <div class="adv-key white key-cyan" data-key="7">7</div>
+                        </div>
+                    </div>
+
+                    <div class="adv-options-grid" id="assist-options-grid">
+                        <!-- Key 1: Expand judge -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-expand-judge">
+                            <div class="adv-box-header">判定拡大</div>
+                            <div class="adv-box-subheader">EXPAND JUDGE [1]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                        <!-- Key 2: Regular Speed -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-reg-speed">
+                            <div class="adv-box-header">等速設定</div>
+                            <div class="adv-box-subheader">REG SPEED [2]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                        <!-- Key 3: Judge Area -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-judge-area">
+                            <div class="adv-box-header">判定エリア</div>
+                            <div class="adv-box-subheader">JUDGE AREA [3]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                        <!-- Key 4: Legacy Note -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-legacy">
+                            <div class="adv-box-header">レガシーノート</div>
+                            <div class="adv-box-subheader">LEGACY NOTE [4]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                        <!-- Key 5: Auto-Scratch -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-auto-scratch">
+                            <div class="adv-box-header">オートスクラッチ</div>
+                            <div class="adv-box-subheader">AUTO SCRATCH [5]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                        <!-- Key 6: BPM Guide -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-bpm-guide">
+                            <div class="adv-box-header">BPMガイド</div>
+                            <div class="adv-box-subheader">BPM GUIDE [6]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                        <!-- Key 7: No Mines -->
+                        <div class="adv-box adv-box-cyan" id="assist-box-no-mines">
+                            <div class="adv-box-header">地雷削除</div>
+                            <div class="adv-box-subheader">NO MINES [7]</div>
+                            <div class="adv-box-buttons vertical"></div>
+                        </div>
+                    </div>
+
+                    <button class="adv-btn" id="btn-save-assist"
+                        style="margin-top:15px; width:100%; height:40px; font-weight:bold; font-size: 14px; letter-spacing: 2px;">CLOSE
+                        [SELECT]</button>
+                </div>
+            </div>
+        </div>
+
 
         <!-- ADVANCED OPTIONS MODAL (HOLD Digit3) - Beatoraja-style -->
         <div id="modal-advanced" class="modal modal-advanced-beatoraja" style="display:none;">

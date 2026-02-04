@@ -567,19 +567,14 @@ const PACEMAKER_TARGETS = [
 
 function rotatePacemakerTarget(delta) {
     const setSize = PACEMAKER_TARGETS.length;
-    // Ensure visual index is initialized
-    if (typeof STATE.pacemakerVisualIndex === 'undefined') {
-        const currentLogicIdx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
-        STATE.pacemakerVisualIndex = (setSize * 2) + Math.max(0, currentLogicIdx);
-    }
+    let idx = PACEMAKER_TARGETS.indexOf(STATE.pacemakerTarget);
+    if (idx === -1) idx = 0;
 
-    STATE.pacemakerVisualIndex += delta;
-
-    // Logic index
-    let idx = ((STATE.pacemakerVisualIndex % setSize) + setSize) % setSize;
+    idx = (idx + delta + setSize) % setSize;
     STATE.pacemakerTarget = PACEMAKER_TARGETS[idx];
 
     updateOptionsUI();
+    savePlayerOptions();
 }
 
 /**
@@ -1839,7 +1834,19 @@ const STATE = {
     autoOffset: 'OFF',      // OFF, ON
     isAdvancedPanelOpen: false,
     key3HoldTimer: null,
-    gasContinueMode: false  // Flag for CONTINUE mode (gauge stays 0%)
+    gasContinueMode: false, // Flag for CONTINUE mode (gauge stays 0%)
+
+    // Redesign: Player & Assist Options
+    isAssistMenuOpen: false,
+    battleMode: 'OFF', // OFF, BATTLE, D-BATTLE, SP-TO-DP
+    visibilityMode: 'OFF', // OFF, SUDDEN, HIDDEN, SUD+HID
+    assistExpandJudge: false,
+    assistRegularSpeed: false,
+    assistJudgeArea: false,
+    assistLegacyNote: false,
+    assistAutoScratch: false,
+    assistBPMGuide: false,
+    assistNoMines: false
 };
 
 function rebuildInputMap() {
@@ -1985,6 +1992,7 @@ const ui = {
     // Modals
     modalSettings: document.getElementById('modal-settings'),
     modalOptions: document.getElementById('modal-options'),
+    modalAssist: document.getElementById('modal-assist'),
     targetWheel: document.getElementById('iidx-target-wheel'),
     pacemaker: document.getElementById('hud-pacemaker'),
     paceBarYou: document.getElementById('pace-bar-you'),
@@ -3251,30 +3259,72 @@ function updateOptionsUI() {
     const gnValEl = document.getElementById('opt-green-number');
     if (gnValEl) gnValEl.textContent = (STATE.targetDuration ? Math.round(STATE.targetDuration / 1.67) : 300);
 
-    // 2. Render Target List (Left Column)
-    const targetList = document.getElementById('iidx-target-list');
-    if (targetList) {
-        targetList.innerHTML = '';
-        PACEMAKER_TARGETS.forEach(target => {
-            const item = document.createElement('div');
-            item.className = 'adv-misc-item';
-            if (STATE.pacemakerTarget === target) item.classList.add('active');
-            item.innerHTML = `
-                <span class="adv-misc-label">${target}</span>
-                <span class="adv-misc-value">${STATE.pacemakerTarget === target ? 'SELECTED' : ''}</span>
-            `;
-            item.onclick = (e) => {
-                e.stopPropagation();
-                STATE.pacemakerTarget = target;
-                playSystemSound('scratch');
-                updateOptionsUI();
-                savePlayerOptions();
-            };
-            targetList.appendChild(item);
-        });
-    }
+    // 4. Render Target List (Left Column)
+    const renderTargetWheel = () => {
+        const container = document.getElementById('iidx-target-list');
+        if (!container) return;
 
-    // 3. Render Option Buttons (Right Column)
+        const list = PACEMAKER_TARGETS;
+        const selectedIdx = list.indexOf(STATE.pacemakerTarget);
+        const containerH = container.clientHeight || 400;
+        const itemH = 45; // Height + Gap
+        const centerY = containerH / 2 - (itemH / 2);
+
+        // buffer to show items above/below center
+        const range = 5;
+        const visibleIds = new Set();
+
+        for (let i = -range; i <= range; i++) {
+            let idx = (selectedIdx + i) % list.length;
+            if (idx < 0) idx += list.length;
+
+            const target = list[idx];
+            const domId = `target-item-${idx}-o${i}`; // Using offset to allow same index to appear twice if list is small
+            visibleIds.add(domId);
+
+            let div = document.getElementById(domId);
+            if (!div) {
+                div = document.createElement('div');
+                div.id = domId;
+                div.className = 'target-wheel-item';
+                div.innerHTML = `
+                    <span class="adv-misc-label"></span>
+                    <span class="adv-misc-value">SELECTED</span>
+                `;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    STATE.pacemakerTarget = target;
+                    playSystemSound('scratch');
+                    updateOptionsUI();
+                    savePlayerOptions();
+                };
+                container.appendChild(div);
+            }
+
+            div.querySelector('.adv-misc-label').textContent = target;
+            div.classList.toggle('active', i === 0);
+
+            // Calculate Position
+            const ty = centerY + (i * itemH);
+            const scale = i === 0 ? 1 : 0.85;
+            const opacity = Math.max(0, 1 - Math.abs(i) / range);
+
+            div.style.transform = `translateY(${ty}px) scale(${scale})`;
+            div.style.opacity = opacity;
+            div.style.zIndex = 10 - Math.abs(i);
+        }
+
+        // Cleanup old items
+        Array.from(container.children).forEach(child => {
+            if (!visibleIds.has(child.id)) {
+                container.removeChild(child);
+            }
+        });
+    };
+
+    renderTargetWheel();
+
+    // 5. Render Option Buttons
     const renderButtons = (containerId, options, currentVal, onSelect) => {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -3293,24 +3343,11 @@ function updateOptionsUI() {
         });
     };
 
-    // MODE
-    renderButtons('adv-box-mode', [
-        { val: 'ALL', lbl: 'ALL' }, { val: '单', lbl: 'SINGLE' }, { val: '5', lbl: '5KEYS' },
-        { val: '7', lbl: '7KEYS' }, { val: '9', lbl: '9KEYS' }, { val: '双', lbl: 'DOUBLE' },
-        { val: '10', lbl: '10KEYS' }, { val: '14', lbl: '14KEYS' }
-    ], STATE.keyModeFilter, (val) => {
-        STATE.keyModeFilter = val;
-        STATE.optionsChangedFilter = true;
-        playSystemSound('o-change');
-        savePlayerOptions();
-        updateOptionsUI();
-    });
-
-    // STYLE
+    // STYLE (Key 1/2)
     renderButtons('adv-box-style', [
         { val: 'OFF', lbl: 'OFF' }, { val: 'MIRROR', lbl: 'MIRROR' }, { val: 'RANDOM', lbl: 'RANDOM' },
-        { val: 'S-RANDOM', lbl: 'S-RANDOM' }, { val: 'H-RANDOM', lbl: 'H-RANDOM' },
-        { val: 'R-RANDOM', lbl: 'R-RANDOM' }, { val: 'ALL-SCRATCH', lbl: 'ALL-SCRATCH' }
+        { val: 'R-RANDOM', lbl: 'R-RAND' }, { val: 'S-RANDOM', lbl: 'S-RAND' },
+        { val: 'H-RANDOM', lbl: 'H-RAND' }, { val: 'ALL-SCRATCH', lbl: 'ALL-SCR' }
     ], STATE.modifier, (val) => {
         STATE.modifier = val;
         playSystemSound('o-change');
@@ -3318,10 +3355,21 @@ function updateOptionsUI() {
         updateOptionsUI();
     });
 
-    // GAUGE
+    // BATTLE (Key 3)
+    renderButtons('adv-box-battle', [
+        { val: 'OFF', lbl: 'OFF' }, { val: 'BATTLE', lbl: 'BATTLE' },
+        { val: 'D-BATTLE', lbl: 'D-BTL' }, { val: 'SP-TO-DP', lbl: 'S2D' }
+    ], STATE.battleMode || 'OFF', (val) => {
+        STATE.battleMode = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
+
+    // GAUGE (Key 4)
     renderButtons('adv-box-gauge', [
-        { val: 'ASSIST', lbl: 'ASSIST' }, { val: 'EASY', lbl: 'EASY' }, { val: 'GROOVE', lbl: 'GROOVE' },
-        { val: 'HARD', lbl: 'HARD' }, { val: 'EXHARD', lbl: 'EX-HARD' }, { val: 'HAZARD', lbl: 'HAZARD' }
+        { val: 'ASSIST', lbl: 'ASSIST' }, { val: 'EASY', lbl: 'EASY' }, { val: 'GROOVE', lbl: 'NORM' },
+        { val: 'HARD', lbl: 'HARD' }, { val: 'EXHARD', lbl: 'E-HRD' }, { val: 'HAZARD', lbl: 'HZRD' }
     ], STATE.gaugeType, (val) => {
         STATE.gaugeType = val;
         playSystemSound('o-change');
@@ -3329,33 +3377,10 @@ function updateOptionsUI() {
         updateOptionsUI();
     });
 
-    // ASSIST
-    renderButtons('btn-list-assist', [
-        { val: 'OFF', lbl: 'OFF' }, { val: 'A-SCR', lbl: 'A-SCR' },
-        { val: 'EX-JUDGE', lbl: 'EX-JDG' }, { val: 'BOTH', lbl: 'BOTH' }
-    ], STATE.assistMode, (val) => {
-        STATE.assistMode = val;
-        playSystemSound('o-change');
-        savePlayerOptions();
-        updateOptionsUI();
-    });
-
-    // RANGE
-    renderButtons('btn-list-range', [
-        { val: 'OFF', lbl: 'OFF' }, { val: 'SUDDEN+', lbl: 'SUD+' },
-        { val: 'LIFT', lbl: 'LIFT' }, { val: 'LIFT-SUD+', lbl: 'BOTH' }
-    ], STATE.rangeMode, (val) => {
-        STATE.rangeMode = val;
-        playSystemSound('o-change');
-        savePlayerOptions();
-        updateOptionsUI();
-    });
-
-    // HS FIX
+    // HS FIX (Key 5)
     renderButtons('adv-box-hsfix', [
-        { val: 'NONE', lbl: 'OFF' }, { val: 'MIN', lbl: 'MIN' }, { val: 'MAX', lbl: 'MAX' },
-        { val: 'AVG', lbl: 'AVG' }, { val: 'CONSTANT', lbl: 'CONST' },
-        { val: 'START', lbl: 'START' }, { val: 'MAIN', lbl: 'MAIN' }
+        { val: 'NONE', lbl: 'OFF' }, { val: 'START', lbl: 'START' }, { val: 'MAX', lbl: 'MAX' },
+        { val: 'MAIN', lbl: 'MAIN' }, { val: 'MIN', lbl: 'MIN' }, { val: 'CONSTANT', lbl: 'C-HS' }
     ], STATE.hiSpeedFix, (val) => {
         STATE.hiSpeedFix = val;
         playSystemSound('o-change');
@@ -3363,7 +3388,29 @@ function updateOptionsUI() {
         updateOptionsUI();
     });
 
-    // 4. Update Keyboard Guide
+    // SUDDEN+ (Key 6)
+    renderButtons('adv-box-sudden-plus', [
+        { val: 'OFF', lbl: 'OFF' }, { val: 'SUDDEN+', lbl: 'SUD+' },
+        { val: 'LIFT', lbl: 'LIFT' }, { val: 'LIFT-SUD+', lbl: 'L-S+' }
+    ], STATE.rangeMode, (val) => {
+        STATE.rangeMode = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
+
+    // VISIBILITY (Key 7)
+    renderButtons('adv-box-visibility', [
+        { val: 'OFF', lbl: 'OFF' }, { val: 'SUDDEN', lbl: 'SUD' },
+        { val: 'HIDDEN', lbl: 'HID' }, { val: 'SUD+HID', lbl: 'S+H' }
+    ], STATE.visibilityMode || 'OFF', (val) => {
+        STATE.visibilityMode = val;
+        playSystemSound('o-change');
+        savePlayerOptions();
+        updateOptionsUI();
+    });
+
+    // Keyboard Guide
     const guide = document.getElementById('modal-options').querySelector('.adv-keyboard-guide');
     if (guide) {
         guide.querySelectorAll('.adv-key').forEach(key => {
@@ -3372,6 +3419,44 @@ function updateOptionsUI() {
         });
     }
 }
+
+function updateAssistUI() {
+    if (!STATE.isAssistMenuOpen) return;
+
+    const renderToggle = (containerId, active, onToggle) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const list = container.querySelector('.adv-box-buttons') || container;
+        list.innerHTML = '';
+        const btn = document.createElement('button');
+        btn.className = 'adv-btn';
+        if (active) btn.classList.add('active');
+        btn.textContent = active ? 'ON' : 'OFF';
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            onToggle();
+        };
+        list.appendChild(btn);
+    };
+
+    renderToggle('assist-box-expand-judge', STATE.assistExpandJudge, () => { STATE.assistExpandJudge = !STATE.assistExpandJudge; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+    renderToggle('assist-box-reg-speed', STATE.assistRegularSpeed, () => { STATE.assistRegularSpeed = !STATE.assistRegularSpeed; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+    renderToggle('assist-box-judge-area', STATE.assistJudgeArea, () => { STATE.assistJudgeArea = !STATE.assistJudgeArea; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+    renderToggle('assist-box-legacy', STATE.assistLegacyNote, () => { STATE.assistLegacyNote = !STATE.assistLegacyNote; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+    renderToggle('assist-box-auto-scratch', STATE.assistAutoScratch, () => { STATE.assistAutoScratch = !STATE.assistAutoScratch; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+    renderToggle('assist-box-bpm-guide', STATE.assistBPMGuide, () => { STATE.assistBPMGuide = !STATE.assistBPMGuide; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+    renderToggle('assist-box-no-mines', STATE.assistNoMines, () => { STATE.assistNoMines = !STATE.assistNoMines; updateAssistUI(); playSystemSound('o-change'); savePlayerOptions(); });
+
+    // Keyboard Guide
+    const guide = document.getElementById('modal-assist').querySelector('.adv-keyboard-guide');
+    if (guide) {
+        guide.querySelectorAll('.adv-key').forEach(key => {
+            const act = ACTIONS[`P1_${key.dataset.key}`];
+            key.classList.toggle('active', STATE.activeActions.has(act));
+        });
+    }
+}
+
 
 // Wheel static rendering and wiring lines are removed in the new Beatoraja-style UI.
 
@@ -3956,6 +4041,13 @@ async function enterGame() {
         }
     }
 
+    // [ASSIST] No Mines: Filter out landmine channels (0x31-0x39, 0x41-0x49)
+    if (STATE.assistNoMines) {
+        const mineChannels = [0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+            0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49];
+        STATE.loadedSong.notes = STATE.loadedSong.notes.filter(n => !mineChannels.includes(n.ch));
+    }
+
     // Reset tally
     STATE.judgeCounts = { pgreat: 0, great: 0, good: 0, bad: 0, poor: 0 };
     STATE.fastSlow = { fast: 0, slow: 0 };
@@ -4381,7 +4473,12 @@ function loop() {
     const bpms = STATE.loadedSong.bpmEvents;
     const prevBpmCursor = STATE.bpmCursor; // Track if BPM changes
     while (STATE.bpmCursor < bpms.length && bpms[STATE.bpmCursor].time <= now) {
-        STATE.currentBpm = Math.max(0.001, bpms[STATE.bpmCursor].bpm);
+        // [ASSIST] Regular Speed: Lock BPM to initialBpm
+        if (STATE.assistRegularSpeed) {
+            STATE.currentBpm = STATE.loadedSong.initialBpm;
+        } else {
+            STATE.currentBpm = Math.max(0.001, bpms[STATE.bpmCursor].bpm);
+        }
         STATE.bpmCursor++;
     }
 
@@ -4426,8 +4523,11 @@ function loop() {
         // -200 means note is 200ms in the future
         if (diff < -1000) break; // Optimization: Stop checking if note is >1s away
 
-        // Autoplay
-        if (STATE.autoplay && diff >= 0) {
+        // Autoplay & Auto-Scratch
+        const isScratch = CHANNELS.P1.SCRATCH.includes(n.ch);
+        const shouldAutoHit = STATE.autoplay || (STATE.assistAutoScratch && isScratch);
+
+        if (shouldAutoHit && diff >= 0) {
             n.hit = true;
             playSound(n.id, 'key');
             handleJudgment('PGREAT', 0);
@@ -4435,7 +4535,7 @@ function loop() {
 
             // Trigger Beam
             let targetIdx = -1;
-            if (CHANNELS.P1.SCRATCH.includes(n.ch)) targetIdx = 0;
+            if (isScratch) targetIdx = 0;
             else if (CHANNELS.P1.KEY1.includes(n.ch)) targetIdx = 1;
             else if (CHANNELS.P1.KEY2.includes(n.ch)) targetIdx = 2;
             else if (CHANNELS.P1.KEY3.includes(n.ch)) targetIdx = 3;
@@ -4447,7 +4547,15 @@ function loop() {
             if (targetIdx !== -1) STATE.beamOpacity[targetIdx] = 1.0;
         }
         // Miss Detection
-        else if (!STATE.autoplay && diff > win.BD) {
+        else if (diff > win.BD) {
+            // [FIX] If Auto-Scratch is on, don't trigger POOR for scratch notes (they are handled above)
+            if (STATE.assistAutoScratch && isScratch) {
+                // Should have been hit by Auto-Scratch logic above if diff >= 0
+                // If we are here, it means diff > win.BD, so it definitely passed.
+                // But handle it just in case logicCursor jumped.
+                continue;
+            }
+
             // Passed Bad Window -> POOR
             n.hit = true;
             n.isMissed = true;
@@ -4937,17 +5045,28 @@ function showResults(isClear, statusText) {
     const rank = calculateRank(percent);
     const lamp = determineClearLamp(isClear);
 
-    // Save score data (only overwrites individual values if higher)
-    saveScore(STATE.currentFileRef, STATE.score, percent, rank, lamp.id);
-    // Also save lamp separately for backward compatibility with lamp display
-    saveLamp(STATE.currentFileRef, lamp);
+    // [ASSIST CHECK] Determine if any assists are active that should block saving
+    const isAssistActive = STATE.assistExpandJudge || STATE.assistRegularSpeed ||
+        STATE.assistJudgeArea || STATE.assistLegacyNote ||
+        STATE.assistAutoScratch || STATE.assistBPMGuide ||
+        STATE.assistNoMines || STATE.battleMode !== 'OFF';
 
-    // Save Replay
+    if (!isAssistActive) {
+        // Save score data (only overwrites individual values if higher)
+        saveScore(STATE.currentFileRef, STATE.score, percent, rank, lamp.id);
+        // Also save lamp separately for backward compatibility with lamp display
+        saveLamp(STATE.currentFileRef, lamp);
+    } else {
+        console.log('[LOG] Assist Active - Score Saving Disabled');
+    }
+
     const isFC = (STATE.comboBreaks === 0 && STATE.judgeCounts.bad === 0 && STATE.judgeCounts.poor === 0);
-    saveReplay(STATE.currentFileRef, STATE.inputLog, STATE.score, lamp, isFC);
+    if (!isAssistActive) {
+        saveReplay(STATE.currentFileRef, STATE.inputLog, STATE.score, lamp, isFC);
+    }
 
-    // Submit to Tachi IR (if enabled and not autoplay)
-    if (!STATE.autoplay && typeof TachiIR !== 'undefined' && TachiIR.isTachiEnabled()) {
+    // Submit to Tachi IR (if enabled and not autoplay and no assists)
+    if (!STATE.autoplay && !isAssistActive && typeof TachiIR !== 'undefined' && TachiIR.isTachiEnabled()) {
         // Determine playtype from key mode
         const keyMode = STATE.loadedSong.keyMode || '7';
         let playtype = '7K';
@@ -5711,69 +5830,43 @@ window.addEventListener('keydown', e => {
             const has7 = STATE.activeActions.has(ACTIONS.P1_7);
             const has6 = STATE.activeActions.has(ACTIONS.P1_6);
 
-            // Key 1: Mode Cycle
-            if (action === ACTIONS.P1_1) {
-                const modes = ['ALL', '单', '5', '7', '9', '双', '10', '14'];
-                let idx = modes.indexOf(STATE.keyModeFilter);
-                STATE.keyModeFilter = modes[(idx + 1) % modes.length];
-                STATE.optionsChangedFilter = true;
-            }
-            // Key 2: Style Cycle
-            if (action === ACTIONS.P1_2) {
+            // Key 1/2: Style Cycle
+            if (action === ACTIONS.P1_1 || action === ACTIONS.P1_2) {
                 const styles = ['OFF', 'MIRROR', 'RANDOM', 'S-RANDOM', 'H-RANDOM', 'R-RANDOM', 'ALL-SCRATCH'];
                 let idx = styles.indexOf(STATE.modifier);
-                STATE.modifier = styles[(idx + 1) % styles.length];
+                STATE.modifier = styles[(idx + (has5 ? -1 : 1) + styles.length) % styles.length];
             }
-            // Key 3: (Placeholder for additional sub-menu logic if needed)
-
+            // Key 3: Battle Cycle
+            if (action === ACTIONS.P1_3) {
+                const battles = ['OFF', 'BATTLE', 'D-BATTLE', 'SP-TO-DP'];
+                let idx = battles.indexOf(STATE.battleMode);
+                STATE.battleMode = battles[(idx + 1) % battles.length];
+            }
             // Key 4: Gauge Cycle
             if (action === ACTIONS.P1_4) {
                 const gauges = ['ASSIST', 'EASY', 'GROOVE', 'HARD', 'EXHARD', 'HAZARD'];
                 let idx = gauges.indexOf(STATE.gaugeType);
                 STATE.gaugeType = gauges[(idx + 1) % gauges.length];
             }
-            // Key 5/7: HS / Fix
+            // Key 5: HS Fix
             if (action === ACTIONS.P1_5) {
-                if (has7) {
-                    const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
-                    let idx = fixes.indexOf(STATE.hiSpeedFix);
-                    STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
-                    updateGreenWhiteNumbers();
-                } else {
-                    STATE.speed = Math.max(0.5, STATE.speed - 0.5);
-                    updateGreenWhiteNumbers();
-                }
+                const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
+                let idx = fixes.indexOf(STATE.hiSpeedFix);
+                STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
+                updateGreenWhiteNumbers();
             }
-            if (action === ACTIONS.P1_7) {
-                if (has5) {
-                    const fixes = ['NONE', 'MIN', 'MAX', 'AVG', 'CONSTANT', 'START', 'MAIN'];
-                    let idx = fixes.indexOf(STATE.hiSpeedFix);
-                    STATE.hiSpeedFix = fixes[(idx + 1) % fixes.length];
-                    updateGreenWhiteNumbers();
-                } else if (has6) {
-                    const ranges = ['OFF', 'S_SUDDEN+', 'LIFT', 'LIFT-SUD+']; // Fixing typos if any
-                    // Note: ensure ranges match STATE.rangeMode strings exactly
-                    const rList = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
-                    let idx = rList.indexOf(STATE.rangeMode);
-                    STATE.rangeMode = rList[(idx + 1) % rList.length];
-                    updateGreenWhiteNumbers();
-                } else {
-                    STATE.speed = Math.min(10, STATE.speed + 0.5);
-                    updateGreenWhiteNumbers();
-                }
-            }
-            // Key 6: Assist / Range
+            // Key 6: Lane / Lift Cover
             if (action === ACTIONS.P1_6) {
-                if (has7) {
-                    const rList = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
-                    let idx = rList.indexOf(STATE.rangeMode);
-                    STATE.rangeMode = rList[(idx + 1) % rList.length];
-                    updateGreenWhiteNumbers();
-                } else {
-                    const assists = ['OFF', 'A-SCR', 'EX-JUDGE', 'BOTH'];
-                    let idx = assists.indexOf(STATE.assistMode);
-                    STATE.assistMode = assists[(idx + 1) % assists.length];
-                }
+                const ranges = ['OFF', 'SUDDEN+', 'LIFT', 'LIFT-SUD+'];
+                let idx = ranges.indexOf(STATE.rangeMode);
+                STATE.rangeMode = ranges[(idx + 1) % ranges.length];
+                updateGreenWhiteNumbers();
+            }
+            // Key 7: Visibility Cycle
+            if (action === ACTIONS.P1_7) {
+                const vis = ['OFF', 'SUDDEN', 'HIDDEN', 'SUD+HID'];
+                let idx = vis.indexOf(STATE.visibilityMode);
+                STATE.visibilityMode = vis[(idx + 1) % vis.length];
             }
 
             // SCRATCH: Pacemaker Target
@@ -5785,13 +5878,52 @@ window.addEventListener('keydown', e => {
             }
 
             // Play change sound for relevant keys
-            if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7, ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW].includes(action)) {
+            if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_3, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7, ACTIONS.P1_SC_CCW, ACTIONS.P1_SC_CW].includes(action)) {
                 playSystemSound('o-change');
                 savePlayerOptions();
             }
         });
 
         updateOptionsUI();
+        return;
+    }
+
+    // Assist menu navigation
+    if (STATE.isAssistMenuOpen) {
+        e.preventDefault();
+        actions.forEach(action => {
+            if (e.repeat) return;
+            STATE.activeActions.add(action);
+
+            // SELECT to close
+            if (action === ACTIONS.SELECT) {
+                playSystemSound('o-close');
+                ui.modalAssist.classList.remove('open');
+                STATE.isAssistMenuOpen = false;
+                return;
+            }
+
+            // Key 1: Expand Judge
+            if (action === ACTIONS.P1_1) STATE.assistExpandJudge = !STATE.assistExpandJudge;
+            // Key 2: Regular Speed
+            if (action === ACTIONS.P1_2) STATE.assistRegularSpeed = !STATE.assistRegularSpeed;
+            // Key 3: Judge Area
+            if (action === ACTIONS.P1_3) STATE.assistJudgeArea = !STATE.assistJudgeArea;
+            // Key 4: Legacy Note
+            if (action === ACTIONS.P1_4) STATE.assistLegacyNote = !STATE.assistLegacyNote;
+            // Key 5: Auto-Scratch
+            if (action === ACTIONS.P1_5) STATE.assistAutoScratch = !STATE.assistAutoScratch;
+            // Key 6: BPM Guide
+            if (action === ACTIONS.P1_6) STATE.assistBPMGuide = !STATE.assistBPMGuide;
+            // Key 7: No Mines
+            if (action === ACTIONS.P1_7) STATE.assistNoMines = !STATE.assistNoMines;
+
+            if ([ACTIONS.P1_1, ACTIONS.P1_2, ACTIONS.P1_3, ACTIONS.P1_4, ACTIONS.P1_5, ACTIONS.P1_6, ACTIONS.P1_7].includes(action)) {
+                playSystemSound('o-change');
+                savePlayerOptions();
+            }
+        });
+        updateAssistUI();
         return;
     }
 
@@ -5915,12 +6047,18 @@ window.addEventListener('keydown', e => {
             }
         }
 
-        // SELECT KEY CYCLE LOGIC
+        // SELECT KEY: Assist Menu
         if (action === ACTIONS.SELECT && !STATE.isPlaying) {
-            const filters = ['ALL', 'UNKNOWN', 'BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA'];
-            let idx = filters.indexOf(STATE.difficultyFilter);
-            STATE.difficultyFilter = filters[(idx + 1) % filters.length];
-            renderSongList();
+            if (!STATE.isAssistMenuOpen) {
+                playSystemSound('o-open');
+                STATE.isAssistMenuOpen = true;
+                ui.modalAssist.classList.add('open');
+                updateAssistUI();
+            } else {
+                playSystemSound('o-close');
+                STATE.isAssistMenuOpen = false;
+                ui.modalAssist.classList.remove('open');
+            }
             return;
         }
 
@@ -5931,7 +6069,17 @@ window.addEventListener('keydown', e => {
 
         const now = (audioCtx.currentTime - STATE.startTime) * 1000;
         let win = JUDGE_WINDOWS[STATE.loadedSong.rank] || JUDGE_WINDOWS[3];
-        if (STATE.assistMode === 'EX-JUDGE' || STATE.assistMode === 'BOTH') {
+
+        // [ASSIST] Expand Judge: 4x timing windows (based on user request)
+        if (STATE.assistExpandJudge) {
+            win = {
+                PG: win.PG * 4.0,
+                GR: win.GR * 4.0,
+                GD: win.GD * 4.0,
+                BD: win.BD * 4.0,
+                PR: win.PR
+            };
+        } else if (STATE.assistMode === 'EX-JUDGE' || STATE.assistMode === 'BOTH') {
             win = { PG: win.PG * 1.5, GR: win.GR * 1.5, GD: win.GD * 1.5, BD: win.BD * 1.5, PR: win.PR };
         }
 

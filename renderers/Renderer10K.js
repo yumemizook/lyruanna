@@ -126,6 +126,13 @@ class Renderer10K {
             ctx.fillStyle = '#ff0055';
             ctx.fillRect(0, hitY, sideW, 15);
 
+            // [ASSIST] Judge Area: Draw a subtle guideline at the receptor
+            if (state.assistJudgeArea) {
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-10, hitY - 2, sideW + 20, 19);
+            }
+
             ctx.restore();
         };
 
@@ -156,6 +163,13 @@ class Renderer10K {
             else if (isBlue) ctx.fillStyle = '#0cf';
             else ctx.fillStyle = '#fff';
             ctx.fillRect(x, y, w, 15);
+
+            // [ASSIST] Legacy Note
+            if (state.assistLegacyNote) {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, w, 15);
+            }
         };
 
         ctx.save();
@@ -216,6 +230,29 @@ class Renderer10K {
             }
 
             drawNote(x + 1, y, w - 2, lane === 0, (lane === 2 || lane === 4 || lane === 6));
+        }
+
+        // [ASSIST] BPM Guide: Draw horizontal lines at BPM changes
+        if (state.assistBPMGuide && state.loadedSong.bpmEvents) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            state.loadedSong.bpmEvents.forEach(evt => {
+                const dist = (evt.time - time) * baseSpeed;
+                const y = hitY - dist;
+                if (y > 0 && y < hitY) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(totalW, y);
+                    ctx.stroke();
+                    // Optional: Label BPM
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.font = '10px "Outfit"';
+                    ctx.fillText(Math.round(evt.bpm), -25, y + 3);
+                }
+            });
+            ctx.restore();
         }
 
         // --- Lane Covers (SUDDEN+ / LIFT) ---

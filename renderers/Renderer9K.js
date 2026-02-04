@@ -108,6 +108,13 @@ class Renderer9K {
         ctx.fillStyle = '#ff0055';
         ctx.fillRect(0, hitY, totalW, 15);
 
+        // [ASSIST] Judge Area: Draw a subtle guideline at the receptor
+        if (state.assistJudgeArea) {
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-10, hitY - 2, totalW + 20, 19);
+        }
+
         // Notes
         const maxTimeOffset = (canvas.height + 100) / baseSpeed;
         const minTime = time - 200;
@@ -157,10 +164,40 @@ class Renderer9K {
         notesToDraw.forEach(n => {
             ctx.fillStyle = n.color;
             ctx.fillRect(n.x, n.y, n.w, 15);
-            // Border for visibility
-            ctx.strokeStyle = '#000';
-            ctx.strokeRect(n.x, n.y, n.w, 15);
+            // Border for visibility (or Legacy Note)
+            if (state.assistLegacyNote) {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2; // Thicker for legacy feel
+                ctx.strokeRect(n.x, n.y, n.w, 15);
+            } else {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(n.x, n.y, n.w, 15);
+            }
         });
+
+        // [ASSIST] BPM Guide: Draw horizontal lines at BPM changes
+        if (state.assistBPMGuide && state.loadedSong.bpmEvents) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            state.loadedSong.bpmEvents.forEach(evt => {
+                const dist = (evt.time - time) * baseSpeed;
+                const y = hitY - dist;
+                if (y > 0 && y < hitY) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(totalW, y);
+                    ctx.stroke();
+                    // Optional: Label BPM
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.font = '10px "Outfit"';
+                    ctx.fillText(Math.round(evt.bpm), -25, y + 3);
+                }
+            });
+            ctx.restore();
+        }
 
         // --- Lane Covers (SUDDEN+ / LIFT) ---
         const rangeMode = state.rangeMode || 'OFF';

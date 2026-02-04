@@ -138,6 +138,13 @@ class Renderer7K {
         ctx.fillStyle = '#ff0055';
         ctx.fillRect(0, hitY, p1Total, 15);
 
+        // [ASSIST] Judge Area: Draw a subtle guideline at the receptor
+        if (state.assistJudgeArea) {
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-10, hitY - 2, p1Total + 20, 19);
+        }
+
         // --- Note Rendering ---
 
         // Calculate visible range
@@ -215,14 +222,44 @@ class Renderer7K {
         }
 
         // Draw Batches
-        ctx.fillStyle = '#fff';
-        noteBatches.white.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
+        const drawNoteBatch = (batch, color) => {
+            ctx.fillStyle = color;
+            batch.forEach(n => {
+                ctx.fillRect(n.x, n.y, n.w, 15);
+                if (state.assistLegacyNote) {
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(n.x, n.y, n.w, 15);
+                }
+            });
+        };
 
-        ctx.fillStyle = '#0cf';
-        noteBatches.blue.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
+        drawNoteBatch(noteBatches.white, '#fff');
+        drawNoteBatch(noteBatches.blue, '#0cf');
+        drawNoteBatch(noteBatches.scratch, '#f00');
 
-        ctx.fillStyle = '#f00';
-        noteBatches.scratch.forEach(n => ctx.fillRect(n.x, n.y, n.w, 15));
+        // [ASSIST] BPM Guide: Draw horizontal lines at BPM changes
+        if (state.assistBPMGuide && state.loadedSong.bpmEvents) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            state.loadedSong.bpmEvents.forEach(evt => {
+                const dist = (evt.time - time) * baseSpeed;
+                const y = hitY - dist;
+                if (y > 0 && y < hitY) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(p1Total, y);
+                    ctx.stroke();
+                    // Optional: Label BPM
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.font = '10px "Outfit"';
+                    ctx.fillText(Math.round(evt.bpm), -25, y + 3);
+                }
+            });
+            ctx.restore();
+        }
 
         // --- Lane Covers (SUDDEN+ / LIFT) ---
         // Draw lane covers AFTER notes so they hide notes behind them
