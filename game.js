@@ -6631,6 +6631,170 @@ async function showPlayerDetails() {
     switchPdTab(_pdCurrentTab || 'recent');
 }
 
+// ============================================================================
+// SCORE TOOLTIP LOGIC
+// ============================================================================
+const scoreTooltip = document.getElementById('score-tooltip');
+
+function showScoreTooltip(e, score) {
+    if (!scoreTooltip) return;
+
+    const s = score.scoreData || {};
+    const j = s.judgements || {};
+    const opt = s.optional || {};
+    const sm = score.scoreMeta || {};
+    const hm = s.hitMeta || {};
+
+    // Comment
+    const comment = score.comment || '';
+
+    // Judgements (BMS specific)
+    const judgeConfig = [
+        { key: 'pgreat', label: 'P-GREAT', color: '#fff' },
+        { key: 'great', label: 'GREAT', color: '#ffcc00' },
+        { key: 'good', label: 'GOOD', color: '#44ff44' },
+        { key: 'bad', label: 'BAD', color: '#44aaff' },
+        { key: 'poor', label: 'POOR', color: '#ff4444' }
+    ];
+
+    let judgeHTML = '<div class="st-judgements">';
+    judgeConfig.forEach(c => {
+        const count = j[c.key] || 0;
+        const keyPascal = c.key.charAt(0).toUpperCase() + c.key.slice(1);
+
+        let fast = hitMetaValue(hm, j, opt, 'early', c.key, keyPascal);
+        let late = hitMetaValue(hm, j, opt, 'late', c.key, keyPascal);
+
+        let timingHTML = '';
+        if (fast > 0 || late > 0) {
+            timingHTML = `
+                <div class="st-judge-timing">
+                    ${fast > 0 ? `<span class="st-fast">${fast}</span>` : ''}
+                    ${late > 0 ? `<span class="st-late">${late}</span>` : ''}
+                </div>`;
+        }
+
+        if (count > 0 || c.key === 'pgreat' || c.key === 'great') {
+            judgeHTML += `
+                <div class="st-judge-row">
+                    <div class="st-judge-label" style="color:${c.color}">${c.label}</div>
+                    <div class="st-judge-right">
+                        <div class="st-judge-val">${count.toLocaleString()}</div>
+                        ${timingHTML}
+                    </div>
+                </div>`;
+        }
+    });
+    judgeHTML += '</div>';
+
+    // Meta Info
+    const client = score.service || sm.client || 'N/A';
+    const inputDev = sm.inputDevice || 'N/A';
+    const mods = sm.random || sm.mods || 'Normal';
+
+    // BP & Max Combo from optional
+    const bp = opt.bp !== undefined ? opt.bp : 'N/A';
+    const combo = opt.maxCombo !== undefined ? opt.maxCombo : 'N/A';
+
+    // Total Fast/Slow
+    const totalFast = opt.fast !== undefined ? opt.fast : null;
+    const totalSlow = opt.slow !== undefined ? opt.slow : null;
+
+    // Use the rank we resolved during rendering
+    const rank = score._pdRank || 'N/A';
+
+    scoreTooltip.innerHTML = `
+        <div class="st-box">
+            ${comment ? `<div class="st-comment">"${comment}"</div>` : ''}
+            <div class="st-judgement-section">
+                ${judgeHTML}
+                ${(totalFast !== null || totalSlow !== null) ? `
+                    <div class="st-judge-timing" style="width:100%; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px; margin-top:4px;">
+                        ${totalFast !== null ? `<div class="st-fast">FAST: ${totalFast}</div>` : ''}
+                        ${totalSlow !== null ? `<div class="st-late">SLOW: ${totalSlow}</div>` : ''}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="st-meta-grid">
+                <div class="st-meta-item">
+                    <div class="st-meta-label">CLIENT</div>
+                    <div class="st-meta-val">${client}</div>
+                </div>
+                <div class="st-meta-item">
+                    <div class="st-meta-label">INPUT</div>
+                    <div class="st-meta-val">${inputDev}</div>
+                </div>
+                <div class="st-meta-item">
+                    <div class="st-meta-label">OPTION</div>
+                    <div class="st-meta-val">${mods}</div>
+                </div>
+                <div class="st-meta-item">
+                    <div class="st-meta-label">RANK</div>
+                    <div class="st-meta-val st-rank-val">${rank}</div>
+                </div>
+                <div class="st-meta-item">
+                    <div class="st-meta-label">BP</div>
+                    <div class="st-meta-val">${bp}</div>
+                </div>
+                <div class="st-meta-item">
+                    <div class="st-meta-label">MAX COMBO</div>
+                    <div class="st-meta-val">${combo}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    scoreTooltip.classList.add('visible');
+    moveScoreTooltip(e);
+}
+
+// Helper to find fast/late values
+function hitMetaValue(hm, j, opt, type, key, keyPascal) {
+    // BMS specific Tachi fields in optional: epg, lpg, etc.
+    const bmsMap = {
+        'earlypgreat': 'epg', 'latepgreat': 'lpg',
+        'earlygreat': 'egr', 'lategreat': 'lgr',
+        'earlygood': 'egd', 'lategood': 'lgd',
+        'earlybad': 'ebd', 'latebad': 'lbd',
+        'earlypoor': 'epr', 'latepoor': 'lpr'
+    };
+    const bmsKey = bmsMap[`${type}${key}`];
+    if (bmsKey && opt[bmsKey] !== undefined) return opt[bmsKey];
+
+    // Try hitMeta keys: e.g. "earlyPGreat"
+    if (hm[`${type}${keyPascal}`] !== undefined) return hm[`${type}${keyPascal}`];
+    // Try judgements keys: e.g. "earlypgreat" or "earlyPGreat"
+    if (j[`${type}${keyPascal}`] !== undefined) return j[`${type}${keyPascal}`];
+    if (j[`${type}${key}`] !== undefined) return j[`${type}${key}`];
+    return 0;
+}
+
+function hideScoreTooltip() {
+    if (scoreTooltip) scoreTooltip.classList.remove('visible');
+}
+
+function moveScoreTooltip(e) {
+    if (!scoreTooltip) return;
+
+    const x = e.clientX + 5;
+    const y = e.clientY + 5;
+
+    // Boundary check (keep on screen)
+    const rect = scoreTooltip.getBoundingClientRect();
+    let finalX = x;
+    let finalY = y;
+
+    if (x + rect.width > window.innerWidth) {
+        finalX = e.clientX - rect.width - 10;
+    }
+    if (y + rect.height > window.innerHeight) {
+        finalY = e.clientY - rect.height - 10;
+    }
+
+    scoreTooltip.style.left = finalX + 'px';
+    scoreTooltip.style.top = finalY + 'px';
+}
+
 async function loadPlayerScores(type) {
     const list = document.getElementById('pd-scores-list');
     const loading = document.getElementById('pd-loading');
@@ -6760,6 +6924,22 @@ function renderPlayerScores(body) {
                 <div class="pd-card-date">${dateStr}</div>
             </div>
         `;
+
+        // Resolve Rank from rankingData if present
+        let rankValue = 'N/A';
+        const originalList = body.pbs || body.scores;
+        const rd = s.rankingData || (body.rankingData ? (Array.isArray(body.rankingData) ? body.rankingData[originalList ? originalList.indexOf(s) : -1] : body.rankingData[s.chartID]) : null);
+
+        if (rd && rd.rank) {
+            rankValue = `#${rd.rank}${rd.outOf ? ` / ${rd.outOf}` : ''}`;
+        } else if (s.rank) {
+            rankValue = `#${s.rank}`;
+        }
+        s._pdRank = rankValue;
+
+        card.addEventListener('mouseenter', (e) => showScoreTooltip(e, s));
+        card.addEventListener('mouseleave', () => hideScoreTooltip());
+        card.addEventListener('mousemove', (e) => moveScoreTooltip(e));
 
         list.appendChild(card);
     });
