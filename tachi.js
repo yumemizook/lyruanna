@@ -378,6 +378,30 @@ async function fetchChartLeaderboard(chartId, playtype = '7K') {
 }
 
 /**
+ * Fetch global Sieglinde rating leaderboard
+ * @param {string} playtype - '7K' or '14K'
+ * @returns {Promise<Object>} - Leaderboard with gameStats and users
+ */
+async function fetchSieglindeLeaderboard(playtype = '7K') {
+    if (!isTachiEnabled()) return { success: false, error: 'No API Key' };
+
+    try {
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/games/bms/${playtype}/leaderboard?alg=sieglinde`;
+        const res = await fetch(url, { headers: getTachiHeaders() });
+        const data = await res.json();
+
+        if (data.success) {
+            return { success: true, gameStats: data.body.gameStats || [], users: data.body.users || [] };
+        } else {
+            return { success: false, error: data.description };
+        }
+    } catch (e) {
+        console.error('[Tachi] Error fetching Sieglinde leaderboard:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
  * Fetch a specific user's PB on a chart by MD5 hash
  * Uses the score search endpoint with bmsChartHash matching
  * @param {string|number} userId - User ID
@@ -434,6 +458,86 @@ async function fetchRivalsPBs(rivalIds, chartMd5, playtype = '7K') {
     return { success: true, rivals: results };
 }
 
+/**
+ * Fetch user banner as Data URI
+ */
+async function fetchTachiUserBanner(userId) {
+    if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.getTachiUserBanner) {
+        return { success: false, error: 'IPC not available' };
+    }
+
+    const apiKey = getTachiApiKey();
+    return await window.electronAPI.getTachiUserBanner(apiKey, userId);
+}
+
+/**
+ * Upload a new avatar image
+ * @param {number} userId - User ID
+ * @param {ArrayBuffer} imageBuffer - Image data as ArrayBuffer
+ * @param {string} mimeType - MIME type (e.g., 'image/jpeg', 'image/png')
+ */
+async function uploadTachiAvatar(userId, imageBuffer, mimeType) {
+    if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.uploadTachiPfp) {
+        return { success: false, error: 'IPC not available' };
+    }
+
+    const apiKey = getTachiApiKey();
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    return await window.electronAPI.uploadTachiPfp(apiKey, userId, imageBuffer, mimeType);
+}
+
+/**
+ * Delete the current avatar
+ * @param {number} userId - User ID
+ */
+async function deleteTachiAvatar(userId) {
+    if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.deleteTachiPfp) {
+        return { success: false, error: 'IPC not available' };
+    }
+
+    const apiKey = getTachiApiKey();
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    return await window.electronAPI.deleteTachiPfp(apiKey, userId);
+}
+
+/**
+ * Upload a new banner image
+ * @param {number} userId - User ID
+ * @param {ArrayBuffer} imageBuffer - Image data as ArrayBuffer
+ * @param {string} mimeType - MIME type (e.g., 'image/jpeg', 'image/png')
+ */
+async function uploadTachiBanner(userId, imageBuffer, mimeType) {
+    if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.uploadTachiBanner) {
+        return { success: false, error: 'IPC not available' };
+    }
+
+    const apiKey = getTachiApiKey();
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    return await window.electronAPI.uploadTachiBanner(apiKey, userId, imageBuffer, mimeType);
+}
+
+/**
+ * Delete the current banner
+ * @param {number} userId - User ID
+ */
+async function deleteTachiBanner(userId) {
+    if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.deleteTachiBanner) {
+        return { success: false, error: 'IPC not available' };
+    }
+
+    const apiKey = getTachiApiKey();
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    return await window.electronAPI.deleteTachiBanner(apiKey, userId);
+}
+
 // Export for use in game.js
 if (typeof window !== 'undefined') {
     window.TachiIR = {
@@ -445,6 +549,11 @@ if (typeof window !== 'undefined') {
         fetchTachiPlayerStats,
         fetchTachiUserProfile,
         fetchTachiUserPfp,
+        fetchTachiUserBanner,
+        uploadTachiAvatar,
+        deleteTachiAvatar,
+        uploadTachiBanner,
+        deleteTachiBanner,
         getSieglinde,
         getSieglindeRank,
         pauseSubmission,
@@ -453,8 +562,10 @@ if (typeof window !== 'undefined') {
         fetchTachiRecentScores,
         fetchTachiBestScores,
         fetchChartLeaderboard,
+        fetchSieglindeLeaderboard,
         fetchUserChartPB,
         fetchRivalsPBs,
         LAMP_MAP
     };
 }
+

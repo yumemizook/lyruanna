@@ -913,6 +913,7 @@
         <div id="modal-player-details" class="modal">
             <div class="modal-box large-modal">
                 <div class="player-details-header">
+                    <div class="pd-header-banner" id="pd-header-banner"></div>
                     <div class="pd-header-left">
                         <div class="pd-avatar-container">
                             <img id="pd-avatar" src="">
@@ -923,6 +924,8 @@
                                 <span id="pd-rating-icon"></span>
                                 <span class="pd-rating-val" id="pd-rating-val">--</span>
                             </div>
+                            <div class="pd-bio" id="pd-bio"></div>
+                            <div class="pd-socials" id="pd-socials"></div>
                         </div>
                         <div id="pd-pause-container"
                             style="display:none; margin-left: 15px; background: rgba(255,100,0,0.1); border: 1px solid rgba(255,100,0,0.3); padding: 4px 10px; border-radius: 4px;">
@@ -944,6 +947,10 @@
                     <div class="pd-tabs">
                         <button class="pd-tab active" id="pd-tab-recent">RECENT</button>
                         <button class="pd-tab" id="pd-tab-best">BEST</button>
+                        <label class="pd-filter">
+                            <input type="checkbox" id="pd-filter-failed">
+                            <span>Hide Failed</span>
+                        </label>
                     </div>
                     <div class="pd-scores-container">
                         <table class="pd-scores-table">
@@ -969,6 +976,75 @@
 
                 <div class="modal-footer">
                     <button class="btn" id="btn-close-player-details">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE CUSTOMIZE MODAL -->
+        <div id="modal-profile-customize" class="modal">
+            <div class="modal-box customize-modal">
+                <div class="modal-header">
+                    <h2>Customize Profile</h2>
+                    <button class="modal-close" id="btn-close-customize">&times;</button>
+                </div>
+
+                <div class="customize-body">
+                    <!-- Avatar Section -->
+                    <div class="customize-section">
+                        <div class="customize-label">Avatar</div>
+                        <div class="customize-preview avatar-preview">
+                            <img id="customize-avatar-img" src="" alt="Avatar">
+                            <div class="customize-placeholder" id="avatar-placeholder">
+                                <i class="ph-bold ph-user"></i>
+                                <span>No Avatar</span>
+                            </div>
+                        </div>
+                        <div class="customize-actions">
+                            <button class="btn btn-primary" id="btn-upload-avatar">
+                                <i class="ph-bold ph-upload-simple"></i> Upload
+                            </button>
+                            <button class="btn btn-danger" id="btn-delete-avatar">
+                                <i class="ph-bold ph-trash"></i> Remove
+                            </button>
+                        </div>
+                        <input type="file" id="input-avatar" accept="image/jpeg,image/png,image/gif" hidden>
+                    </div>
+
+                    <!-- Banner Section -->
+                    <div class="customize-section">
+                        <div class="customize-label">Banner</div>
+                        <div class="customize-preview banner-preview">
+                            <img id="customize-banner-img" src="" alt="Banner">
+                            <div class="customize-placeholder" id="banner-placeholder">
+                                <i class="ph-bold ph-image"></i>
+                                <span>No Banner</span>
+                            </div>
+                        </div>
+                        <div class="customize-actions">
+                            <button class="btn btn-primary" id="btn-upload-banner">
+                                <i class="ph-bold ph-upload-simple"></i> Upload
+                            </button>
+                            <button class="btn btn-danger" id="btn-delete-banner">
+                                <i class="ph-bold ph-trash"></i> Remove
+                            </button>
+                        </div>
+                        <input type="file" id="input-banner" accept="image/jpeg,image/png,image/gif" hidden>
+                    </div>
+                </div>
+
+                <div class="customize-status" id="customize-status"></div>
+            </div>
+        </div>
+
+        <!-- LEADERBOARD MODAL -->
+        <div id="modal-leaderboard" class="modal">
+            <div class="modal-box leaderboard-modal">
+                <div class="modal-header">
+                    <h2 id="lb-title">Sieglinde Leaderboard</h2>
+                    <button class="modal-close" id="btn-close-leaderboard">&times;</button>
+                </div>
+                <div class="leaderboard-body" id="lb-list">
+                    <div class="lb-loading">Loading...</div>
                 </div>
             </div>
         </div>

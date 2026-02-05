@@ -6442,12 +6442,27 @@ if (profileDisplay) {
 }
 
 let _pdCurrentTab = 'recent';
+let _pdFilterFailed = false;
+let _pdCachedScoresBody = null; // Cache for re-rendering with filter
+
 const pdTabRecent = document.getElementById('pd-tab-recent');
 const pdTabBest = document.getElementById('pd-tab-best');
+const pdFilterCheckbox = document.getElementById('pd-filter-failed');
 
 if (pdTabRecent && pdTabBest) {
     pdTabRecent.addEventListener('click', () => switchPdTab('recent'));
     pdTabBest.addEventListener('click', () => switchPdTab('best'));
+}
+
+// Filter checkbox handler
+if (pdFilterCheckbox) {
+    pdFilterCheckbox.addEventListener('change', (e) => {
+        _pdFilterFailed = e.target.checked;
+        // Re-render with current cached data
+        if (_pdCachedScoresBody) {
+            renderPlayerScores(_pdCachedScoresBody);
+        }
+    });
 }
 
 let _pdPauseTimerId = null;
@@ -6490,6 +6505,21 @@ async function showPlayerDetails() {
         pUser.textContent = _tachiUserProfile ? _tachiUserProfile.username : 'Unknown';
         pAvatar.src = document.getElementById('profile-avatar').src || defaultAvatar;
 
+        // Load banner background
+        const bannerEl = document.getElementById('pd-header-banner');
+        if (bannerEl) {
+            try {
+                const bannerRes = await TachiIR.fetchTachiUserBanner(_tachiUserId);
+                if (bannerRes.success && bannerRes.dataUrl) {
+                    bannerEl.style.backgroundImage = `url(${bannerRes.dataUrl})`;
+                } else {
+                    bannerEl.style.backgroundImage = '';
+                }
+            } catch (e) {
+                bannerEl.style.backgroundImage = '';
+            }
+        }
+
         if (_tachiUserStats && _tachiUserStats.rating !== null) {
             let r = _tachiUserStats.rating;
             let rText = '';
@@ -6513,6 +6543,50 @@ async function showPlayerDetails() {
             pRankVal.textContent = '#--';
             pRankTotal.textContent = '';
         }
+        // Display Bio & Social Media
+        const pBio = document.getElementById('pd-bio');
+        const pSocials = document.getElementById('pd-socials');
+
+        if (_tachiUserProfile) {
+            // Bio
+            if (pBio) {
+                pBio.textContent = _tachiUserProfile.about || '';
+            }
+
+            // Social Media Links
+            if (pSocials) {
+                pSocials.innerHTML = '';
+                const socials = _tachiUserProfile.socialMedia || {};
+                const socialConfig = [
+                    { key: 'discord', icon: 'ph-discord-logo', url: (v) => null }, // Discord is a username, not a link
+                    { key: 'twitter', icon: 'ph-twitter-logo', url: (v) => `https://twitter.com/${v}` },
+                    { key: 'github', icon: 'ph-github-logo', url: (v) => `https://github.com/${v}` },
+                    { key: 'youtube', icon: 'ph-youtube-logo', url: (v) => `https://youtube.com/${v}` },
+                    { key: 'twitch', icon: 'ph-twitch-logo', url: (v) => `https://twitch.tv/${v}` },
+                    { key: 'steam', icon: 'ph-steam-logo', url: (v) => `https://steamcommunity.com/id/${v}` }
+                ];
+
+                for (const s of socialConfig) {
+                    const val = socials[s.key];
+                    if (val) {
+                        const link = document.createElement('a');
+                        link.className = `pd-social-link ${s.key}`;
+                        link.title = `${s.key}: ${val}`;
+                        link.innerHTML = `<i class="ph-bold ${s.icon}"></i>`;
+                        const href = s.url(val);
+                        if (href) {
+                            link.href = href;
+                            link.target = '_blank';
+                            link.rel = 'noopener noreferrer';
+                        }
+                        pSocials.appendChild(link);
+                    }
+                }
+            }
+        } else {
+            if (pBio) pBio.textContent = '';
+            if (pSocials) pSocials.innerHTML = '';
+        }
     } else {
         // Offline / Guest Mode
         pUser.textContent = 'Guest';
@@ -6521,6 +6595,12 @@ async function showPlayerDetails() {
         pRatingIcon.innerHTML = '';
         pRankVal.textContent = '#--';
         pRankTotal.textContent = '';
+
+        // Clear bio/socials for offline mode
+        const pBio = document.getElementById('pd-bio');
+        const pSocials = document.getElementById('pd-socials');
+        if (pBio) pBio.textContent = '';
+        if (pSocials) pSocials.innerHTML = '';
     }
 
     // Handle Pause Timer
@@ -6570,9 +6650,11 @@ async function loadPlayerScores(type) {
     loading.style.display = 'none';
 
     if (res.success) {
-        // Pass the whole body for resolution
+        // Cache for re-rendering with filter
+        _pdCachedScoresBody = res.body;
         renderPlayerScores(res.body);
     } else {
+        _pdCachedScoresBody = null;
         error.textContent = 'Failed to load scores: ' + (res.error || 'Unknown error');
         error.style.display = 'block';
     }
@@ -6580,14 +6662,24 @@ async function loadPlayerScores(type) {
 
 function renderPlayerScores(body) {
     const list = document.getElementById('pd-scores-list');
+    list.innerHTML = ''; // Clear previous
     list.classList.add('card-layout'); // For CSS styling
 
-    const items = body.scores || body.pbs || [];
+    let items = body.scores || body.pbs || [];
     const songs = body.songs || [];
     const charts = body.charts || [];
 
+    // Apply filter if enabled
+    if (_pdFilterFailed) {
+        items = items.filter(s => {
+            const lamp = (s.scoreData && s.scoreData.lamp) || 'FAILED';
+            return lamp !== 'FAILED';
+        });
+    }
+
     if (!items || items.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">No scores found.</div>';
+        const msg = _pdFilterFailed ? 'No cleared scores found.' : 'No scores found.';
+        list.innerHTML = `<div style="text-align:center; padding:40px; color:#666;">${msg}</div>`;
         return;
     }
 
@@ -6672,3 +6764,345 @@ function renderPlayerScores(body) {
         list.appendChild(card);
     });
 }
+
+// ============================================================================
+// PROFILE CUSTOMIZE MODAL
+// ============================================================================
+
+const customizeModal = document.getElementById('modal-profile-customize');
+const customizeCloseBtn = document.getElementById('btn-close-customize');
+
+// Avatar elements
+const customizeAvatarImg = document.getElementById('customize-avatar-img');
+const avatarPlaceholder = document.getElementById('avatar-placeholder');
+const btnUploadAvatar = document.getElementById('btn-upload-avatar');
+const btnDeleteAvatar = document.getElementById('btn-delete-avatar');
+const inputAvatar = document.getElementById('input-avatar');
+
+// Banner elements
+const customizeBannerImg = document.getElementById('customize-banner-img');
+const bannerPlaceholder = document.getElementById('banner-placeholder');
+const btnUploadBanner = document.getElementById('btn-upload-banner');
+const btnDeleteBanner = document.getElementById('btn-delete-banner');
+const inputBanner = document.getElementById('input-banner');
+
+// Status element
+const customizeStatus = document.getElementById('customize-status');
+
+function setCustomizeStatus(message, type = '') {
+    if (!customizeStatus) return;
+    customizeStatus.textContent = message;
+    customizeStatus.className = 'customize-status ' + type;
+}
+
+// Open customize modal (triggered by clicking avatar in player details)
+async function openCustomizeModal() {
+    if (!_tachiUserId) {
+        setCustomizeStatus('Must be logged in to customize profile', 'error');
+        return;
+    }
+
+    customizeModal.classList.add('open');
+    setCustomizeStatus('Loading...', 'loading');
+
+    // Load current avatar
+    try {
+        const pfpRes = await TachiIR.fetchTachiUserPfp(_tachiUserId);
+        if (pfpRes.success && pfpRes.dataUrl) {
+            customizeAvatarImg.src = pfpRes.dataUrl;
+            if (avatarPlaceholder) avatarPlaceholder.style.display = 'none';
+        } else {
+            customizeAvatarImg.src = '';
+            if (avatarPlaceholder) avatarPlaceholder.style.display = 'flex';
+        }
+    } catch (e) {
+        customizeAvatarImg.src = '';
+        if (avatarPlaceholder) avatarPlaceholder.style.display = 'flex';
+    }
+
+    // Load current banner
+    try {
+        const bannerRes = await TachiIR.fetchTachiUserBanner(_tachiUserId);
+        if (bannerRes.success && bannerRes.dataUrl) {
+            customizeBannerImg.src = bannerRes.dataUrl;
+            if (bannerPlaceholder) bannerPlaceholder.style.display = 'none';
+        } else {
+            customizeBannerImg.src = '';
+            if (bannerPlaceholder) bannerPlaceholder.style.display = 'flex';
+        }
+    } catch (e) {
+        customizeBannerImg.src = '';
+        if (bannerPlaceholder) bannerPlaceholder.style.display = 'flex';
+    }
+
+    setCustomizeStatus('');
+}
+
+// Close customize modal
+function closeCustomizeModal() {
+    customizeModal.classList.remove('open');
+    setCustomizeStatus('');
+}
+
+if (customizeCloseBtn) {
+    customizeCloseBtn.addEventListener('click', closeCustomizeModal);
+}
+
+if (customizeModal) {
+    customizeModal.addEventListener('click', (e) => {
+        if (e.target === customizeModal) closeCustomizeModal();
+    });
+}
+
+// Avatar upload
+if (btnUploadAvatar && inputAvatar) {
+    btnUploadAvatar.addEventListener('click', () => inputAvatar.click());
+
+    inputAvatar.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setCustomizeStatus('Uploading avatar...', 'loading');
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const res = await TachiIR.uploadTachiAvatar(_tachiUserId, arrayBuffer, file.type);
+
+            if (res.success) {
+                setCustomizeStatus('Avatar updated!', 'success');
+                // Reload the avatar
+                const pfpRes = await TachiIR.fetchTachiUserPfp(_tachiUserId);
+                if (pfpRes.success && pfpRes.dataUrl) {
+                    customizeAvatarImg.src = pfpRes.dataUrl;
+                    if (avatarPlaceholder) avatarPlaceholder.style.display = 'none';
+                    // Also update the profile display avatar
+                    document.getElementById('profile-avatar').src = pfpRes.dataUrl;
+                    document.getElementById('pd-avatar').src = pfpRes.dataUrl;
+                }
+            } else {
+                setCustomizeStatus('Upload failed: ' + (res.error || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            setCustomizeStatus('Upload failed: ' + err.message, 'error');
+        }
+
+        inputAvatar.value = ''; // Reset input
+    });
+}
+
+// Avatar delete
+if (btnDeleteAvatar) {
+    btnDeleteAvatar.addEventListener('click', async () => {
+        setCustomizeStatus('Removing avatar...', 'loading');
+
+        try {
+            const res = await TachiIR.deleteTachiAvatar(_tachiUserId);
+
+            if (res.success) {
+                setCustomizeStatus('Avatar removed!', 'success');
+                customizeAvatarImg.src = '';
+                if (avatarPlaceholder) avatarPlaceholder.style.display = 'flex';
+                // Reset profile display to default
+                const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+                document.getElementById('profile-avatar').src = defaultAvatar;
+                document.getElementById('pd-avatar').src = defaultAvatar;
+            } else {
+                setCustomizeStatus('Remove failed: ' + (res.error || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            setCustomizeStatus('Remove failed: ' + err.message, 'error');
+        }
+    });
+}
+
+// Banner upload
+if (btnUploadBanner && inputBanner) {
+    btnUploadBanner.addEventListener('click', () => inputBanner.click());
+
+    inputBanner.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setCustomizeStatus('Uploading banner...', 'loading');
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const res = await TachiIR.uploadTachiBanner(_tachiUserId, arrayBuffer, file.type);
+
+            if (res.success) {
+                setCustomizeStatus('Banner updated!', 'success');
+                // Reload the banner
+                const bannerRes = await TachiIR.fetchTachiUserBanner(_tachiUserId);
+                if (bannerRes.success && bannerRes.dataUrl) {
+                    customizeBannerImg.src = bannerRes.dataUrl;
+                    if (bannerPlaceholder) bannerPlaceholder.style.display = 'none';
+                }
+            } else {
+                setCustomizeStatus('Upload failed: ' + (res.error || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            setCustomizeStatus('Upload failed: ' + err.message, 'error');
+        }
+
+        inputBanner.value = ''; // Reset input
+    });
+}
+
+// Banner delete
+if (btnDeleteBanner) {
+    btnDeleteBanner.addEventListener('click', async () => {
+        setCustomizeStatus('Removing banner...', 'loading');
+
+        try {
+            const res = await TachiIR.deleteTachiBanner(_tachiUserId);
+
+            if (res.success) {
+                setCustomizeStatus('Banner removed!', 'success');
+                customizeBannerImg.src = '';
+                if (bannerPlaceholder) bannerPlaceholder.style.display = 'flex';
+            } else {
+                setCustomizeStatus('Remove failed: ' + (res.error || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            setCustomizeStatus('Remove failed: ' + err.message, 'error');
+        }
+    });
+}
+
+// Make pd-avatar clickable to open customize modal
+const pdAvatar = document.getElementById('pd-avatar');
+if (pdAvatar) {
+    pdAvatar.style.cursor = 'pointer';
+    pdAvatar.title = 'Click to customize profile';
+    pdAvatar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCustomizeModal();
+    });
+}
+
+// ============================================================================
+// LEADERBOARD MODAL
+// ============================================================================
+
+const lbModal = document.getElementById('modal-leaderboard');
+const lbCloseBtn = document.getElementById('btn-close-leaderboard');
+const lbList = document.getElementById('lb-list');
+const lbTitle = document.getElementById('lb-title');
+
+function closeLbModal() {
+    if (lbModal) lbModal.classList.remove('open');
+}
+
+if (lbCloseBtn) {
+    lbCloseBtn.addEventListener('click', closeLbModal);
+}
+
+if (lbModal) {
+    lbModal.addEventListener('click', (e) => {
+        if (e.target === lbModal) closeLbModal();
+    });
+}
+
+async function openLeaderboard() {
+    if (!lbModal || !lbList) return;
+
+    lbModal.classList.add('open');
+    lbList.innerHTML = '<div class="lb-loading">Loading...</div>';
+
+    // Determine playtype from current settings or default to 7K
+    const playtype = '7K'; // TODO: Read from keymode setting
+
+    try {
+        const res = await TachiIR.fetchSieglindeLeaderboard(playtype);
+
+        if (!res.success) {
+            lbList.innerHTML = `<div class="lb-loading" style="color:#f55">${res.error || 'Failed to load'}</div>`;
+            return;
+        }
+
+        const { gameStats, users } = res;
+
+        // Create a user map for quick lookup
+        const userMap = {};
+        for (const u of users) {
+            userMap[u.id] = u;
+        }
+
+        lbList.innerHTML = '';
+
+        if (!gameStats || gameStats.length === 0) {
+            lbList.innerHTML = '<div class="lb-loading">No entries found</div>';
+            return;
+        }
+
+        // Track if current player is found in the list
+        let playerEntry = null;
+        let playerRank = -1;
+
+        // Create scrollable list container
+        const scrollContainer = document.createElement('div');
+        scrollContainer.className = 'lb-scroll-container';
+
+        gameStats.forEach((entry, idx) => {
+            const user = userMap[entry.userID] || { username: 'Unknown' };
+            // Rating is in ratings.sieglinde (Sieglinde value)
+            const rating = entry.ratings && entry.ratings.sieglinde !== undefined
+                ? entry.ratings.sieglinde
+                : 0;
+
+            const isMe = _tachiUserId && entry.userID === _tachiUserId;
+
+            if (isMe) {
+                playerEntry = { user, rating, rank: idx + 1, userID: entry.userID };
+                playerRank = idx + 1;
+            }
+
+            // Format rating: ☆ + value for <=12.99, ★ + (value-12) for >=13.00
+            let ratingDisplay = '';
+            if (rating >= 13.0) {
+                ratingDisplay = `<span class="star filled">★</span>${(rating - 12).toFixed(2)}`;
+            } else {
+                ratingDisplay = `<span class="star outline">☆</span>${rating.toFixed(2)}`;
+            }
+
+            const div = document.createElement('div');
+            div.className = 'lb-entry' + (isMe ? ' highlight' : '');
+            div.innerHTML = `
+                <div class="lb-rank">#${idx + 1}</div>
+                <div class="lb-user">${user.username}</div>
+                <div class="lb-rating">${ratingDisplay}</div>
+            `;
+            scrollContainer.appendChild(div);
+        });
+
+        lbList.appendChild(scrollContainer);
+
+        // Add fixed player card at bottom if player not in top visible area
+        if (_tachiUserId && playerEntry && playerRank > 10) {
+            const fixedCard = document.createElement('div');
+            fixedCard.className = 'lb-fixed-player';
+            fixedCard.innerHTML = `
+                <div class="lb-entry highlight">
+                    <div class="lb-rank">#${playerEntry.rank}</div>
+                    <div class="lb-user">${playerEntry.user.username} (You)</div>
+                    <div class="lb-rating">${playerEntry.rating >= 13.0 ? `<span class="star filled">★</span>${(playerEntry.rating - 12).toFixed(2)}` : `<span class="star outline">☆</span>${playerEntry.rating.toFixed(2)}`}</div>
+                </div>
+            `;
+            lbList.appendChild(fixedCard);
+        }
+
+    } catch (e) {
+        lbList.innerHTML = `<div class="lb-loading" style="color:#f55">Error: ${e.message}</div>`;
+    }
+}
+
+// Click on rank area to open leaderboard
+const pdHeaderRight = document.querySelector('.pd-header-right');
+if (pdHeaderRight) {
+    pdHeaderRight.title = 'Click to view leaderboard';
+    pdHeaderRight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openLeaderboard();
+    });
+}
+

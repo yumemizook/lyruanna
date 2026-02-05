@@ -917,6 +917,160 @@ ipcMain.handle('tachi-get-user-pfp', async (event, apiKey, userId) => {
     }
 });
 
+// Get user Banner as Data URI
+ipcMain.handle('tachi-get-user-banner', async (event, apiKey, userId) => {
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    try {
+        const url = `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/banner`;
+        const fetchHeaders = {};
+        if (apiKey) fetchHeaders['Authorization'] = `Bearer ${apiKey}`;
+
+        const response = await axios.get(url, {
+            headers: fetchHeaders,
+            responseType: 'arraybuffer'
+        });
+
+        const contentType = response.headers['content-type'] || 'image/png';
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        const dataUrl = `data:${contentType};base64,${base64}`;
+
+        return { success: true, dataUrl };
+
+    } catch (e) {
+        // 404 means no banner set, which is not an error
+        if (e.response && e.response.status === 404) {
+            return { success: true, dataUrl: null };
+        }
+        console.error('[Tachi] Banner fetch error:', e);
+        return { success: false, error: e.message };
+    }
+});
+
+// Upload Avatar (multipart form data)
+ipcMain.handle('tachi-upload-pfp', async (event, apiKey, userId, imageBuffer, mimeType) => {
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+    if (!imageBuffer) return { success: false, error: 'No image data' };
+
+    try {
+        const FormData = require('form-data');
+        const form = new FormData();
+
+        // Determine file extension from mime type
+        const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/gif' ? 'gif' : 'jpg';
+        form.append('pfp', Buffer.from(imageBuffer), {
+            filename: `avatar.${ext}`,
+            contentType: mimeType || 'image/jpeg'
+        });
+
+        const response = await axios.put(
+            `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/pfp`,
+            form,
+            {
+                headers: {
+                    ...form.getHeaders(),
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            }
+        );
+
+        if (response.data.success) {
+            return { success: true, get: response.data.body.get };
+        }
+        return { success: false, error: response.data.description || 'Upload failed' };
+
+    } catch (e) {
+        console.error('[Tachi] PFP upload error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+// Delete Avatar
+ipcMain.handle('tachi-delete-pfp', async (event, apiKey, userId) => {
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    try {
+        await axios.delete(
+            `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/pfp`,
+            {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            }
+        );
+        return { success: true };
+    } catch (e) {
+        console.error('[Tachi] PFP delete error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+// Upload Banner (multipart form data)
+ipcMain.handle('tachi-upload-banner', async (event, apiKey, userId, imageBuffer, mimeType) => {
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+    if (!imageBuffer) return { success: false, error: 'No image data' };
+
+    try {
+        const FormData = require('form-data');
+        const form = new FormData();
+
+        const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/gif' ? 'gif' : 'jpg';
+        form.append('banner', Buffer.from(imageBuffer), {
+            filename: `banner.${ext}`,
+            contentType: mimeType || 'image/jpeg'
+        });
+
+        const response = await axios.put(
+            `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/banner`,
+            form,
+            {
+                headers: {
+                    ...form.getHeaders(),
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            }
+        );
+
+        if (response.data.success) {
+            return { success: true, get: response.data.body.get };
+        }
+        return { success: false, error: response.data.description || 'Upload failed' };
+
+    } catch (e) {
+        console.error('[Tachi] Banner upload error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+// Delete Banner
+ipcMain.handle('tachi-delete-banner', async (event, apiKey, userId) => {
+    if (!apiKey) return { success: false, error: 'No API key' };
+    if (!userId) return { success: false, error: 'No User ID' };
+
+    try {
+        await axios.delete(
+            `${TACHI_BASE_URL}/api/${TACHI_API_VERSION}/users/${userId}/banner`,
+            {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            }
+        );
+        return { success: true };
+    } catch (e) {
+        // 404 is okay - means no banner was set
+        if (e.response && e.response.status === 404) {
+            return { success: true };
+        }
+        console.error('[Tachi] Banner delete error:', e);
+        const errorMsg = e.response?.data?.description || e.message;
+        return { success: false, error: errorMsg };
+    }
+});
+
+
 // ============================================================================
 // TACHI AUTH POPUP WINDOW
 // ============================================================================

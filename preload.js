@@ -31,6 +31,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getTachiPlayerStats: (apiKey, playtype) => ipcRenderer.invoke('tachi-get-player-stats', apiKey, playtype),
     getTachiUserProfile: (apiKey, userId) => ipcRenderer.invoke('tachi-get-user-profile', apiKey, userId),
     getTachiUserPfp: (apiKey, userId) => ipcRenderer.invoke('tachi-get-user-pfp', apiKey, userId),
+    getTachiUserBanner: (apiKey, userId) => ipcRenderer.invoke('tachi-get-user-banner', apiKey, userId),
+    uploadTachiPfp: (apiKey, userId, imageBuffer, mimeType) => ipcRenderer.invoke('tachi-upload-pfp', apiKey, userId, imageBuffer, mimeType),
+    deleteTachiPfp: (apiKey, userId) => ipcRenderer.invoke('tachi-delete-pfp', apiKey, userId),
+    uploadTachiBanner: (apiKey, userId, imageBuffer, mimeType) => ipcRenderer.invoke('tachi-upload-banner', apiKey, userId, imageBuffer, mimeType),
+    deleteTachiBanner: (apiKey, userId) => ipcRenderer.invoke('tachi-delete-banner', apiKey, userId),
     openTachiAuth: () => ipcRenderer.invoke('open-tachi-auth'),
     startGame: () => ipcRenderer.send('start-game'),
     appReady: () => ipcRenderer.send('app-ready')
